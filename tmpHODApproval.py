@@ -93,9 +93,24 @@ def populate_FeeEarnersList(s, event):
   # FOLLOWING CODE IS DIRECTLY FROM WIP SCREEN
   currentUser = cbo_User.SelectedItem['Code']
   #user_Dept = runSQL("SELECT Department FROM Users WHERE Code = '" + currentUser + "'", False, "", "")
-  #userIsHOD = isUserAnApprovalUser(userToCheck = currentUser)    # can't see this is being used for anything
+  userIsHOD = isUserAnApprovalUser(userToCheck = currentUser)
   myFEitems = []
   
+  ## if Active user is a HOD and a Team lead, then include their name first in the list
+  #if userIsHOD == False:
+  #  tb_NoFEs.Visibility = Visibility.Visible
+  #  stk_SelectedMRAHeader_NoData.Visibility = Visibility.Visible
+  #  stk_SelectedMRAHeader.Visibility = Visibility.Collapsed
+  #  dg_MRAReview.Visibility = Visibility.Collapsed
+  #  dg_FeeEarners.Visibility = Visibility.Collapsed
+  #  return
+  #else:
+  #  tb_NoFEs.Visibility = Visibility.Collapsed
+  #  stk_SelectedMRAHeader_NoData.Visibility = Visibility.Collapsed
+  #  stk_SelectedMRAHeader.Visibility = Visibility.Visible
+  #  dg_MRAReview.Visibility = Visibility.Visible
+  #  dg_FeeEarners.Visibility = Visibility.Visible
+
   mySQL = """SELECT '0-FeeEarner' = U.FullName, 
                     '1-Branch' = B.Description, 
                     '2-OurRef' = LEFT(MRAO.EntityRef, 3) + RIGHT(MRAO.EntityRef, 4) + '/' + CONVERT(nvarchar, MRAO.MatterNo, 1), 
@@ -119,7 +134,8 @@ def populate_FeeEarnersList(s, event):
           LEFT OUTER JOIN Entities E ON MRAO.EntityRef = E.Code
         WHERE MRAO.ApprovedByHOD = 'N' AND MRAO.RiskRating = 3 AND MRAO.Status = 'Complete'
           AND U.Code IN (SELECT FeeEarnerCode FROM Usr_HODapprovals WHERE UserCode = '{0}')
-        ORDER BY '9-Type', '0-FeeEarner', '4-Expiry Date' """.format(currentUser)
+        ORDER BY '9-Type', '0-FeeEarner', '4-Expiry Date'
+        """.format(currentUser)
 
   _tikitDbAccess.Open(mySQL)
 
@@ -225,14 +241,24 @@ def refresh_Preview_MRA(s, event):
   mySQL = """SELECT '0-QGroup' = QGs.Name, 
                     '1-DisplayOrder' = MRAD.DisplayOrder, 
                     '2-QText' = TQs.QuestionText, 
-                    '3-Answer' = CASE WHEN MRAD.AnswerListToUse = '(TextBox)' THEN MRAD.tbAnswerText ELSE (SELECT AnswerText FROM Usr_MRA_TemplateAs TAs WHERE TAs.AnswerID = MRAD.SelectedAnswerID) END, 
+                    '3-Answer' = CASE WHEN MRAD.AnswerListToUse = '(TextBox)' THEN MRAD.tbAnswerText ELSE (SELECT AnswerText FROM Usr_MRA_TemplateAs TAs WHERE TAs.AnswerID = MRAD.SelectedAnswerID AND TAs.QuestionID = MRAD.QuestionID) END, 
                     '4-Notes' = MRAD.Notes, 
                     '5-EmailComment' = MRAD.EmailComment 
             FROM Usr_MRA_Detail MRAD 
               INNER JOIN Usr_MRA_TemplateQs TQs ON MRAD.QuestionID = TQs.QuestionID	
               INNER JOIN Usr_MRA_QGroups QGs ON MRAD.QGroupID = QGs.ID 
             WHERE MRAD.OV_ID = {0} 
-            ORDER BY MRAD.QGroupID, MRAD.DisplayOrder """.format(ov_ID)
+            ORDER BY MRAD.QGroupID, MRAD.DisplayOrder 
+  """.format(ov_ID)
+
+  #mySQL = "SELECT '0-QGroup' = QGs.Name, '1-DisplayOrder' = MRAD.DisplayOrder, '2-QText' = TQs.QuestionText, "
+  #mySQL += "'3-Answer' = CASE WHEN MRAD.AnswerListToUse = '(TextBox)' THEN MRAD.tbAnswerText ELSE (SELECT AnswerText FROM Usr_MRA_TemplateAs TAs WHERE TAs.AnswerID = MRAD.SelectedAnswerID) END, "
+  #mySQL += "'4-Notes' = MRAD.Notes, '5-EmailComment' = MRAD.EmailComment "
+  #mySQL += "FROM Usr_MRA_Detail MRAD "
+  #mySQL += "INNER JOIN Usr_MRA_TemplateQs TQs ON MRAD.QuestionID = TQs.QuestionID	"
+  #mySQL += "INNER JOIN Usr_MRA_QGroups QGs ON MRAD.QGroupID = QGs.ID "
+  #mySQL += "WHERE MRAD.OV_ID = " + str(ov_ID) + " "
+  #mySQL += "ORDER BY MRAD.QGroupID, MRAD.DisplayOrder "
 
   _tikitDbAccess.Open(mySQL)
   myItems = []
@@ -419,6 +445,9 @@ def Approve_Button_Clicked(s, event):
                   VALUES(GETDATE(), '{0}', 'HOD_Approved_MRA', {1}, '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', {11})
     """.format(_tikitUser, ovID, tmpEmailTo, tmpEmailCC, tmpToUserName, tmpOurRef, tmpMatDesc, tmpClName, tmpAddtl1, tmpAddtl2, entRef, matNo)
 
+  #tc_Trigger = "INSERT INTO Usr_MRA_Events (Date, UserRef, ActionTrigger, OV_ID, EmailTo, EmailCC, ToUserName, OurRef, MatterDesc, ClientName, Addtl1, Addtl2) "
+  #tc_Trigger += "VALUES(GETDATE(), '" + _tikitUser + "', 'HOD_Approved_MRA', " + str(ovID) + ", '" + tmpEmailTo + "', '" + tmpEmailCC + "', "
+  #tc_Trigger += "'" + tmpToUserName + "', '" + str(tmpOurRef) + "', '" + str(tmpMatDesc) + "', '" + str(tmpClName) + "', '" + str(tmpAddtl1) + "', '" + str(tmpAddtl2) + "')"
   try:
     _tikitResolver.Resolve("[SQL: {0}]".format(tc_Trigger))
   except:
@@ -439,22 +468,22 @@ def createNewMRA_BasedOnCurrent(s, event):
   
   # get input variables
   idItemToCopy = dg_FeeEarners.SelectedItem['OV_ID']
+  nameToCopy = dg_FeeEarners.SelectedItem['MRAName']
+  finalName = "{0} (copy of {1})".format(nameToCopy, idItemToCopy)
+  finalName = finalName.replace("'", "''")
   mra_Expiry = getSQLDate(dg_FeeEarners.SelectedItem['MRA Expiry'])
   entRef = dg_FeeEarners.SelectedItem['EntityRef']
   matNo = dg_FeeEarners.SelectedItem['MatterNo']
   
-  # firstly get the 'typeID' of the MRA to copy (although, I think this function is only used once, so could just update calling procedure to pass this??)
-  nextNum = get_NextMRAFR_NumberForMatter(ovID=idItemToCopy, entityRef=entRef, matterNo=matNo)
-  tmpsql = "SELECT REPLACE(TypeName, 'Matter Risk Assessment', 'NMRA') FROM Usr_MRA_TemplateTypes WHERE TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0})".format(idItemToCopy)
-  MRAtype = runSQL(tmpsql, False, '', '')
-  finalName = "{0} - {1} (copy of {2})".format(MRAtype, nextNum, idItemToCopy)
-  finalName = finalName.replace("'", "''")
-
   # generate SQL to copy high-level (Overview)
   insertOV_SQL = """INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded)
                     SELECT '{0}', {1}, TypeID, DATEADD(WEEK, 4, '{2}'), '{3}', Score, RiskRating, 'N', GETDATE()
                     FROM Usr_MRA_Overview WHERE ID = {4}""".format(entRef, matNo, mra_Expiry, finalName, idItemToCopy) 
 
+  #insertOV_SQL = "INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded) "
+  #insertOV_SQL += "SELECT '" + entRef + "', " + str(matNo) + ", TypeID, DATEADD(WEEK, 4, '" + str(mra_Expiry) + "'), '" + finalName + "', "
+  #insertOV_SQL += "Score, RiskRating, 'N', GETDATE() FROM Usr_MRA_Overview WHERE ID = " + str(idItemToCopy)
+  
   try:
     _tikitResolver.Resolve("[SQL: {0}]".format(insertOV_SQL))
   except:
@@ -463,12 +492,17 @@ def createNewMRA_BasedOnCurrent(s, event):
     
   # now get row ID of items added
   rowID = runSQL("SELECT TOP 1 ID FROM Usr_MRA_Overview WHERE LocalName = '{0}' AND EntityRef = '{1}' AND MatterNo = {2} ORDER BY DateAdded DESC".format(finalName, entRef, matNo), False, "", "")
+  #rowID = runSQL("SELECT TOP 1 ID FROM Usr_MRA_Overview WHERE LocalName = '" + finalName + "' AND EntityRef = '" + entRef + "' AND MatterNo = " + str(matNo) + " ORDER BY DateAdded DESC", False, "", "")
 
   if int(rowID) > 0:
     insertQ_SQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, CorrActionID)
                     SELECT '{0}', {1}, {2}, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, Null
                     FROM Usr_MRA_Detail WHERE OV_ID = {3}""".format(entRef, matNo, rowID, idItemToCopy)
 
+    #insertQ_SQL = "INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, CorrActionID) "
+    #insertQ_SQL += "SELECT '" + entRef + "', " + str(matNo) + ", " + str(rowID) + ", QuestionID, AnswerListToUse, SelectedAnswerID, "
+    #insertQ_SQL += "CurrentAnswerScore, DisplayOrder, QGroupID, Null FROM Usr_MRA_Detail WHERE OV_ID = " + str(idItemToCopy)
+    
     try:
       _tikitResolver.Resolve("[SQL: {0}]".format(insertQ_SQL))
     except:
@@ -563,26 +597,6 @@ def setCurrentUser(s, event):
       cbo_User.SelectedIndex = pCount
       break
   return
-
-
-def get_NextMRAFR_NumberForMatter(ovID = 0, entityRef = '', matterNo = ''):
-  # This new function was added 20/05/2025 as there are a couple of occurences where we need to get the next
-  # MRA/FR number for a given TypeID (testing against current Entity/Matter record)
-
-  # if passed ID is empty, exit and alert user
-  if ovID == 0:
-    MessageBox.Show("You need to pass an ID to this function!", "Error: get_NextMRAFR_NumberForMatter...")
-    return 0
-  
-  # else we carry on abd get the TypeID
-  tmpTypeID = runSQL("SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0} AND EntityRef = '{1}' AND MatterNo = {2}".format(ovID, entityRef, matterNo), False, '', '')
-
-  NextNum_sql = """[SQL: SELECT COUNT(TypeID) + 1 FROM Usr_MRA_Overview MRAO 
-                         WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} 
-                          AND TypeID = {2}]""".format(entityRef, matterNo, tmpTypeID)
-  NextNum = runSQL(NextNum_sql, False, '', '')
-  return NextNum
-
 
 ]]>
     </Init>
