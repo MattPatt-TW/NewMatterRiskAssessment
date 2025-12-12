@@ -1,0 +1,424 @@
+<Canvas
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    mc:Ignorable="d"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="786.4" d:DesignWidth="1200" Height="auto" Width="auto"  
+    Background="#FFEFF3FC" Name="RiskPractice">
+  <!--d:DesignHeight="800" d:DesignWidth="1200"-->
+
+  <!--<Canvas.Resources>
+        <local:Tmp x:Key="tmp" />
+        <CollectionViewSource x:Key="myFE" Source="{StaticResource tmp}" >
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="ProjectName"/>
+                <PropertyGroupDescription PropertyName="Complete"/>
+            </CollectionViewSource.GroupDescriptions>
+
+        </CollectionViewSource>
+
+    </Canvas.Resources>-->
+
+  <Label Content="HOD Approval Area for Matter Risk Assessments" Height="32" Canvas.Left="10" Canvas.Top="10" Width="414" FontWeight="Bold" Foreground="Navy" FontSize="16" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
+  <StackPanel x:Name="stk_CurrentUser" Orientation="Horizontal" Canvas.Left="450" Canvas.Top="7" >
+    <Label Content="Current User:" Foreground="Gray" />
+    <ComboBox x:Name="cbo_User" Canvas.Left="314" Canvas.Top="11" Width="215" Height="26" >
+      <ComboBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="38" />
+            <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="Auto" />
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+    <Label x:Name="lbl_UserStatus" Content="-UserStatus-" Foreground="Gray" Visibility="Collapsed"/>
+  </StackPanel>
+  <Grid x:Name="grd_Main" Height="731" Width="1180" Canvas.Left="10" Canvas.Top="47" >
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="300" MinWidth="40" MaxWidth="900" />
+      <ColumnDefinition Width="6"  />
+      <ColumnDefinition  />
+
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="24" />
+      <RowDefinition Height="38" />
+      <RowDefinition Height="*" />
+
+    </Grid.RowDefinitions>
+
+    <GridSplitter HorizontalAlignment="Center"   
+                      VerticalAlignment="Stretch"   
+                      Grid.Column="1"  
+                      Grid.Row="0"
+                      Grid.RowSpan="3"
+                      Width="6" Background="Silver"
+                      ToolTip="Click and drag me to view more or less of one particular side" >
+      <GridSplitter.Template>
+        <ControlTemplate TargetType="{x:Type GridSplitter}">
+          <Grid>
+            <Button Content="⁞" FontWeight="Bold"/>
+            <!-- Use vertical ellipsis character as the arrow -->
+            <Rectangle Fill="#00FFFFFF" />
+            <!-- Transparent background to allow resizing -->
+          </Grid>
+        </ControlTemplate>
+      </GridSplitter.Template>
+    </GridSplitter>
+
+
+    <DataGrid x:Name="dg_FeeEarners" Grid.Column="0" Grid.Row="1" Grid.RowSpan="2"
+                  AlternatingRowBackground="#FFAEDEB9"
+                  SelectionMode="Single"
+                  AutoGenerateColumns="False"
+                  IsTextSearchEnabled="True" ClipboardCopyMode="IncludeHeader" Margin="0,0,4,0" 
+                  CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" >
+
+
+      <DataGrid.Resources>
+        <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
+                                            In VBA, this is done with a setting property 'HideSelection' to false but
+                                            no equivilent in WPF/XAML -->
+        <Style TargetType="{x:Type DataGridRow}">
+          <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+          </Style.Resources>
+        </Style>
+
+        <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+          <Setter Property="Margin" Value="0,2,0,4"/>
+          <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type GroupItem}" >
+                <Expander x:Name="exp" IsExpanded="True"
+                          Background="LightGray" BorderBrush="DarkGray" BorderThickness="1,1,1,1"
+                          Foreground="Black" Padding="2" Margin="2,0">
+                  <Expander.Header>
+                    <DockPanel>
+                      <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                      <TextBlock Text=" (" FontWeight="Bold" />
+                      <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                      <TextBlock Text=")" FontWeight="Bold" />
+                    </DockPanel>
+                  </Expander.Header>
+                  <ItemsPresenter />
+                </Expander>
+
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+
+          <!-- Trigger to set background colour to GREEN for 'Main' Fee Earners -->
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=Name}" Value="01) Main">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="{x:Type GroupItem}">
+                    <Expander x:Name="expander"
+                                    IsExpanded="True"
+                                    Background="#FF58B940"
+                                    BorderBrush="#FF306323"
+                                    BorderThickness="1,1,1,1"
+                                    Foreground="Black"
+                                    Padding="2,2,2,2"
+                                    Margin="2,0">
+                      <Expander.Header>
+                        <DockPanel>
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                          <TextBlock Text=" (" FontWeight="Bold" />
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                          <TextBlock Text=")" FontWeight="Bold" />
+                        </DockPanel>
+                      </Expander.Header>
+                      <ItemsPresenter />
+                    </Expander>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </DataTrigger>
+
+            <!-- Trigger to set background colour to YELLOW for 'Holiday Cover' -->
+            <DataTrigger Binding="{Binding Path=Name}" Value="02) Holiday Cover">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="{x:Type GroupItem}">
+                    <Expander x:Name="expander"
+                                    IsExpanded="True"
+                                    Background="#FFEBB91A"
+                                    BorderBrush="#FF795D02"
+                                    BorderThickness="1,1,1,1"
+                                    Foreground="Black"
+                                    Padding="2,2,2,2"
+                                    Margin="2,0">
+                      <Expander.Header>
+                        <DockPanel>
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                          <TextBlock Text=" (" FontWeight="Bold" />
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                          <TextBlock Text=")" FontWeight="Bold" />
+                        </DockPanel>
+                      </Expander.Header>
+                      <ItemsPresenter />
+                    </Expander>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </DataTrigger>
+          </Style.Triggers>
+
+
+        </Style>
+
+        <Style x:Key="RightAligned" TargetType="{x:Type DataGridCell}">
+          <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style x:Key="CellCentre" TargetType="{x:Type DataGridCell}" >
+          <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Center" TargetType="{x:Type DataGridColumnHeader}">
+          <Setter Property="ContentTemplate">
+            <Setter.Value>
+              <DataTemplate>
+                <TextBlock TextWrapping="Wrap" Text="{Binding}" TextAlignment="Center" Height="38" />
+              </DataTemplate>
+            </Setter.Value>
+          </Setter>
+          <!--<Setter Property="HorizontalAlignment" Value="Center" />-->
+          <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="DataGridContentCellCentering" TargetType="{x:Type DataGridCell}">
+          <!--This only works for NON DataGridTextColumns-->
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type DataGridCell}">
+                <Grid Background="{TemplateBinding Background}">
+                  <ContentPresenter VerticalAlignment="Center" />
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+        <Style x:Key="DGCentre" TargetType="DataGridCell">
+          <!--This one definitely does do the job and is elagantly simple-->
+          <Setter Property="TextBlock.TextAlignment" Value="Center" />
+        </Style>
+        <!--<Style x:Key="DGHeaderCenter" TargetType="{x:Type DataGridColumnHeader}" >
+                    <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                    <Setter Property="TextBlock.TextWrapping" Value="Wrap" />
+                </Style>-->
+        <!--no - we can't do the same but targetting Column Header -->
+      </DataGrid.Resources>
+
+      <DataGrid.GroupStyle>
+        <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+          <GroupStyle.Panel>
+            <ItemsPanelTemplate >
+              <DataGridRowsPresenter />
+            </ItemsPanelTemplate>
+          </GroupStyle.Panel>
+        </GroupStyle>
+      </DataGrid.GroupStyle>
+
+      <DataGrid.CellStyle>
+        <Style TargetType="{x:Type DataGridCell}">
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding feOrder}" Value="0">
+              <Setter Property="FontWeight" Value="Bold" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding feColour}" Value="Red">
+              <Setter Property="Foreground" Value="Red" />
+            </DataTrigger>
+            <!--<DataTrigger Binding="{Binding  }" Value="sql: SELECT '[currentuser.code]'">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                        </DataTrigger>-->
+            <!--This last one doesn't actually work unfotunately - can't use SQL in the 'Value' property, as it is treated as LITERAL
+                                            What I'm actually after is just setting the FIRST row to a specific colour 
+                                            I think the only way around this would be to add another hidden column where we can set the 'display order'
+                                            (like we're using a 'Display Order' column here) -->
+          </Style.Triggers>
+        </Style>
+      </DataGrid.CellStyle>
+
+      <DataGrid.Columns>
+
+        <DataGridTextColumn Header="Fee Earner" IsReadOnly="True" Width="Auto"
+                                    Binding="{Binding feName}" Visibility="Collapsed" />
+        <DataGridTextColumn Header="Branch" IsReadOnly="True" Binding="{Binding feBranch}" Visibility="Hidden" />
+        <DataGridTextColumn Header="Our Ref" IsReadOnly="True" Width="Auto"
+                                    Binding="{Binding ourRef}"  />
+        <DataGridTextColumn Header="Client Name" IsReadOnly="True" Width="100"
+                                    Binding="{Binding clName}"  />
+        <DataGridTextColumn Header="Matter Desc" IsReadOnly="True" Width="120"
+                                    Binding="{Binding matDesc}"  />
+        <DataGridTextColumn Header="MRA Name" IsReadOnly="True" Width="Auto"
+                                    Binding="{Binding mraName}" />
+        <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="Auto"
+                                    Binding="{Binding mraExpiryDate, StringFormat=dd/MM/yyyy}" 
+                                    CellStyle="{StaticResource DGCentre}" />
+        <DataGridTextColumn Header="OV_ID" IsReadOnly="True" Binding="{Binding ov_ID}" Visibility="Collapsed" />
+        <DataGridTextColumn Header="EntRef" IsReadOnly="True" Binding="{Binding entRef}" Visibility="Hidden" />
+        <DataGridTextColumn Header="MatNo" IsReadOnly="True" Binding="{Binding matNo}" Visibility="Hidden" />
+        <DataGridTextColumn Header="Approval Type" IsReadOnly="True" Binding="{Binding AType}" Visibility="Hidden" />
+
+      </DataGrid.Columns>
+
+    </DataGrid>
+
+    <DataGrid x:Name="dg_MRAReview" Grid.Row="2" Grid.Column="2"
+                  AlternatingRowBackground="#FFAEDEB9" 
+                  SelectionMode="Single" 
+                  AutoGenerateColumns="False" 
+                  IsTextSearchEnabled="True" Margin="4,0,0,0" 
+                  CanUserResizeRows="False" HeadersVisibility="Column">
+
+      <DataGrid.Resources>
+        <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
+                                            In VBA, this is done with a setting property 'HideSelection' to false but
+                                            no equivilent in WPF/XAML -->
+        <Style TargetType="{x:Type DataGridRow}">
+          <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+          </Style.Resources>
+        </Style>
+
+        <Style x:Key="RightAligned" TargetType="DataGridCell">
+          <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="Center" TargetType="DataGridCell">
+          <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
+          <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+          <Setter Property="Margin" Value="0,2,0,4"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type GroupItem}" >
+                <Expander x:Name="exp" IsExpanded="True"
+                                          Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,2"
+                                          Foreground="Black" Padding="0,2,0,0">
+                  <Expander.Header>
+                    <DockPanel>
+                      <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                      <TextBlock Text=" (" FontWeight="Bold" />
+                      <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                      <TextBlock Text=")" FontWeight="Bold" />
+                    </DockPanel>
+                  </Expander.Header>
+                  <ItemsPresenter />
+                </Expander>
+
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+
+        </Style>
+      </DataGrid.Resources>
+
+      <DataGrid.GroupStyle>
+        <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+          <GroupStyle.Panel>
+            <ItemsPanelTemplate >
+              <DataGridRowsPresenter />
+            </ItemsPanelTemplate>
+          </GroupStyle.Panel>
+        </GroupStyle>
+      </DataGrid.GroupStyle>
+
+      <DataGrid.Columns>
+
+        <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Visibility="Collapsed" 
+                                    Binding="{Binding DOrder}" />
+        <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="400" 
+                                        HeaderStyle="{StaticResource CenterCol}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" TextAlignment="Left" TextWrapping="Wrap" Height="Auto" Padding="4,0,0,0"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="FE Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200" >
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding LUP_AnswerText, Mode=TwoWay}" TextAlignment="Left" 
+                                       VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto" Padding="2,0,0,0"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="FE Notes"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding FENotes, Mode=TwoWay}" TextAlignment="Left" 
+                                       VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto" Padding="2,0,0,0"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Risk Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding LUP_EmailComment, Mode=TwoWay}" TextAlignment="Left" 
+                                       VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto" Padding="2,0,0,0"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTextColumn Header="QGroup" IsReadOnly="True" Width="40" Visibility="Collapsed" 
+                                    Binding="{Binding QGroup}" />
+      </DataGrid.Columns>
+
+    </DataGrid>
+
+    <StackPanel x:Name="stk_SelectedMRAHeader_NoData" Visibility="Collapsed" Orientation="Horizontal" Grid.Column="2" Grid.Row="1" Margin="4,0,0,0">
+      <TextBlock Foreground="Red" FontWeight="Bold" Text="Please select a Matter Risk Assessment from the list on the left." HorizontalAlignment="Center" VerticalAlignment="Center" Padding="6,0,0,0"/>
+    </StackPanel>
+    <StackPanel x:Name="stk_SelectedMRAHeader" Visibility="Visible" Orientation="Horizontal" Grid.Column="2" Grid.Row="1" Margin="4,0,0,0">
+      <StackPanel Orientation="Vertical">
+        <TextBlock Text="Our Ref:" Foreground="Gray" VerticalAlignment="Center" TextAlignment="Right"/>
+        <TextBlock Text="MRA Name:" Foreground="Gray" VerticalAlignment="Center" TextAlignment="Right"/>
+      </StackPanel>
+      <StackPanel Orientation="Vertical" Margin="4,0,0,0">
+        <TextBlock x:Name="tb_OurRef" Foreground="Navy" VerticalAlignment="Center" Text="[Our Ref]" />
+        <TextBlock x:Name="tb_MRA_Name" Foreground="Navy" VerticalAlignment="Center" Text="[MRA Name]"/>
+      </StackPanel>
+
+      <Label x:Name="lbl_MRA_OV_ID" Visibility="Hidden" Width="30" Margin="0"/>
+      <StackPanel Orientation="Vertical" >
+        <TextBlock Text="Fee Earner:" Foreground="Gray" VerticalAlignment="Center" TextAlignment="Right"/>
+
+      </StackPanel>
+      <StackPanel Orientation="Vertical" Margin="4,0,0,0">
+        <TextBlock x:Name="tb_FE_Name" Foreground="Navy" VerticalAlignment="Center" Text="[FE Name]"/>
+
+      </StackPanel>
+
+      <Button x:Name="btn_ApproveHR" Content="Approve" ToolTip="Clicking this button will unlock the selected matter, and marks this item as 'Approved by HOD'..." Margin="12,4,0,4" Width="80"/>
+
+    </StackPanel>
+
+    <Label Content="Fee Earners in my Department" Foreground="Gray" FontWeight="Bold" HorizontalContentAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+    <TextBlock x:Name="tb_NoFEs" Text="No MRA's to approve or Current User is not an Approval user" Foreground="Red" 
+                   FontWeight="Bold" Grid.Row="1" Grid.Column="0" TextWrapping="Wrap" Visibility="Collapsed"/>
+    <Label Content="Selected Fee Earners' Matter Risk Assessment" Foreground="Gray" FontWeight="Bold" HorizontalContentAlignment="Center" Grid.Row="0" Grid.Column="2"/>
+  </Grid>
+
+
+
+
+</Canvas>
