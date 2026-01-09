@@ -713,7 +713,7 @@ class QATidyUp(object):
     else:
       return ''
 
-def btn_Duplicate_MRA_Template(s, event):
+def Duplicate_MRA_Template(s, event):
   # This function will duplicate the selected Matter Risk Assessment (including the questions) AND ANSWERS - NEED TO REVIEW
   #! 19/08/2025 - Need to make this into its own dedicated function with parameters, as will be use on 'Edit' button too (to copy selected MRA template)
 
@@ -725,13 +725,88 @@ def btn_Duplicate_MRA_Template(s, event):
   nameToCopy = dg_MRA_Templates.SelectedItem['Name']
   
   # Firstly, copy main template (Usr_MRA_TemplateTypes) and get new ID
-  tempName = " (copy of {0})".format(idItemToCopy)
-  duplicatedID = duplicate_MRA_Template(sourceTypeID=idItemToCopy, newTypeName=tempName)
-  if duplicatedID == -1:
-    MessageBox.Show("Error duplicating '{0}' (TypeID: {1})".format(nameToCopy, idItemToCopy), "Error: Duplicating Matter Risk Assessment...")
+  tempName = "MRA (copy of {0})".format(idItemToCopy)
+  #! Added 29/07/2025: Get next new TypeID so we can add it directly in the INSERT statement
+  nextTypeID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(TypeID), 0) + 1 FROM Usr_MRA_TemplateTypes]")
+  #! Now we need to get the next QuestionID and next AnswerID, so that we can pass directly into the INSERT statement (to copy over questions/answers)
+  #! NB: don't +1 here as 'RowNum' starts at 1 and will mean that we skip a number each time
+  nextQID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(QuestionID), 0) FROM Usr_MRA_TemplateQs]")
+  nextAnsID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(AnswerID), 0) FROM Usr_MRA_TemplateAs]")
+
+  # Insert main 'header' row items for the new template
+  insertSQL = "[SQL: INSERT INTO Usr_MRA_TemplateTypes (TypeName, Is_MRA, TypeID) VALUES ('{0}', 'Y', {1})]".format(tempName, nextTypeID)
+  try:
+    _tikitResolver.Resolve(insertSQL)
+    addedTemplateMRA = True
+  except:
+    MessageBox.Show("There was an error duplicating the selected Matter Risk Assessment, using SQL:\n" + str(insertSQL), "Error: Duplicating Matter Risk Assessment...")
+    addedTemplateMRA = False
     return
+  
+  # Next, we need to copy over the Questions (Usr_MRA_TemplateQs) and Answers (Usr_MRA_TemplateAs) for this NEW template
+  # and we'll need new ID's and set the TypeID to the new one we just created above
+  copyQ_SQL = """WITH myCopyList AS (
+                      SELECT 'qText' = QuestionText, 'aList' = AnswerList, 'qGroupID' = QGroupID, 'tTypeID' = TypeID, 
+                             'qID' = QuestionID,	
+                             'RowNumInGrp' = ROW_NUMBER() OVER (PARTITION BY QGroupID ORDER BY DisplayOrder, QuestionText),
+                             'RowNum' = ROW_NUMBER() OVER (ORDER BY QGroupID, DisplayOrder, QuestionText)
+                      FROM Usr_MRA_TemplateQs WHERE TypeID = {TypeID_to_copy}
+	                  )
+                   INSERT INTO Usr_MRA_TemplateQs (QuestionText, AnswerList, QGroupID, TypeID, DisplayOrder, QuestionID, SourceID)
+                   SELECT qText, aList, qGroupID, {newTypeID}, RowNumInGrp, {nextQID} + RowNum, qID
+                   FROM myCopyList ORDER BY qGroupID, RowNumInGrp;""".format(TypeID_to_copy=idItemToCopy, newTypeID=nextTypeID, nextQID=nextQID)  
+    
+  didAddQs = runSQL(codeToRun=copyQ_SQL.strip(), showError=False, useAltResolver=True)
+
+  if didAddQs == 'Error':
+    addedQs = False
+    MessageBox.Show("An error occurred copying the Questions, using SQL:\n" + str(copyQ_SQL), "Error: Duplicating Matter Risk Assessment...")
+    return
+  else:
+    addedQs = True
+
+  # COPYING ANSWERS OVER
+  #! 30/07/2025 - New version that doesn't need loop process
+  copyAnsSQL = """WITH myAnswerList AS (
+                    SELECT 'GrpName' = TA.GroupName, 'AnsText' = TA.AnswerText, 'Score' = TA.Score, 
+                          'EmailComment' = TA.EmailComment, 
+                          'RowNum' = ROW_NUMBER() OVER (ORDER BY TQ.DisplayOrder, TA.DisplayOrder, TA.AnswerText), 
+                          'AOrder' = TA.DisplayOrder, 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID 
+                    FROM Usr_MRA_TemplateAs TA 
+                      JOIN Usr_MRA_TemplateQs TQ ON TA.QuestionID = TQ.QuestionID 
+                    WHERE TQ.TypeID = {typeIDtoCopy} 
+                  ), myQuestionList AS (
+                    SELECT 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID, 
+                            'RowNumQ' = ROW_NUMBER() OVER (ORDER BY QG.DisplayOrder, TQ.DisplayOrder)
+                        FROM Usr_MRA_TemplateQs TQ 
+                            JOIN Usr_MRA_QGroups QG ON TQ.QGroupID = QG.ID
+                    WHERE TQ.TypeID = {typeIDtoCopy} 
+                  ) 
+                  INSERT INTO Usr_MRA_TemplateAs (GroupName, QuestionID, AnswerText, Score, EmailComment, DisplayOrder, AnswerID) 
+                  SELECT myA.GrpName, {newQNum} + myQ.RowNumQ, myA.AnsText, myA.Score, myA.EmailComment, myA.AOrder, {nextAnswerID} + myA.RowNum 
+                  FROM myAnswerList myA 
+                    JOIN myQuestionList myQ ON myA.OrigQID = myQ.OrigQID 
+                  ORDER BY myA.RowNum;
+                  """.format(typeIDtoCopy=idItemToCopy, nextAnswerID=nextAnsID, newQNum=nextQID)
+
+  # ^ this should now be 'fixed', as we've separated Q and A, so Qnum only advances when original Qnum changes and our Answers advance for every row
+  didAddAs = runSQL(codeToRun=copyAnsSQL.strip(), showError=False, useAltResolver=True)
+
+  if didAddAs == 'Error':
+    addedAs = False
+    MessageBox.Show("An error occurred copying the Answers, using SQL:\n" + str(copyAnsSQL), "Error: Duplicating Matter Risk Assessment...")
+    return
+  else:
+    addedAs = True
+
+  # finally remove SourceID now we've obtained answers (don't do per Question - just do all at end)
+  #updateSQL = "[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = null, QuestionID = ID WHERE ID = {0}]".format(tmpNewID)
+  #MessageBox.Show("updateSQL: " + str(updateSQL), "Duplicate Matter Risk Assessment - Answers for Questions...")
+  _tikitResolver.Resolve("[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = NULL WHERE SourceID IS NOT NULL]")
 
 
+  # finally, also duplicate the Score Matrix for the MRA
+  duplicate_ScoreThresholds(TypeID_toCopy=idItemToCopy, newTypeID=nextTypeID)
   refresh_MRA_Templates(s, event)
 
   dg_MRA_Templates.Focus()
@@ -740,12 +815,18 @@ def btn_Duplicate_MRA_Template(s, event):
   tCount = -1
   for x in dg_MRA_Templates.Items:
     tCount += 1
-    if str(x['ID']) == str(duplicatedID):   # NB: if this doesn't work, then try direct name instead: MRA_ID (or x.MRA_ID)
+    if str(x['Name']) == str(tempName):
       dg_MRA_Templates.SelectedIndex = tCount
       dg_MRA_Templates.ScrollIntoView(dg_MRA_Templates.Items[tCount])
+      # TODO: scroll into view code added...
+      #       Prior tests revealed that this never got triggered - so have changed how we address 'x' to see if this makes it work
+      #       FFS... I've only just clocked that our very next line of code refreshes the datagrid! So of course our current selection gets wiped!!
+      #       (now moved 'refresh' code ABOVE this loop - should actually 'work' now!!)
       break
 
-  MessageBox.Show("Successfully copied '{0}' as '{1}'".format(nameToCopy, tempName), "Success: Duplicating Matter Risk Assessment...")
+
+  if addedTemplateMRA == True and addedQs == True and addedAs == True:
+    MessageBox.Show("Successfully copied '{0}' as '{1}'".format(nameToCopy, tempName), "Success: Duplicating Matter Risk Assessment...")
   return
 
 
@@ -843,134 +924,163 @@ def Preview_MRA_Template(s, event):
   
   return
   
-
-def duplicate_MRA_Template(sourceTypeID=0, newTypeName=''):
-  #! Added 09/01/2026 - New central function to replace multiple instances elsewhere (in 'btn_Edit_MRATemplate_Click' and 'btn_Duplicate_MRA_Template')
-  # Note: we're removing the '[Editing]' text from the name, and using new fields added 'VersionNo' and 'IsPublished' to manage versions instead
-
-  if sourceTypeID == 0:
-    MessageBox.Show("No source TypeID provided to duplicate!", "Error: Duplicating Matter Risk Assessment...")
-    return -1
-
-  #! Added 29/07/2025: Get next new TypeID so we can add it directly in the INSERT statement
-  nextTypeID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(TypeID), 0) + 1 FROM Usr_MRA_TemplateTypes]")
-  #! Get the next QuestionID and next AnswerID, so that we can pass directly into the INSERT statement (to copy over questions/answers)
-  #! NB: don't +1 here as 'RowNum' starts at 1 and will mean that we skip a number each time
-  nextQID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(QuestionID), 0) FROM Usr_MRA_TemplateQs]")
-  nextAnsID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(AnswerID), 0) FROM Usr_MRA_TemplateAs]")
-
-  # Insert main 'header' row items for the new template
-  insertSQL = """INSERT INTO Usr_MRA_TemplateTypes (TypeName, Is_MRA, ValidityPeriodDays, TypeID, Hidden, EffectiveFrom, EffectiveTo, InternalNote, UsersNote, IsPublished) 
-                 SELECT CONCAT(TypeName, '{newNameAppendage}'), 'Y', ValidityPeriodDays, {newTypeID}, 'Y', NULL, '2100-01-01 00:00:00.000', '', '', 'N'
-                 FROM Usr_MRA_TemplateTypes WHERE TypeID = {idTOcopy}""".format(newTypeID=nextTypeID, idTOcopy=sourceTypeID, newNameAppendage=newTypeName)
-  try:
-    _tikitResolver.Resolve(insertSQL)
-    addedTemplateMRA = True
-  except Exception as e:
-    MessageBox.Show("There was an error duplicating the selected Matter Risk Assessment:\n{error} using SQL:\n{errSQL}".format(error=str(e), errSQL=insertSQL), "Error: Duplicating Matter Risk Assessment...")
-    addedTemplateMRA = False
-    return -1
   
-  # Next, we need to copy over the Questions (Usr_MRA_TemplateQs) and Answers (Usr_MRA_TemplateAs) for this NEW template
-  # and we'll need new ID's and set the TypeID to the new one we just created above
-  copyQ_SQL = """WITH myCopyList AS (
-                      SELECT 'qText' = QuestionText, 'aList' = AnswerList, 'qGroupID' = QGroupID, 'tTypeID' = TypeID, 
-                             'qID' = QuestionID,	
-                             'RowNumInGrp' = ROW_NUMBER() OVER (PARTITION BY QGroupID ORDER BY DisplayOrder, QuestionText),
-                             'RowNum' = ROW_NUMBER() OVER (ORDER BY QGroupID, DisplayOrder, QuestionText)
-                      FROM Usr_MRA_TemplateQs WHERE TypeID = {TypeID_to_copy}
-	                  )
-                   INSERT INTO Usr_MRA_TemplateQs (QuestionText, AnswerList, QGroupID, TypeID, DisplayOrder, QuestionID, SourceID)
-                   SELECT qText, aList, qGroupID, {newTypeID}, RowNumInGrp, {nextQID} + RowNum, qID
-                   FROM myCopyList ORDER BY qGroupID, RowNumInGrp;""".format(TypeID_to_copy=sourceTypeID, newTypeID=nextTypeID, nextQID=nextQID)  
-    
-  didAddQs = runSQL(codeToRun=copyQ_SQL.strip(), showError=False, useAltResolver=True)
+def Edit_MRA_Template(s, event):
+  # This function will load the 'Questions' tab for the selected item
+  #! 20/08/2025 - This is being re-written so that we never 'edit' a template that could currently be in use, but instead, we 'copy' the template and edit this version
+  #!              First, checks 'EditingTypeID' column for current row and if not null, will load up and use the 'editing' version of the template, else, if null, 
+  #!              this means there aren't any pending 'edits', so we will copy the selected template and set the 'EditingTypeID' to this new 'TypeID'
+  #!              This will allow us to 'edit' the template without affecting the current version in use, and then we can 'save' the new version when done
+  #!              (NB: there's a new 'Publish' button that when clicked, will overwrite the 'CaseTypeDefaults' table with the new template TypeID, and the old template will be 'hidden' from view) 
+  #MessageBox.Show("EditSelected_Click", "DEBUG - TESTING")
 
-  if didAddQs == 'Error':
-    addedQs = False
-    MessageBox.Show("An error occurred copying the Questions, using SQL:\n" + str(copyQ_SQL), "Error: Duplicating Matter Risk Assessment...")
-    return -1
+  # if nothing selected, alert user and bomb-out now...
+  if dg_MRA_Templates.SelectedIndex == -1:
+    MessageBox.Show("Nothing selected to Edit!", "Error: Edit selected Matter Risk Assessment...")
+    return
   else:
-    addedQs = True
+    origItem = dg_MRA_Templates.SelectedItem  
+  
+  #MessageBox.Show("Original Item ID: {0}".format(origItem['Code']), "DEBUG - TESTING")
+  tmpEditingTypeID = origItem['EditingTypeID'] if origItem['EditingTypeID'] is not None else -1
+  nameContainsEditing = True if '[Editing]' in str(origItem['Name']) else False
 
-  # COPYING ANSWERS OVER
-  #! 30/07/2025 - New version that doesn't need loop process
-  copyAnsSQL = """WITH myAnswerList AS (
-                    SELECT 'GrpName' = TA.GroupName, 'AnsText' = TA.AnswerText, 'Score' = TA.Score, 
-                          'EmailComment' = TA.EmailComment, 
-                          'RowNum' = ROW_NUMBER() OVER (ORDER BY TQ.DisplayOrder, TA.DisplayOrder, TA.AnswerText), 
-                          'AOrder' = TA.DisplayOrder, 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID 
-                    FROM Usr_MRA_TemplateAs TA 
-                      JOIN Usr_MRA_TemplateQs TQ ON TA.QuestionID = TQ.QuestionID 
-                    WHERE TQ.TypeID = {typeIDtoCopy} 
-                  ), myQuestionList AS (
-                    SELECT 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID, 
-                            'RowNumQ' = ROW_NUMBER() OVER (ORDER BY QG.DisplayOrder, TQ.DisplayOrder)
+  # firstly check to see if there's an 'EditingTypeID' set for this item - if so, this is the one we'll edit
+  if tmpEditingTypeID != -1:
+    #! this is the TypeID for the 'editing' version of the template, so we will load this one
+    TypeIDtoUse = origItem['EditingTypeID']
+    #MessageBox.Show("There's already an 'EditingTypeID': {0}".format(TypeIDtoUse), "DEBUG - Edit MRA Template")
+  else:
+    #! No 'EditingTypeID' provided so use original 'TypeID'   
+    TypeIDtoUse = origItem['Code']
+
+    if nameContainsEditing == False:
+      #! Name does not contain '[Editing]', so with this original template, we will need to copy this one and set the 'EditingTypeID' to this new TypeID
+      idItemToCopy = origItem['Code']
+      nextTypeID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(TypeID), 0) + 1 FROM Usr_MRA_TemplateTypes]")
+      TypeIDtoUse = nextTypeID
+      #! Now we need to get the next QuestionID and next AnswerID, so that we can pass directly into the INSERT statement (to copy over questions/answers)
+      #! NB: don't +1 here as 'RowNum' starts at 1 and will mean that we skip a number each time
+      nextQID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(QuestionID), 0) FROM Usr_MRA_TemplateQs]")
+      nextAnsID = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(AnswerID), 0) FROM Usr_MRA_TemplateAs]")  
+
+      # Insert main 'header' row items for the new template
+      insertSQL = """INSERT INTO Usr_MRA_TemplateTypes (TypeName, Is_MRA, ValidityPeriodDays, TypeID, Hidden, EffectiveFrom, EffectiveTo, InternalNote, UsersNote) 
+                    SELECT CONCAT(TypeName, ' [Editing]'), 'Y', ValidityPeriodDays, {newTypeID}, 'Y', NULL, '2100-01-01 00:00:00.000', '', '' 
+                    FROM Usr_MRA_TemplateTypes WHERE TypeID = {idTOcody}""".format(newTypeID=nextTypeID, idTOcody=idItemToCopy)
+      
+      #MessageBox.Show("No 'EditingTypeID' set, so copying selected template as new to edit.\nOrigItemID: {0}\nNew TypeID: {1}\nNext QID: {2}\nNext AnsID: {3}\n\nInsert SQL:\n{4}".format(idItemToCopy, nextTypeID, nextQID, nextAnsID, insertSQL), "DEBUG - Edit MRA Template")
+
+      try:
+        _tikitResolver.Resolve("[SQL: {0}]".format(insertSQL))
+        addedTemplateMRA = True
+      except Exception as e:
+        MessageBox.Show("There was an error duplicating the selected Matter Risk Assessment:\n{error}\n\nUsing SQL:\n{errSQL}".format(error=str(e), errSQL=insertSQL), "Error: Duplicating Matter Risk Assessment...")
+        addedTemplateMRA = False
+        return
+      
+      # Next, we need to copy over the Questions (Usr_MRA_TemplateQs) and Answers (Usr_MRA_TemplateAs) for this NEW template
+      # and we'll need new ID's and set the TypeID to the new one we just created above
+      copyQ_SQL = """WITH myCopyList AS (
+                        SELECT 'qText' = QuestionText, 'aList' = AnswerList, 'qGroupID' = QGroupID, 'tTypeID' = TypeID, 
+                              'qID' = QuestionID,	
+                              'RowNumInGrp' = ROW_NUMBER() OVER (PARTITION BY QGroupID ORDER BY DisplayOrder, QuestionText),
+                              'RowNum' = ROW_NUMBER() OVER (ORDER BY QGroupID, DisplayOrder, QuestionText)
+                        FROM Usr_MRA_TemplateQs WHERE TypeID = {TypeID_to_copy}
+                      )
+                    INSERT INTO Usr_MRA_TemplateQs (QuestionText, AnswerList, QGroupID, TypeID, DisplayOrder, QuestionID, SourceID)
+                    SELECT qText, aList, qGroupID, {newTypeID}, RowNumInGrp, {nextQID} + RowNum, qID
+                    FROM myCopyList ORDER BY qGroupID, RowNumInGrp;""".format(TypeID_to_copy=idItemToCopy, newTypeID=nextTypeID, nextQID=nextQID)
+      
+      didAddQs = runSQL(codeToRun=copyQ_SQL.strip(), showError=False, useAltResolver=True)
+
+      if didAddQs == 'Error':
+        addedQs = False
+        MessageBox.Show("An error occurred copying the Questions, using SQL:\n{0}".format(copyQ_SQL), "Error: Duplicating Matter Risk Assessment...")
+        return
+      else:
+        addedQs = True
+
+      # COPYING ANSWERS OVER
+      #! 30/07/2025 - New version that doesn't need loop process
+      #! 17/09/2025 - Updated 'myQuestionList' to ensure 'RowNumQ' reflects QuestionGroup ordering and then DisplayOrder
+      copyAnsSQL = """WITH myAnswerList AS (
+                        SELECT 'GrpName' = TA.GroupName, 'AnsText' = TA.AnswerText, 'Score' = TA.Score, 
+                              'EmailComment' = TA.EmailComment, 
+                              'RowNum' = ROW_NUMBER() OVER (ORDER BY TQ.DisplayOrder, TA.DisplayOrder, TA.AnswerText), 
+                              'AOrder' = TA.DisplayOrder, 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID 
+                        FROM Usr_MRA_TemplateAs TA 
+                          JOIN Usr_MRA_TemplateQs TQ ON TA.QuestionID = TQ.QuestionID 
+                        WHERE TQ.TypeID = {typeIDtoCopy} 
+                      ), myQuestionList AS (
+                        SELECT 'QOrder' = TQ.DisplayOrder, 'OrigQID' = TQ.QuestionID, 
+                                'RowNumQ' = ROW_NUMBER() OVER (ORDER BY QG.DisplayOrder, TQ.DisplayOrder)
                         FROM Usr_MRA_TemplateQs TQ 
                             JOIN Usr_MRA_QGroups QG ON TQ.QGroupID = QG.ID
-                    WHERE TQ.TypeID = {typeIDtoCopy} 
-                  ) 
-                  INSERT INTO Usr_MRA_TemplateAs (GroupName, QuestionID, AnswerText, Score, EmailComment, DisplayOrder, AnswerID) 
-                  SELECT myA.GrpName, {newQNum} + myQ.RowNumQ, myA.AnsText, myA.Score, myA.EmailComment, myA.AOrder, {nextAnswerID} + myA.RowNum 
-                  FROM myAnswerList myA 
-                    JOIN myQuestionList myQ ON myA.OrigQID = myQ.OrigQID 
-                  ORDER BY myA.RowNum;
-                  """.format(typeIDtoCopy=sourceTypeID, nextAnswerID=nextAnsID, newQNum=nextQID)
+                        WHERE TQ.TypeID = {typeIDtoCopy} 
+                      ) 
+                      INSERT INTO Usr_MRA_TemplateAs (GroupName, QuestionID, AnswerText, Score, EmailComment, DisplayOrder, AnswerID) 
+                      SELECT myA.GrpName, {newQNum} + myQ.RowNumQ, myA.AnsText, myA.Score, myA.EmailComment, myA.AOrder, {nextAnswerID} + myA.RowNum 
+                      FROM myAnswerList myA 
+                        JOIN myQuestionList myQ ON myA.OrigQID = myQ.OrigQID 
+                      ORDER BY myA.RowNum;
+                      """.format(typeIDtoCopy=idItemToCopy, nextAnswerID=nextAnsID, newQNum=nextQID)
 
-  # ^ this should now be 'fixed', as we've separated Q and A, so Qnum only advances when original Qnum changes and our Answers advance for every row
-  didAddAs = runSQL(codeToRun=copyAnsSQL.strip(), showError=False, useAltResolver=True)
+      # ^ this should now be 'fixed', as we've separated Q and A, so Qnum only advances when original Qnum changes and our Answers advance for every row
+      didAddAs = runSQL(codeToRun=copyAnsSQL.strip(), showError=False, useAltResolver=True)
 
-  if didAddAs == 'Error':
-    addedAs = False
-    MessageBox.Show("An error occurred copying the Answers, using SQL:\n" + str(copyAnsSQL), "Error: Duplicating Matter Risk Assessment...")
-    return -1
-  else:
-    addedAs = True
+      if didAddAs == 'Error':
+        addedAs = False
+        MessageBox.Show("An error occurred copying the Answers, using SQL:\n{0}".format(copyAnsSQL), "Error: Duplicating Matter Risk Assessment...")
+        return
+      else:
+        addedAs = True
 
-  # finally remove SourceID now we've obtained answers (don't do per Question - just do all at end)
-  #updateSQL = "[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = null, QuestionID = ID WHERE ID = {0}]".format(tmpNewID)
-  #MessageBox.Show("updateSQL: " + str(updateSQL), "Duplicate Matter Risk Assessment - Answers for Questions...")
-  #_tikitResolver.Resolve("[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = NULL WHERE SourceID IS NOT NULL]")
+      # finally remove SourceID now we've obtained answers (don't do per Question - just do all at end)
+      #updateSQL = "[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = null, QuestionID = ID WHERE ID = {0}]".format(tmpNewID)
+      #MessageBox.Show("updateSQL: " + str(updateSQL), "Duplicate Matter Risk Assessment - Answers for Questions...")
+      #_tikitResolver.Resolve("[SQL: UPDATE Usr_MRA_TemplateQs SET SourceID = NULL WHERE SourceID IS NOT NULL]")
+      #! temp disabling this as if there's any error with copying, we can use this to retroactively update Answers based on these
 
-  if addedTemplateMRA == True and addedQs == True and addedAs == True:
-    # finally, also duplicate the Score Matrix for the MRA
-    duplicate_ScoreThresholds(TypeID_toCopy=sourceTypeID, newTypeID=nextTypeID)
-    #MessageBox.Show("Successfully duplicated Matter Risk Assessment Template '{0}' as new Template '{1}'".format(sourceTypeID, nextTypeID), "Success: Duplicating Matter Risk Assessment...")
-    return nextTypeID
-  else:
-    return -1
+      # finally, also duplicate the Score Matrix for the MRA
+      duplicate_ScoreThresholds(TypeID_toCopy=idItemToCopy, newTypeID=nextTypeID)
+      #! now update the original item to set the 'EditingTypeID' to this new TypeID
+      updateEditingTypeID_SQL = "[SQL: UPDATE Usr_MRA_TemplateTypes SET EditingTypeID = {0} WHERE TypeID = {1}]".format(nextTypeID, idItemToCopy)
+      didUpdateEditingTypeID = runSQL(codeToRun=updateEditingTypeID_SQL, showError=False, useAltResolver=False)
+      if didUpdateEditingTypeID == 'Error':
+        MessageBox.Show("There was an error updating the 'EditingTypeID' for the original Matter Risk Assessment, using SQL:\n{0}".format(updateEditingTypeID_SQL), "Error: Updating Editing Type ID...")
+        return
 
 
-def load_MRA_Template_ForEditing(TypeIDtoUse=None, originalItemID=0):
-  # This function will load the 'Editing MRA Template' tab for the specified TypeID
-
+  #MessageBox.Show("If we got this far, we've copied selected template and QandA to new TypeID, so now trying to load into Editing area...", "DEBUG - Edit MRA Template")
   # #   L O A D   T H E   'E D I T I N G   M R A   T E M P L A T E'   T A B # #
   # first need to load up the 'Questions' tab and then select the tab
 
   if TypeIDtoUse is not None and TypeIDtoUse != '':
+    #lbl_EditRiskAssessment_Name.Content = "{0} [Editing]".format(origItem['Name'])
+    #lbl_EditRiskAssessment_ID.Content = TypeIDtoUse   #origItem['Code']
 
     tb_ThisMRAid.Text = str(TypeIDtoUse)
     # lookup name of 'new' (editing) template
     tLName = runSQL("SELECT TOP 1 TypeName FROM Usr_MRA_TemplateTypes WHERE TypeID = {0}".format(TypeIDtoUse))
     tb_ThisMRAname.Text = str(tLName)
 
-    if originalItemID == 0:
-      tb_CopyOfMRAid.Text = str(TypeIDtoUse)
-      tb_CopyOfMRAname.Text = str(tLName)
-    else:
+    if nameContainsEditing == True:
       # this means user has selected to 'show hidden', and then chosen to click 'Edit' on the '[Editing]' item
       # so we need to now lookup those details - but can we be sure we're picking up correct original template?
       tID = runSQL("SELECT TOP 1 TypeID FROM Usr_MRA_TemplateTypes WHERE EditingTypeID = {0}".format(TypeIDtoUse))
       tName = runSQL("SELECT TOP 1 TypeName FROM Usr_MRA_TemplateTypes WHERE EditingTypeID = {0}".format(TypeIDtoUse))
       tb_CopyOfMRAid.Text = tID
       tb_CopyOfMRAname.Text = tName
-      
+    else:
+      tb_CopyOfMRAid.Text = str(origItem['Code'])
+      tb_CopyOfMRAname.Text = str(origItem['Name'])
   else:
     MessageBox.Show("There was an error trying to edit this item - please copy to IT Support for resolution.\n\nOriginal TypeID: {0}\nEditing TypeID: {1}".format(origItem['Code'], TypeIDtoUse), "Error: Editing Matter Risk Assessment...")
     return
   
-  refresh_MRA_Questions(for_MRA_ID=TypeIDtoUse)
-  populate_MRA_QGroups()
+  refresh_MRA_Questions(s, event)
+  populate_MRA_QGroups(s, event)
 
   ti_MRA_Questions.Visibility = Visibility.Visible
   ti_MRA_Overview.Visibility = Visibility.Collapsed
@@ -979,59 +1089,6 @@ def load_MRA_Template_ForEditing(TypeIDtoUse=None, originalItemID=0):
     dg_MRA_Questions.SelectedIndex = 0
   
   ti_MRA_Questions.IsSelected = True
-
-  return
-
-
-def btn_Edit_MRATemplate_Click(s, event):
-  # This function will load the 'Questions' tab for the selected item
-  #! 20/08/2025 - This is being re-written so that we never 'edit' a template that could currently be in use, but instead, we 'copy' the template and edit this version
-  #!              First, checks 'EditingTypeID' column for current row and if not null, will load up and use the 'editing' version of the template, else, if null, 
-  #!              this means there aren't any pending 'edits', so we will copy the selected template and set the 'EditingTypeID' to this new 'TypeID'
-  #!              This will allow us to 'edit' the template without affecting the current version in use, and then we can 'save' the new version when done
-  #!              (NB: there's a new 'Publish' button that when clicked, will overwrite the 'CaseTypeDefaults' table with the new template TypeID, and the old template will be 'hidden' from view) 
-  #MessageBox.Show("EditSelected_Click", "DEBUG - TESTING")
-  #! 09/01/2026 - NEED TP UPDATE THIS THIS FUNCTION TO CALL NEW 'duplicate_MRA_Template' FUNCTION to reduce code duplication
-  # Clicking 'Edit' button on a selected NMRA template:
-  # - if already an 'editing' version (EditingTypeID not null), load this one
-  # - if not, duplicate selected template and set 'EditingTypeID' to new TypeID, then load this one
-  
-  # if nothing selected, alert user and bomb-out now...
-  if dg_MRA_Templates.SelectedIndex == -1:
-    MessageBox.Show("Nothing selected to Edit!", "Error: Edit selected Matter Risk Assessment...")
-    return
-
-  origItem = dg_MRA_Templates.SelectedItem 
-  origItemID = origItem['Code']
-  #MessageBox.Show("Original Item ID: {0}".format(origItem['Code']), "DEBUG - TESTING")
-  #! NB: don't want to be using/relying on 'Name' containing '[Editing]' as this could be changed by user - instead, use 'IsPublished' and 'VersionNo' fields going forward
-  tmpEditingTypeID = origItem['EditingTypeID'] if origItem['EditingTypeID'] is not None else -1
-  #nameContainsEditing = True if '[Editing]' in str(origItem['Name']) else False
-  isPublished = origItem['IsPublished'] if origItem['IsPublished'] is not None else 'Y'
-
-  # firstly check to see if there's an 'EditingTypeID' set for this item - if so, this is the one we'll edit
-  if tmpEditingTypeID != -1 and isPublished == 'N':
-    # load 'edit' page with this TypeID
-    load_MRA_Template_ForEditing(TypeIDtoUse=tmpEditingTypeID, originalItemID=origItemID)
-    return
-
-  # else if no editingTypeID and currently marked as 'published', then we need to duplicate the selected template for editing
-  if isPublished == 'Y':
-    #! Template is currently published, so we need to duplicate it for editing
-    duplicatedID = duplicate_MRA_Template(sourceTypeID=origItemID, newTypeName='')
-
-    if duplicatedID == -1:
-      MessageBox.Show("Error duplicating '{0}' (TypeID: {1}) for editing".format(origItem['Name'], origItemID), "Error: Editing Matter Risk Assessment...")
-      return
-    
-    #! now update the original item to set the 'EditingTypeID' to this new TypeID
-    updateEditingTypeID_SQL = "[SQL: UPDATE Usr_MRA_TemplateTypes SET EditingTypeID = {0} WHERE TypeID = {1}]".format(duplicatedID, origItemID)
-    didUpdateEditingTypeID = runSQL(codeToRun=updateEditingTypeID_SQL, showError=False, useAltResolver=False)
-    if didUpdateEditingTypeID == 'Error':
-     MessageBox.Show("There was an error updating the 'EditingTypeID' for the original Matter Risk Assessment, using SQL:\n{0}".format(updateEditingTypeID_SQL), "Error: Updating Editing Type ID...")
-     return
-    # now load 'edit' page with this new TypeID
-    load_MRA_Template_ForEditing(TypeIDtoUse=duplicatedID, originalItemID=origItemID)
   return
 
 # # # #  END OF:  Matter Risk Assessment Templates   # # # #
@@ -1658,14 +1715,9 @@ class MRA_Questions(object):
     else:
       return ''
 
-def refresh_MRA_Questions(for_MRA_ID=0):
+def refresh_MRA_Questions(s, event):
   # This function will populate the QUESTIONS datagrid (dg_MRA_Questions)
   
-  if for_MRA_ID == 0:
-    tb_NoQuestions_MRA.Visibility = Visibility.Visible
-    dg_MRA_Questions.Visibility = Visibility.Hidden
-    return
-
   getTableSQL = """SELECT MRATQ.DisplayOrder, 
                       MRATQ.QuestionText, 
                       'Group' = (SELECT Name FROM Usr_MRA_QGroups QG WHERE QG.ID = MRATQ.QGroupID), 
@@ -1673,7 +1725,7 @@ def refresh_MRA_Questions(for_MRA_ID=0):
                       MRATQ.QuestionID, MRATQ.QGroupID, MRATQ.ID 
                    FROM Usr_MRA_TemplateQs MRATQ 
                    WHERE MRATQ.TypeID = {0} 
-                   ORDER BY MRATQ.QGroupID, MRATQ.DisplayOrder""".format(for_MRA_ID)    #lbl_EditRiskAssessment_ID.Content)
+                   ORDER BY MRATQ.QGroupID, MRATQ.DisplayOrder""".format(tb_ThisMRAid.Text)    #lbl_EditRiskAssessment_ID.Content)
   
   tmpItem = []
   _tikitDbAccess.Open(getTableSQL)
@@ -1808,7 +1860,7 @@ def SaveChanges_MRA_Question(s, event):
              useAltResolver=True)
     
     # refresh list
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
 
   else:
     MessageBox.Show("Nothing to save!", "Save Question details (Matter Risk Assessment)...") 
@@ -2030,7 +2082,7 @@ def AddNew_MRA_Question(s, event):
   #! ^ nope - this is a BAD idea, as we could overlap with existing QuestionIDs, so we now get the next available ID and use that on insert above
 
   # auto select last item...
-  refresh_MRA_Questions(for_MRA_ID=mraIDtoUse)
+  refresh_MRA_Questions(s, event)
   dg_MRA_Questions.SelectedIndex = (dg_MRA_Questions.Items.Count - 1)
   txt_QuestionText.Focus()
   return
@@ -2090,7 +2142,7 @@ def Duplicate_MRA_Question(s, event):
   #! ^ nope - this is a BAD idea, as we could overlap with existing AnswerIDs, so we now get the next available ID and use that on insert above
   
   # auto select last item...
-  refresh_MRA_Questions(for_MRA_ID=mra_TypeID)
+  refresh_MRA_Questions(s, event)
   dg_MRA_Questions.SelectedIndex = (dg_MRA_Questions.Items.Count - 1)
   txt_QuestionText.Focus()
   return
@@ -2110,13 +2162,13 @@ def MoveTop_MRA_Question(s, event):
                                     sqlGroupColName='QGroupID',
                                     dgGroupColName='SectionID')  
   if tmpNewFocusRow > -1:
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     dg_MRA_Questions.SelectedIndex = tmpNewFocusRow
   else:
     # if -1 returned, this means that we are using 'groups' and we cannot get the 'index' without first refreshing DG
     # so here we'll need to iterate over DG items and select the items with the matching ID
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     pCount = -1
     for xRow in dg_MRA_Questions.Items:
@@ -2142,7 +2194,7 @@ def MoveUp_MRA_Question(s, event):
                                  sqlGroupColName='QGroupID',
                                  dgGroupColName='SectionID')
   if tmpNewFocusRow > -1: 
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     dg_MRA_Questions.SelectedIndex = tmpNewFocusRow
   return
@@ -2160,7 +2212,7 @@ def MoveDown_MRA_Question(s, event):
                                    sqlGroupColName='QGroupID',
                                    dgGroupColName='SectionID')  
   if tmpNewFocusRow > -1: 
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     dg_MRA_Questions.SelectedIndex = tmpNewFocusRow  
   return
@@ -2178,13 +2230,13 @@ def MoveBottom_MRA_Question(s, event):
                                        sqlGroupColName='QGroupID',
                                        dgGroupColName='SectionID')
   if tmpNewFocusRow > -1:
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     dg_MRA_Questions.SelectedIndex = tmpNewFocusRow  
   else:
     # if -1 returned, this means that we are using 'groups' and we cannot get the 'index' without first refreshing DG
     # so here we'll need to iterate over DG items and select the items with the matching ID
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     pCount = -1
     for xRow in dg_MRA_Questions.Items:
@@ -2212,7 +2264,7 @@ def Delete_MRA_Question(s, event):
                                          sqlGroupColName='QGroupID',
                                          dgGroupColName='SectionID') 
   if tmpNewFocusRow > -1:
-    refresh_MRA_Questions(for_MRA_ID=tb_ThisMRAid.Text)
+    refresh_MRA_Questions(s, event)
     dg_MRA_Questions.Focus()
     dg_MRA_Questions.SelectedIndex = tmpNewFocusRow 
     #! df-3 this looks like a danger zone
@@ -3147,7 +3199,7 @@ def refresh_GroupItems(s, event):
     tb_NoGroupItems.Visibility = Visibility.Hidden
 
   # finally update the drop-downs on the 'Edit Questions' tabs
-  populate_MRA_QGroups()
+  populate_MRA_QGroups(s, event)
   populate_FR_QGroups(s, event)
   return
 
@@ -4334,7 +4386,7 @@ def populate_FR_QGroups(s, event):
   return
 
 
-def populate_MRA_QGroups():
+def populate_MRA_QGroups(s, event):
   # This function will populate the 'Section / Group' combo box on the 'Edit MRA Questions' tab
 
   mySQL = "SELECT DisplayOrder, ID, Name FROM Usr_MRA_QGroups WHERE ForWhat = 'MRA' ORDER BY DisplayOrder "
@@ -5028,13 +5080,13 @@ cbo_Reason = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_Reason')
 btn_AddNew_MRATemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_MRATemplate')
 btn_AddNew_MRATemplate.Click += AddNew_MRA_Template
 btn_CopySelected_MRATemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelected_MRATemplate')
-btn_CopySelected_MRATemplate.Click += btn_Duplicate_MRA_Template
+btn_CopySelected_MRATemplate.Click += Duplicate_MRA_Template
 btn_DeleteSelected_MRATemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelected_MRATemplate')
 btn_DeleteSelected_MRATemplate.Click += Delete_MRA_Template
 btn_Preview_MRATemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Preview_MRATemplate')
 btn_Preview_MRATemplate.Click += Preview_MRA_Template
 btn_Edit_MRATemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Edit_MRATemplate')
-btn_Edit_MRATemplate.Click += btn_Edit_MRATemplate_Click
+btn_Edit_MRATemplate.Click += Edit_MRA_Template
 dg_MRA_Templates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Templates')
 dg_MRA_Templates.SelectionChanged += DG_MRA_Template_SelectionChanged
 #dg_MRA_Templates.CellEditEnding += DG_MRA_Template_CellEditEnding
