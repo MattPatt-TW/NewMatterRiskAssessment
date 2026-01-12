@@ -53,7 +53,7 @@ Louis mentioned having another table to act as main 'joining' table, so that all
 
 
 MRA - Main functions:
-- refresh_MRA_Templates(s, event)
+- refresh_MRA_Templates()
 - DG_MRA_Template_SelectionChanged(s, event)
 - btn_SaveMainMRA_Details_Click(s, event)
 - DG_MRA_Template_CellEditEnding(s, event)
@@ -61,9 +61,11 @@ MRA - Main functions:
 - btn_Duplicate_MRA_Template(s, event) - - < re-labelled so clearer this is the button clicking function
 - Delete_MRA_Template(s, event) 
 - Preview_MRA_Template(s, event)
-- Edit_MRA_Template(s, event) - NB: starting to edit to use new 'duplicate...' (central) function
+- btn_Edit_MRATemplate(s, event) - NB: using (central) function
 - Publish_MRA(s, event) - definitely worth reviewing... lot of SQL calls here
 - [NEW] duplicate_MRA_Template(sourceTypeID, newTypeID, newTypeName)
+- [NEW] load_MRA_Template_ForEditing(TypeIDtoUse=None, originalItemID=0)
+    *** duplicate functions now updated (needs testing) ***
 
 MRA - Score Thresholds funtions:
 - btn_SaveScoreThresholds_Click(s, event)
