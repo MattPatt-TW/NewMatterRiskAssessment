@@ -404,7 +404,7 @@ def unlockMatter(s, event):
 
 class MRA_Templates(object):
   def __init__(self, myCode, myFName, myCountUsed, myQCount, myExpiryDays, myInternalNote, 
-               myUsersNote, myHidden, myEffFrom, myEffTo, myEditingTypeID, myRowID):
+               myUsersNote, myHidden, myEffFrom, myEffTo, myEditingTypeID, myRowID, myParentID, myVersionNo, myIsPublished):
     self.mraT_Code = myCode
     self.mraT_Desc = myFName
     self.CountUsed = myCountUsed
@@ -418,6 +418,9 @@ class MRA_Templates(object):
     self.MRAEditingTypeID = myEditingTypeID
     self.MRA_InEditMode = 'N' if myEditingTypeID == -1 else 'Y'
     self.MRA_ID = myRowID
+    self.NRA_ParentID = myParentID
+    self.NRA_VersionNo = myVersionNo
+    self.NRA_IsPublished = myIsPublished
     return
 
   def __getitem__(self, index):
@@ -449,6 +452,12 @@ class MRA_Templates(object):
       return self.MRAEditingTypeID
     elif index == 'InEditMode':
       return self.MRA_InEditMode
+    elif index == 'ParentID':
+      return self.NRA_ParentID
+    elif index == 'VersionNo':
+      return self.NRA_VersionNo
+    elif index == 'IsPublished':
+      return self.NRA_IsPublished
     else:
       return ''
   
@@ -462,7 +471,8 @@ def refresh_MRA_Templates(s, event):
                           'QCount' = (SELECT COUNT(ID) FROM Usr_MRA_TemplateQs TQs WHERE TQs.TypeID = MRA_TT.TypeID), 
                           'Expiry' =  MRA_TT.ValidityPeriodDays,
                           MRA_TT.InternalNote, MRA_TT.UsersNote, MRA_TT.Hidden, 
-                          MRA_TT.EffectiveFrom, MRA_TT.EffectiveTo, MRA_TT.EditingTypeID, MRA_TT.ID  
+                          MRA_TT.EffectiveFrom, MRA_TT.EffectiveTo, MRA_TT.EditingTypeID, MRA_TT.ID, 
+                          MRA_TT.ParentTypeID, MRA_TT.VersionNo, MRA_TT.IsPublished
                   FROM Usr_MRA_TemplateTypes MRA_TT WHERE MRA_TT.Is_MRA = 'Y' """
   
   if chk_ShowHiddenNMRAtemplates.IsChecked == False:
@@ -489,10 +499,14 @@ def refresh_MRA_Templates(s, event):
           tmpToD = 0 if dr.IsDBNull(9) else dr.GetValue(9)
           tmpETI = -1 if dr.IsDBNull(10) else dr.GetValue(10)
           tmpID = 0 if dr.IsDBNull(11) else dr.GetValue(11)
+          tmpParentID = 0 if dr.IsDBNull(12) else dr.GetValue(12)
+          tmpVersionNo = 0 if dr.IsDBNull(13) else dr.GetValue(13)
+          tmpIsPublished = '' if dr.IsDBNull(14) else dr.GetString(14)
 
           tmpItem.append(MRA_Templates(myCode=tmpTypeID, myFName=tmpName, myCountUsed=tmpCU, myQCount=tmpQCount, 
                                        myExpiryDays=tmpVDays, myInternalNote=tmpInNote, myUsersNote=tmpUserNote,
-                                        myHidden=tmpHidden, myEffFrom=tmpFromD, myEffTo=tmpToD, myEditingTypeID=tmpETI, myRowID=tmpID))
+                                        myHidden=tmpHidden, myEffFrom=tmpFromD, myEffTo=tmpToD, myEditingTypeID=tmpETI, myRowID=tmpID,
+                                        myParentID=tmpParentID, myVersionNo=tmpVersionNo, myIsPublished=tmpIsPublished))
     dr.Close()
   #close db connection
   _tikitDbAccess.Close()
@@ -519,13 +533,6 @@ def DG_MRA_Template_SelectionChanged(s, event):
     dtp_MRA_EffectiveFrom.SelectedDate = selItem['FromDate'] if isinstance(selItem['FromDate'], DateTime) else None
     dtp_MRA_EffectiveTo.SelectedDate = selItem['ToDate'] if isinstance(selItem['ToDate'], DateTime) else None
 
-    # DO WE STILL NEED THESE ONES? (I'm planning on removing 'cell edit ending' event as we have a 'Save Changes' button instead)
-    # (I believe these were only used by 'Cell edit ending' event)
-    lbl_MRA_Template_ID.Content = str(dg_MRA_Templates.SelectedItem['Code'])
-    lbl_MRA_Template_Name.Content = dg_MRA_Templates.SelectedItem['Name']
-    #lbl_Sel_MRA_ID.Content = str(dg_MRA_Templates.SelectedItem['Code'])
-    # --------------------------------------------
-
     stk_ST_SelectedMRA.Visibility = Visibility.Visible
     grd_ScoreThresholds.Visibility = Visibility.Visible
     btn_SaveScoreThresholds.Visibility = Visibility.Visible
@@ -538,9 +545,6 @@ def DG_MRA_Template_SelectionChanged(s, event):
     btn_DeleteSelected_MRATemplate.IsEnabled = True if int(dg_MRA_Templates.SelectedItem['CountUsed']) == 0 else False
     btn_Save_Main_MRA_Header_Details.IsEnabled = True
   else:
-    lbl_MRA_Template_ID.Content = ''
-    lbl_MRA_Template_Name.Content = ''  
-    #lbl_Sel_MRA_Name.Content = ''
 
     tb_Sel_MRA_Name.Text = ''
     lbl_Sel_MRA_ID.Content = ''
@@ -5037,9 +5041,9 @@ dg_MRA_Templates.SelectionChanged += DG_MRA_Template_SelectionChanged
 #dg_MRA_Templates.CellEditEnding += DG_MRA_Template_CellEditEnding
 chk_ShowHiddenNMRAtemplates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_ShowHiddenNMRAtemplates')
 chk_ShowHiddenNMRAtemplates.Click += refresh_MRA_Templates
-
-lbl_MRA_Template_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Template_ID')
-lbl_MRA_Template_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Template_Name')
+#^ removing the above
+chk_ShowAllVersions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_ShowAllVersions')
+chk_ShowAllVersions.Click += refresh_MRA_Templates
 
 #! New fields added 21/08/2025
 tb_Sel_MRA_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_Sel_MRA_Name')            # TextBox for editing the name of the selected NMRA template 

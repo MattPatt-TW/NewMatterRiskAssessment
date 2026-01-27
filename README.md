@@ -51,6 +51,7 @@ That 'Publish' button will then overwrite the 'CaseTypeDefaults', looking for th
 Whilst we ARE 'linking' to source of a template (TypeID), I'm not sure I have the structure setup optimally.
 Louis mentioned having another table to act as main 'joining' table, so that all other tables don't have links to each other (Answers currently linked directly to Questions, and Questions are directly linked to a TemplateType), and we instead have a table of linked IDs.
 
+*** Also, ought to add an 'Audit' table to log all changes made on NMRA templates... possibly need somewhere to display this too (perhaps that 'reports' tab?)
 
 MRA - Main functions:
 - refresh_MRA_Templates()
@@ -131,4 +132,15 @@ MRA - Preview area functions:
 - 
 
 
-
+---------------------------------------------------------------------
+Changes to do:
+- add proper 'versioning' ('VersionNo', 'IsPublished', 'ParentTypeID')
+- don't need to copy out 'selected row' details into hidden field (as no longer using 'cell edit ending', so no need to temp store 'before change' value to compare against current)
+    - deleted: 
+        - 'lbl_MRA_Template_ID'
+        - 'lbl_MRA_Template_Name'
+- scrap notion of adding '[Editing]' ti friendly name (we have 'is published' now, so use this to drive things)
+- how are we making that 'pencil' icon to signify template is being worked on?
+    - needs to be updated to point to 'IsPublished' instead
+- would it be worth adding 'grouping' into MRA, so easier to see 'versions'
+    - perhaps, but only when 'show hidden' is ticked (although, we want to get rid of this... as no real need to 'hide' a template, because if not 'published', then safe to delete... else just create a new verison and publish that new one)
