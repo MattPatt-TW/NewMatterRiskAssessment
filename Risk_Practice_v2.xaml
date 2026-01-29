@@ -126,11 +126,11 @@
                     Width="520"  HorizontalAlignment="Left" VerticalAlignment="Top"  >
 
           <StackPanel Orientation="Vertical">
-            <TextBlock x:Name="tb_ST_NoMRA_Selected" Visibility="Collapsed" TextAlignment="Center" 
-                         Text="A 'Matter Risk Assessment' is not currently selected!  (select from list)" 
+            <TextBlock x:Name="tb_MRA_NoneSelected" Visibility="Collapsed" TextAlignment="Center" 
+                         Text="A 'Matter Risk Assessment' is not currently selected!  (select from list or click 'Add New...')" 
                          Foreground="Red" FontWeight="Bold" TextWrapping="Wrap"  />
 
-            <StackPanel Orientation="Vertical" x:Name="stk_ST_SelectedMRA">
+            <StackPanel Orientation="Vertical" x:Name="stk_ST_SelectedMRA" >
 
               
               <StackPanel  Orientation="Horizontal" Margin="0,2">
@@ -215,121 +215,118 @@
 
 
               <Button x:Name="btn_MRATemplate_SaveHeaderDetails" Content="Save NMRA Header Details" 
-                            Height="30" Margin="90,6,90,14" Background="LightGreen" BorderBrush="DarkGreen"/>
+                      Height="30" Margin="90,6,90,14" Background="LightGreen" BorderBrush="DarkGreen"/>
 
 
-            </StackPanel>
+              <GroupBox Header="Applicable to CaseType(s)..." HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,0,0,4">
+                <StackPanel Orientation="Vertical" Margin="2,4">
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <DataGrid x:Name="dg_MRATemplate_CaseTypes" Height="220" MaxWidth="280"
+                              AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
+                              AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0" 
+                              CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+                      <DataGrid.Resources>
+                        <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                          <Setter Property="Margin" Value="0,2,0,4"/>
+                          <!--<Setter Property="Padding" Value="0,2,0,0" />-->
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="{x:Type GroupItem}" >
+                                <Expander x:Name="exp" IsExpanded="True"
+                                          Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
+                                          Foreground="Black" Padding="0,2,0,0">
+                                  <Expander.Header>
+                                    <DockPanel>
+                                      <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                      <TextBlock Text=" (" FontWeight="Bold" />
+                                      <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                      <TextBlock Text=")" FontWeight="Bold" />
+                                    </DockPanel>
+                                  </Expander.Header>
+                                  <ItemsPresenter />
+                                </Expander>
+
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+
+                        </Style>
+
+                      </DataGrid.Resources>
+
+                      <DataGrid.GroupStyle>
+                        <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                          <GroupStyle.Panel>
+                            <ItemsPanelTemplate >
+                              <DataGridRowsPresenter />
+                            </ItemsPanelTemplate>
+                          </GroupStyle.Panel>
+                        </GroupStyle>
+                      </DataGrid.GroupStyle>
+
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Case Type Name" IsReadOnly="True" Width="250" >
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <TextBlock Text="{Binding mraT_CaseTypeName}" TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center" Height="Auto"/>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
 
-            <GroupBox Header="Applicable to CaseType(s)..." HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,0,0,4">
-              <StackPanel Orientation="Vertical" Margin="2,4">
+                        <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="220" Binding="{Binding mraT_RowID}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="CaseType ID" IsReadOnly="True" Binding="{Binding mraT_CaseTypeID}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="Department Name" IsReadOnly="True" Binding="{Binding mraT_DeptName}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="Department ID" IsReadOnly="True"  Binding="{Binding mraT_DeptID}" Visibility="Collapsed"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
 
-                <StackPanel Orientation="Horizontal">
-
-                  <DataGrid x:Name="dg_MRATemplate_CaseTypes" Height="220"
-                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
-                            AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0" 
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
-
-                    <DataGrid.Resources>
-                      <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                        <Setter Property="Margin" Value="0,2,0,4"/>
-                        <!--<Setter Property="Padding" Value="0,2,0,0" />-->
-                        <Setter Property="Template">
-                          <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type GroupItem}" >
-                              <Expander x:Name="exp" IsExpanded="True"
-                                        Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
-                                        Foreground="Black" Padding="0,2,0,0">
-                                <Expander.Header>
-                                  <DockPanel>
-                                    <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                                    <TextBlock Text=" (" FontWeight="Bold" />
-                                    <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                    <TextBlock Text=")" FontWeight="Bold" />
-                                  </DockPanel>
-                                </Expander.Header>
-                                <ItemsPresenter />
-                              </Expander>
-
-                            </ControlTemplate>
-                          </Setter.Value>
-                        </Setter>
-
-                      </Style>
-
-                    </DataGrid.Resources>
-
-                    <DataGrid.GroupStyle>
-                      <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                        <GroupStyle.Panel>
-                          <ItemsPanelTemplate >
-                            <DataGridRowsPresenter />
-                          </ItemsPanelTemplate>
-                        </GroupStyle.Panel>
-                      </GroupStyle>
-                    </DataGrid.GroupStyle>
-
-                    <DataGrid.Columns>
-                      <DataGridTemplateColumn Header="Case Type Name" IsReadOnly="True" Width="250" >
-                        <DataGridTemplateColumn.CellTemplate>
-                          <DataTemplate>
-                            <TextBlock Text="{Binding mraT_CaseTypeName}" TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center" Height="Auto"/>
-                          </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                      </DataGridTemplateColumn>
-
-
-                      <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="220" Binding="{Binding mraT_RowID}" Visibility="Collapsed"/>
-                      <DataGridTextColumn Header="CaseType ID" IsReadOnly="True" Binding="{Binding mraT_CaseTypeID}" Visibility="Collapsed"/>
-                      <DataGridTextColumn Header="Department Name" IsReadOnly="True" Binding="{Binding mraT_DeptName}" Visibility="Collapsed"/>
-                      <DataGridTextColumn Header="Department ID" IsReadOnly="True"  Binding="{Binding mraT_DeptID}" Visibility="Collapsed"/>
-                    </DataGrid.Columns>
-                  </DataGrid>
-
-                  <Button x:Name="btn_CaseTypeLinkToTemplate_remove" Padding="4" VerticalAlignment="Center" Background="#FFFFA7A7" BorderBrush="DarkRed">
-                    <TextBlock Text="Remove Selected" TextWrapping="Wrap" Width="62" TextAlignment="Center"/>
-                  </Button>
-                </StackPanel>
+                    <Button x:Name="btn_CaseTypeLinkToTemplate_remove" Padding="4" VerticalAlignment="Center" Background="#FFFFA7A7" BorderBrush="DarkRed">
+                      <TextBlock Text="Remove Selected" TextWrapping="Wrap" Width="62" TextAlignment="Center"/>
+                    </Button>
+                  </StackPanel>
 
 
 
-                <GroupBox Header="Add CaseType..." BorderBrush="Gray" HorizontalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                    <Label Foreground="Gray" Content="Add for Case Type" HorizontalContentAlignment="Right" Visibility="Collapsed"/>
+                  <GroupBox Header="Add CaseType..." BorderBrush="Gray" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                      <Label Foreground="Gray" Content="Add for Case Type" HorizontalContentAlignment="Right" Visibility="Collapsed"/>
 
-                    <ComboBox x:Name="cbo_MRATemplate_CaseType" Width="240">
-                      <!-- Collapsible group headers -->
-                      <ComboBox.GroupStyle>
-                        <GroupStyle>
-                          <GroupStyle.ContainerStyle>
-                            <Style TargetType="{x:Type GroupItem}">
-                              <Setter Property="Template">
-                                <Setter.Value>
-                                  <ControlTemplate TargetType="{x:Type GroupItem}">
-                                    <Expander IsExpanded="True" Margin="0,2,0,6">
-                                      <Expander.Header>
-                                        <StackPanel>
-                                          <TextBlock Text="{Binding Name}"
+                      <ComboBox x:Name="cbo_MRATemplate_CaseType" Width="240">
+                        <!-- Collapsible group headers -->
+                        <ComboBox.GroupStyle>
+                          <GroupStyle>
+                            <GroupStyle.ContainerStyle>
+                              <Style TargetType="{x:Type GroupItem}">
+                                <Setter Property="Template">
+                                  <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type GroupItem}">
+                                      <Expander IsExpanded="True" Margin="0,2,0,6">
+                                        <Expander.Header>
+                                          <StackPanel>
+                                            <TextBlock Text="{Binding Name}"
                                                      FontWeight="SemiBold"
                                                      Margin="2,4,2,2" />
-                                          <Separator Margin="0,0,0,2"/>
-                                        </StackPanel>
-                                      </Expander.Header>
+                                            <Separator Margin="0,0,0,2"/>
+                                          </StackPanel>
+                                        </Expander.Header>
 
-                                      <!-- The grouped items render here -->
-                                      <ItemsPresenter />
-                                    </Expander>
-                                  </ControlTemplate>
-                                </Setter.Value>
-                              </Setter>
-                            </Style>
-                          </GroupStyle.ContainerStyle>
-                        </GroupStyle>
-                      </ComboBox.GroupStyle>
+                                        <!-- The grouped items render here -->
+                                        <ItemsPresenter />
+                                      </Expander>
+                                    </ControlTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                              </Style>
+                            </GroupStyle.ContainerStyle>
+                          </GroupStyle>
+                        </ComboBox.GroupStyle>
 
-                      <!-- Optional: light separator between items (within a group) -->
-                      <ComboBox.ItemContainerStyle>
+                        <!-- Optional: light separator between items (within a group) -->
+                        <!--<ComboBox.ItemContainerStyle>
                         <Style TargetType="ComboBoxItem">
                           <Setter Property="Padding" Value="2,2,2,2"/>
                           <Setter Property="Template">
@@ -345,37 +342,35 @@
                             </Setter.Value>
                           </Setter>
                         </Style>
-                      </ComboBox.ItemContainerStyle>
+                      </ComboBox.ItemContainerStyle>-->
 
-                      <!-- Your existing item template -->
-                      <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding mraT_CaseTypeCode, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
-                            <TextBlock Text="{Binding mraT_CaseTypeDesc, Mode=TwoWay}" Width="Auto" />
-                            <TextBlock Text="{Binding mraT_DepartmentName, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
-                          </StackPanel>
-                        </DataTemplate>
-                      </ComboBox.ItemTemplate>
-                    </ComboBox>
+                        <!-- Your existing item template -->
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Text="{Binding mraT_CaseTypeCode, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                              <TextBlock Text="{Binding mraT_CaseTypeName, Mode=TwoWay}" Width="Auto" />
+                              <TextBlock Text="{Binding mraT_DepartmentName, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
 
-                    <Button x:Name="btn_CaseTypeLinkToTemplate_add" Content="Add" Padding="4" Margin="4,0,0,0"
+                      <Button x:Name="btn_CaseTypeLinkToTemplate_add" Content="Add" Padding="4" Margin="4,0,0,0"
                             VerticalAlignment="Center" Background="LightGreen" BorderBrush="DarkGreen"/>
-                  </StackPanel>
-                </GroupBox>
-                
+                    </StackPanel>
+                  </GroupBox>
 
-              </StackPanel>
-              
-            </GroupBox>
+
+                </StackPanel>
+
+              </GroupBox>
+
+            </StackPanel>
             
           </StackPanel>
 
-
-
         </GroupBox>
-
-
 
       </Canvas>
     </TabItem>
@@ -414,14 +409,17 @@
           </Button>
 
 
-          <GroupBox Header="'Copy' Clipboard..." Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="100,0,0,0">
+          <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="90,0,0,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="Copied what:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_CopiedWhat" Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_CopiedWhat" Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
+              <TextBlock Text="TID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceTemplateID" Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
               <TextBlock Text="QID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="QID" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceQuestionID" Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
               <TextBlock Text="AID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="AID" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceAnswerID" Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              
             </StackPanel>
           </GroupBox>
           
@@ -479,8 +477,8 @@
           <ToolBarTray IsLocked="True"  
                        Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3">
             <ToolBar  >
-              <TextBlock Text="Questions:" Foreground="Gray" VerticalAlignment="Center"/>
-              <Button x:Name="btn_AddNew_Q"  ToolTip="Add a new blank Question to the list">
+              <TextBlock Text="Questions:" Foreground="Gray" VerticalAlignment="Center" Visibility="Collapsed"/>
+              <Button x:Name="btn_Questions_AddNew"  ToolTip="Add a new blank Question to the list">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
                   <TextBlock Margin="3,4,0,4" Text="Add New..."   TextAlignment="Left" Visibility="Visible"/>
@@ -488,37 +486,52 @@
               </Button>
 
               <Separator/>
-              <Button x:Name="btn_CopySelected_Q" ToolTip="Duplicate selected Question (adds to bottom of the list)">
+              
+              <ToggleButton x:Name="btn_Questions_Clipboard" Content="Clipboard..." ClickMode="Press" />
+              <Popup x:Name="QuestionsClipboard_Popup" 
+                     PlacementTarget="{Binding ElementName=btn_Questions_CopyToClipboard}"
+                     Placement="Bottom"
+                     StaysOpen="False"
+                     AllowsTransparency="True"
+                     PopupAnimation="Fade">
+
+                <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="6">
+                  <StackPanel>
+                    <MenuItem Header="Copy to Clipboard" x:Name="mi_Question_CopyToClipboard" />
+                    <Separator/>
+                    <MenuItem Header="Paste from Clipboard" x:Name="mi_Question_PasteFromClipboard" />
+
+                  </StackPanel>
+                  
+                </Border>
+                
+              </Popup>
+              
+              <Button x:Name="btn_Questions_CopyToClipboard" Visibility="Collapsed"
+                      ToolTip="Copies the Question (and all it's current answers) to the 'clipboard' - go into another MRA template and click 'Paste from Clipboard' to copy the Question there">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                  <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextAlignment="Left" Visibility="Visible"/>
-                </StackPanel>
-              </Button>
-              <Separator Visibility="Collapsed"/>
-              <Button x:Name="btn_Edit_Q" Visibility="Collapsed" ToolTip="Edit selected Question">
-                <StackPanel Orientation="Vertical">
-                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
-                  <TextBlock Margin="3,4,0,4" Text="Edit Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                  <TextBlock Margin="3,4,0,4" Text="Copy To Clipboard" TextAlignment="Left" Visibility="Visible"/>
                 </StackPanel>
               </Button>
               <Separator Width="4"/>
 
               <TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray"/>
-              <Button x:Name="btn_Q_MoveTop" ToolTip="Move the currently selected Question to the top of the list">
+              <Button x:Name="btn_Question_MoveTop" ToolTip="Move the currently selected Question to the top of the list">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
                   <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
                 </StackPanel>
               </Button>
               <Separator/>
-              <Button x:Name="btn_Q_MoveUp" ToolTip="Move the currently selected Question up one row">
+              <Button x:Name="btn_Question_MoveUp" ToolTip="Move the currently selected Question up one row">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
                   <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
                 </StackPanel>
               </Button>
               <Separator/>
-              <Button x:Name="btn_Q_MoveDown" ToolTip="Move the currently selected Question down one row">
+              <Button x:Name="btn_Question_MoveDown" ToolTip="Move the currently selected Question down one row">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
                   <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
@@ -526,19 +539,20 @@
               </Button>
               <Separator/>
 
-              <Button x:Name="btn_Q_MoveBottom" ToolTip="Move the currently selected Question to the bottom of the list">
+              <Button x:Name="btn_Question_MoveBottom" ToolTip="Move the currently selected Question to the bottom of the list">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
                   <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
                 </StackPanel>
               </Button>
               <Separator Width="4"/>
-              <Button x:Name="btn_DeleteSelected_Q" 
-                Background="#FFFFA7A7" BorderBrush="DarkRed"
-                ToolTip="Deletes the currently selected Question (requires confirmation)">
+
+              <Button x:Name="btn_Question_DeleteSelected" 
+                      Background="#FFFFA7A7" BorderBrush="DarkRed"
+                      ToolTip="Deletes the currently selected Question (requires confirmation)">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                  <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Visible" VerticalAlignment="Center"/>
+                  <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
                 </StackPanel>
               </Button>
               <Separator Width="4"/>
@@ -547,10 +561,10 @@
 
           </ToolBarTray>
 
-          <TextBlock x:Name="tb_NoQuestions_MRA" 
+          <TextBlock x:Name="tb_MRA_NoQuestionsText" 
                      Text="No questions currently exist for this Matter Risk Assessment... click the 'Add New...' button to add a new question" 
                      TextWrapping="Wrap" Foreground="Red"  FontWeight="Bold" FontSize="20" Visibility="Collapsed" 
-                     Grid.Row="2" Grid.Column="3" Grid.RowSpan="7"/>
+                     Grid.Row="2" Grid.Column="0" Grid.RowSpan="3"/>
 
           <DataGrid x:Name="dg_MRA_Questions" Width="Auto" 
                     Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" 
@@ -606,27 +620,25 @@
             </DataGrid.GroupStyle>
 
             <DataGrid.Columns>
-              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding mraQ_ID}" Visibility="Hidden"/>
-              <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40" Binding="{Binding mraQ_RowID}" Visibility="Hidden"/>
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQ_DO}" />
+              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QuestionID}" Visibility="Hidden"/>
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QDisplayOrder}" />
 
               <DataGridTemplateColumn Header="Question Text" IsReadOnly="True" Width="500" >
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding mraQ_Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding mraQ_QuestionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
-              <DataGridTextColumn Header="Section/Group" IsReadOnly="True" Width="110" Visibility="Collapsed"
-                                  Binding="{Binding mraQ_Section, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <DataGridTextColumn Header="Section/GroupID" IsReadOnly="True" Width="110" Visibility="Collapsed"
-                                  Binding="{Binding mraQ_GroupID}" />
+              <DataGridTextColumn Header="QuestionGroup" IsReadOnly="True" Width="110" Visibility="Collapsed"
+                                  Binding="{Binding mraQ_QuestionGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              
 
               <DataGridTemplateColumn Header="Count of Answers" IsReadOnly="True" Width="110" >
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding mraQ_AList, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding mraQ_CountAnswers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -642,22 +654,25 @@
                      TextAlignment="Center" Foreground="Gray" FontWeight="Bold" VerticalAlignment="Center"
                      Grid.Row="3" Grid.Column="1" />
 
-          <TextBlock x:Name="lbl_QID" Text="ID" Foreground="Gray" VerticalAlignment="Center"
+          <TextBlock x:Name="tb_ESQ_QuestionID" Text="ID" Foreground="Gray" VerticalAlignment="Center"
                      Grid.Row="3" Grid.Column="2"/>
 
           <TextBlock Text="Question Text" Foreground="Gray"  Margin="4,0"
                      HorizontalAlignment="Right"  VerticalAlignment="Top"
                      Grid.Row="4" Grid.Column="0" Grid.RowSpan="2"/>
 
-          <TextBox x:Name="txt_QuestionText" TextWrapping="Wrap" Margin="2,2,4,2" 
+          <TextBox x:Name="txt_ESQ_QuestionText" TextWrapping="Wrap" Margin="2,2,4,2" 
                    Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
 
 
-          <TextBlock Text="Section / Group" Foreground="Gray"  Margin="4,0"
+          <TextBlock Text="Question Group" Foreground="Gray"  Margin="4,0"
                      HorizontalAlignment="Right" VerticalAlignment="Center" 
                      Grid.Row="6" Grid.Column="0" />
-          <ComboBox x:Name="cbo_QuestionGroup" VerticalAlignment="Center" Height="23"
-                    Grid.Row="6" Grid.Column="1" >
+
+          <TextBox x:Name="txt_ESQ_QuestionGroup" Margin="2,2,4,2"
+                   Grid.Row="6" Grid.Column="1" />
+          <ComboBox x:Name="cbo_ESQ_QuestionGroup" VerticalAlignment="Center" Height="23"
+                    Grid.Row="6" Grid.Column="1" Visibility="Collapsed" >
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <StackPanel Orientation="Horizontal">
@@ -668,7 +683,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <Button x:Name="btn_SaveQuestion" Content="Save" Padding="4" MaxHeight="26" MaxWidth="50" 
+          <Button x:Name="btn_ESQ_SaveQuestion" Content="Save" Padding="4" MaxHeight="26" MaxWidth="50" 
                 Grid.Row="6" Grid.Column="2" />
 
 
@@ -785,14 +800,11 @@
             <DataGrid.Columns>
               <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQA_DO}" />
               <DataGridTextColumn Header="Answer Text" IsReadOnly="False" Width="Auto" MinWidth="70"
-                                  Binding="{Binding mraQA_Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  HeaderStyle="{StaticResource EditableColumn}"/>
+                                  Binding="{Binding mraQA_Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
               <DataGridTextColumn Header="Score" IsReadOnly="False" Width="60"
-                                  Binding="{Binding mraQA_Score, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  HeaderStyle="{StaticResource EditableColumn}"/>
+                                  Binding="{Binding mraQA_Score, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
               <DataGridTextColumn Header="Email Comment" IsReadOnly="False" Width="Auto" MinWidth="100"
-                                  Binding="{Binding mraQA_EC, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  HeaderStyle="{StaticResource EditableColumn}"/>
+                                  Binding="{Binding mraQA_EC, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
               <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding mraQA_ID}" Visibility="Collapsed"/>
               <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40" Binding="{Binding mraQA_RowID}" Visibility="Collapsed"/>
 

@@ -71,6 +71,10 @@ class MRA_Templates(object):
       return self.mraT_QCount
     elif index == 'ExpiryDays':
       return self.mraT_TemplateExpiryDays
+    elif index == 'ScoreMedFrom':
+      return self.mraT_ScoreMedFrom
+    elif index == 'ScoreHighFrom':
+      return self.mraT_ScoreHighFrom
     else:
       return ''
   
@@ -104,9 +108,29 @@ def refresh_MRA_Templates():
                                        myExpiryDays=templateExpiryDays, myRowID=tID, myScoreMedFrom=tScoreMedFrom, myScoreHighFrom=tScoreHighFrom))
     dr.Close()
   _tikitDbAccess.Close()
+
   dg_MRA_Templates.ItemsSource = tmpItem
+  dg_MRA_Templates_SetVisibilityOfEditArea()
   return
 
+def dg_MRA_Templates_SetVisibilityOfEditArea():
+  # This function will set the visibility of the 'Template Details' edit area depending on whether something is selected in the datagrid or not
+
+  # if nothing in list, hide 'edit' fields and exit early
+  if dg_MRA_Templates.Items.Count == 0:
+    #dg_MRA_Templates.Visibility = Visibility.Collapsed
+    tb_MRA_NoneSelected.Visibility = Visibility.Visible
+    stk_ST_SelectedMRA.Visibility = Visibility.Collapsed
+    return
+
+  # set visibility based on selection
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    tb_MRA_NoneSelected.Visibility = Visibility.Visible
+    stk_ST_SelectedMRA.Visibility = Visibility.Collapsed
+  else:
+    tb_MRA_NoneSelected.Visibility = Visibility.Collapsed
+    stk_ST_SelectedMRA.Visibility = Visibility.Visible
+  return
 
 def dg_MRA_Template_SelectionChanged(s, event):
   # This function will populate the label controls to temp store ID and Name
@@ -116,6 +140,7 @@ def dg_MRA_Template_SelectionChanged(s, event):
     MRATemplateDetails_ClearFields()
   else:
     MRATemplateDetails_PopulateFieldsFromDataGrid()
+  dg_MRA_Templates_SetVisibilityOfEditArea()
   return
 
 
@@ -129,7 +154,7 @@ def MRATemplateDetails_PopulateFieldsFromDataGrid():
     return
   
   tb_MRATemplate_Name.Text = str(selItem['Name'])
-  lbl_MRATemplate_ID.Content = str(selItem['Code'])
+  lbl_MRATemplate_ID.Content = str(selItem['TemplateID'])
   tb_MRATemplate_ExpiresInXdays.Text = str(selItem['ExpiryDays']) if selItem['ExpiryDays'] is not None else '0'
   tb_ScoreMedFrom.Text = str(selItem['ScoreMedFrom']) if selItem['ScoreMedFrom'] is not None else '0'
   tb_ScoreHighFrom.Text = str(selItem['ScoreHighFrom']) if selItem['ScoreHighFrom'] is not None else '0'
@@ -142,10 +167,10 @@ def MRATemplateDetails_PopulateFieldsFromDataGrid():
   btn_MRATemplate_CopySelected.IsEnabled = True
   btn_MRATemplate_Preview.IsEnabled = True
   btn_MRATemplate_Edit.IsEnabled = True
-  btn_MRATemplate_DeleteSelected.IsEnabled = True if int(dg_MRA_Templates.SelectedItem['CountUsed']) == 0 else False
+  btn_MRATemplate_DeleteSelected.IsEnabled = True #if int(dg_MRA_Templates.SelectedItem['CountUsed']) == 0 else False
   btn_MRATemplate_SaveHeaderDetails.IsEnabled = True
 
-  # load case type defaults for this template
+  # load case type defaults DataGrid for this template
   refresh_MRA_CaseType_Defaults()
   return
 
@@ -293,6 +318,187 @@ def btn_MRATemplate_Edit_Click(s, event):
 
 # # # #  END OF:  Matter Risk Assessment Templates   # # # #
 
+# # # #    Q U E S T I O N S   # # # #
+class MRA_Questions(object):
+  def __init__(self, myQuestionID, myQuestionText, myQuestionGroup, myDisplayOrder, myCountAnswers):
+    self.mraQ_QuestionID = myQuestionID
+    self.mraQ_QuestionText = myQuestionText
+    self.mraQ_QuestionGroup = myQuestionGroup
+    self.mraQ_QDisplayOrder = myDisplayOrder
+    self.mraQ_CountAnswers = myCountAnswers
+    return
+
+  def __getitem__(self, index):
+    if index == 'QuestionID':
+      return self.mraQ_QuestionID
+    elif index == 'QuestionText':
+      return self.mraQ_QuestionText
+    elif index == 'QuestionGroup':
+      return self.mraQ_QuestionGroup
+    elif index == 'DisplayOrder':
+      return self.mraQ_QDisplayOrder
+    elif index == 'CountAnswers':
+      return self.mraQ_CountAnswers
+    else:
+      return ''
+
+
+
+def btn_Questions_Clipboard_Click(s, event):
+  # This function will open the 'Questions Clipboard' window for copying/pasting questions between templates
+  
+  QuestionsClipboard_Popup.IsOpen = btn_Questions_Clipboard.IsChecked
+  #MessageBox.Show("Questions Clipboard button click", "Open Questions Clipboard...")
+  return
+
+def QuestionsClipboard_Popup_Closed(s, event):
+  # This function will uncheck the 'Questions Clipboard' button when the popup is closed
+  
+  btn_Questions_Clipboard.IsChecked = False
+  return
+
+def mi_Question_CopyToClipboard_Click(s, event):
+  # This function will copy the selected question to the clipboard
+  
+  QuestionsClipboard_Popup_Closed(s, event)
+  MessageBox.Show("Copy Question to Clipboard menu item click", "Copy Question to Clipboard...")
+  return
+
+def mi_Question_PasteFromClipboard_Click(s, event):
+  # This function will paste the question from the clipboard to the current template
+  
+  QuestionsClipboard_Popup_Closed(s, event)
+  MessageBox.Show("Paste Question from Clipboard menu item click", "Paste Question from Clipboard...")
+  return
+
+
+def btn_Question_MoveTop_Click(s, event):
+  # This function will move the selected question to the top of the list
+  
+  MessageBox.Show("Move Question to Top button click", "Move Question to Top...")
+  return
+
+def btn_Question_MoveUp_Click(s, event):
+  # This function will move the selected question up one position in the list
+  
+  MessageBox.Show("Move Question Up button click", "Move Question Up...")
+  return
+
+def btn_Question_MoveDown_Click(s, event):
+  # This function will move the selected question down one position in the list
+  
+  MessageBox.Show("Move Question Down button click", "Move Question Down...")
+  return
+
+def btn_Question_MoveBottom_Click(s, event):
+  # This function will move the selected question to the bottom of the list
+  
+  MessageBox.Show("Move Question to Bottom button click", "Move Question to Bottom...")
+  return
+
+def btn_Question_DeleteSelected_Click(s, event):
+  # This function will delete the selected question from the current template
+  
+  MessageBox.Show("Delete Selected Question button click", "Delete Selected Question...")
+  return
+
+def dg_MRA_Questions_SelectionChanged(s, event):
+  # This function will handle when the selection changes in the 'MRA Questions' datagrid - it puts selected question details into the edit area below
+
+  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
+    dg_MRA_Questions_EditArea_Clear()
+    return
+  else:
+    dg_MRA_Questions_EditArea_PopulateFromSelected()
+  
+  # for now, just show a message box
+  #MessageBox.Show("Selection changed in MRA Questions datagrid", "DEBUG - MRA Questions Selection Changed...")
+  return
+
+def dg_MRA_Questions_EditArea_Clear():
+  # This function will clear the 'Edit Question' area below the 'MRA Questions' datagrid
+  
+  tb_ESQ_QuestionID.Text = ''
+  txt_ESQ_QuestionText.Text = ''
+  txt_ESQ_QuestionGroup.Text = ''
+  return
+
+def dg_MRA_Questions_EditArea_PopulateFromSelected():
+  # This function will populate the 'Edit Question' area below the 'MRA Questions' datagrid from the selected question
+  
+  selItem = dg_MRA_Questions.SelectedItem
+  tb_ESQ_QuestionID.Text = str(selItem['QuestionID'])
+  txt_ESQ_QuestionText.Text = str(selItem['QuestionText'])
+  txt_ESQ_QuestionGroup.Text = str(selItem['QuestionGroup'])
+  return
+
+
+def dg_MRA_Questions_Refresh():
+  # This function will refresh the 'MRA Questions' datagrid for the selected template
+  
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    dg_MRA_Questions.ItemsSource = []
+    return
+  
+  # otherwise, get TemplateID to use from this page
+  templateID = int(tb_ThisMRAid.Text)
+
+  # form SQL to get questions for this template
+  sql = """SELECT '0-QuestionID' = T.QuestionID,
+                  '1-QuestionText' = Q.QuestionText,
+                  '2-QuestionGroup' = T.QuestionGroup,
+                  '3-DisplayOrder' = T.DisplayOrder,
+                  '4-CountAs' = (SELECT COUNT(T1.AnswerID) FROM Usr_MRAv2_Templates T1 WHERE T1.TemplateID = {tID} AND T1.QuestionID = T.QuestionID)
+            FROM Usr_MRAv2_Templates T
+                JOIN Usr_MRAv2_Question Q ON T.QuestionID = Q.QuestionID
+            WHERE T.TemplateID = {tID}
+            GROUP BY T.QuestionID, Q.QuestionText, T.QuestionGroup, T.DisplayOrder
+            ORDER BY T.QuestionGroup, T.DisplayOrder""".format(tID=templateID)
+
+  tmpItem = []
+  _tikitDbAccess.Open(sql)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        if not dr.IsDBNull(0):
+          tmpQuestionID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+          tmpQuestionText = '' if dr.IsDBNull(1) else dr.GetString(1)
+          tmpQuestionGroup = '' if dr.IsDBNull(2) else dr.GetString(2)
+          tmpDisplayOrder = 0 if dr.IsDBNull(3) else dr.GetValue(3)
+          tmpCountAnswers = 0 if dr.IsDBNull(4) else dr.GetValue(4)
+          
+          tmpItem.append(MRA_Questions(myQuestionID=tmpQuestionID, myQuestionText=tmpQuestionText, myQuestionGroup=tmpQuestionGroup,
+                                       myDisplayOrder=tmpDisplayOrder, myCountAnswers=tmpCountAnswers))
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  # add Grouping on 'QuestionGroup'
+  # note: added ', CollectionView, ListCollectionView, PropertyGroupDescription' to 'from System.Windows.Data import Binding ' (line 20)
+  tmpC = ListCollectionView(tmpItem)
+  tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraQ_QuestionGroup"))
+  dg_MRA_Questions.ItemsSource = tmpC
+
+  #MessageBox.Show("Refresh MRA Questions datagrid", "DEBUG - Refresh MRA Questions...")
+  return
+
+def btn_ESQ_SaveQuestion_Click(s, event):
+  # This function will save the edited question details from the 'Edit Question' area below the datagrid
+  
+  #! Note: because of new structure we need to:
+  # 1) update 'Usr_MRAv2_Question' table for question text -
+  #    first check if this text already exists
+  #      - if yes, use THAT QuestionID instead (avoids having multiple identical questions in the table);
+  #      - if no, update question text for current QuestionID
+  # 2) update 'Usr_MRAv2_Templates' table for question group and display order (using the QuestionID from step 1)
+  # Note: we may need to also update any 'Answers' linked to this question if the QuestionID changes (ie: new question text added)
+  #       so will want an 'originalQuestionID' variable to use for 'UPDATE' substitutions if needed (as shouldn't just delete/ignore current answers). 
+
+  MessageBox.Show("Save Edited Question button click", "Save Edited Question...")
+  return
+# # # #   E N D   O F :   Q U E S T I O N S   # # # #
+
+
  
 # # # #   C A S E   T Y P E   D E F A U L T S   # # # #
 class caseType_Defaults(object):
@@ -350,7 +556,8 @@ def refresh_MRA_CaseType_Defaults():
           tmpDeptName = '' if dr.IsDBNull(3) else dr.GetString(3)
           tmpDeptID = 0 if dr.IsDBNull(4) else dr.GetValue(4)
           
-          tmpItem.append(caseType_Defaults(tmpCaseTypeName, tmpRowID, tmpCaseTypeID, tmpDeptName, tmpDeptID))
+          tmpItem.append(caseType_Defaults(myCaseTypeName=tmpCaseTypeName, myRowID=tmpRowID, 
+                                           myCaseTypeID=tmpCaseTypeID, myDeptName=tmpDeptName, myDeptID=tmpDeptID))
 
     dr.Close()
   
@@ -369,13 +576,64 @@ def refresh_MRA_CaseType_Defaults():
 def btn_CaseTypeLinkToTemplate_add_Click(s, event):
   # This function will link the selected Case Type to the current selected Matter Risk Assessment Template
   
-  MessageBox.Show("Add Case Type to Template link button click", "Link Case Type to Matter Risk Assessment Template...")
+  templateID = lbl_MRATemplate_ID.Content      #dg_MRA_Templates.SelectedItem['TemplateID']
+  caseTypeID = cbo_MRATemplate_CaseType.SelectedItem['CaseTypeID']
+
+  # first check if this link already exists
+  checkSQL = """SELECT COUNT(*) FROM Usr_MRAv2_CaseTypeDefaults 
+                WHERE TemplateID = {tID} AND CaseTypesCode = {ctID}""".format(tID=templateID, ctID=caseTypeID)
+  existingCount = runSQL(codeToRun=checkSQL, returnType='Int')
+
+  if existingCount > 0:
+    MessageBox.Show("The selected Case Type is already linked to this Matter Risk Assessment Template!", "Error: Link Case Type to Matter Risk Assessment Template...")
+    return
+  
+  # else add the link
+  insertSQL = """INSERT INTO Usr_MRAv2_CaseTypeDefaults (TemplateID, CaseTypesCode)
+                 VALUES ({tID}, {ctID})""".format(tID=templateID, ctID=caseTypeID)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(insertSQL))
+    refresh_MRA_CaseType_Defaults()
+  except:
+    MessageBox.Show("There was an error trying to link the selected Case Type to this Matter Risk Assessment Template, using SQL:\n" + str(insertSQL), "Error: Link Case Type to Matter Risk Assessment Template...")
+    return
+  
+  #MessageBox.Show("Add Case Type to Template link button click", "Link Case Type to Matter Risk Assessment Template...")
   return
 
 def btn_CaseTypeLinkToTemplate_remove_Click(s, event):
   # This function will remove the link between the selected Case Type and the current selected Matter Risk Assessment Template
+
+  if dg_MRATemplate_CaseTypes.SelectedIndex == UNSELECTED:
+    MessageBox.Show("No Case Type selected to remove the link for!", "Error: Unlink Case Type from Matter Risk Assessment Template...")
+    return
   
-  MessageBox.Show("Remove Case Type to Template link button click", "Unlink Case Type from Matter Risk Assessment Template...")
+  # else, double-check user wants to do this - if no, exit now
+  confirmResult = MessageBox.Show("Are you sure you want to unlink the selected Case Type from this Matter Risk Assessment Template?", 
+                                  "Confirm: Unlink Case Type from Matter Risk Assessment Template...", 
+                                  MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+  if confirmResult == DialogResult.No:
+    return
+
+  # continue to remove link
+  # get IDs to use - making sure to convert to integers to avoid SQL errors (exit early if can't be converted to integer)
+  try:
+    templateID = int(lbl_MRATemplate_ID.Content)      #dg_MRA_Templates.SelectedItem['TemplateID']
+    caseTypeID = int(dg_MRATemplate_CaseTypes.SelectedItem['CaseTypeID'])
+  except:
+    MessageBox.Show("Error obtaining selected Matter Risk Assessment TemplateID or CaseType code", "Error: Unlink Case Type from Matter Risk Assessment Template...")
+    return
+
+  deleteSQL = """DELETE FROM Usr_MRAv2_CaseTypeDefaults 
+                 WHERE TemplateID = {tID} AND CaseTypesCode = {ctID}""".format(tID=templateID, ctID=caseTypeID)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteSQL))
+    refresh_MRA_CaseType_Defaults()
+  except:
+    MessageBox.Show("There was an error trying to unlink the selected Case Type from this Matter Risk Assessment Template, using SQL:\n" + str(deleteSQL), "Error: Unlink Case Type from Matter Risk Assessment Template...")
+    return
+
+  #MessageBox.Show("Remove Case Type to Template link button click", "Unlink Case Type from Matter Risk Assessment Template...")
   return
 
 
@@ -622,6 +880,8 @@ dg_MRA_Templates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Templ
 dg_MRA_Templates.SelectionChanged += dg_MRA_Template_SelectionChanged
 
 #! Edit MRA Template Details
+tb_MRA_NoneSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoneSelected')            # TextBlock shown when no MRA template selected
+stk_ST_SelectedMRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_ST_SelectedMRA')              # Edit Area StackPanel shown when MRA template selected
 tb_MRATemplate_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_Name')            # TextBox for editing the name of the selected NMRA template 
 lbl_MRATemplate_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRATemplate_ID')              # Label to store ID of selected NMRA template
 tb_MRATemplate_ExpiresInXdays = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_ExpiresInXdays')
@@ -663,48 +923,57 @@ cbo_MRATemplate_CaseType = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_
 #lbl_EditRiskAssessment_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_EditRiskAssessment_Name')
 #lbl_EditRiskAssessment_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_EditRiskAssessment_ID')
 
-dg_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Questions')
-#dg_MRA_Questions.SelectionChanged += MRA_Questions_SelectionChanged
-
-#! New 'Publish' button added 21/08/2025
 tb_ThisMRAid = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ThisMRAid')
 tb_ThisMRAname = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ThisMRAname')
-tb_CopyOfMRAid = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CopyOfMRAid')
-tb_CopyOfMRAname = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CopyOfMRAname')
 
-btn_AddNew_Q = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_Q')
-#btn_AddNew_Q.Click += AddNew_MRA_Question
-btn_CopySelected_Q = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelected_Q')
-#btn_CopySelected_Q.Click += Duplicate_MRA_Question
-btn_Edit_Q = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Edit_Q')
-btn_Q_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Q_MoveTop')
-#btn_Q_MoveTop.Click += MoveTop_MRA_Question
-btn_Q_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Q_MoveUp')
-#btn_Q_MoveUp.Click += MoveUp_MRA_Question
-btn_Q_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Q_MoveDown')
-#btn_Q_MoveDown.Click += MoveDown_MRA_Question
-btn_Q_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Q_MoveBottom')
-#btn_Q_MoveBottom.Click += MoveBottom_MRA_Question
-btn_DeleteSelected_Q = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelected_Q')
-#btn_DeleteSelected_Q.Click += Delete_MRA_Question
 btn_BackToOverview_FromEditQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_BackToOverview_FromEditQs')
 btn_BackToOverview_FromEditQs.Click += btn_BackToOverview_FromEditQs_Click
-tb_NoQuestions_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoQuestions_MRA')
 
+## clipboard area for copying questions/answers between MRAs  ##
+grp_MRA_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grp_MRA_Clipboard')
+tb_MRA_CopiedWhat = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_CopiedWhat')    # either: Question|One-Answer|All-Answers
+tb_MRA_SourceTemplateID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceTemplateID')
+tb_MRA_SourceQuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceQuestionID')
+tb_MRA_SourceAnswerID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceAnswerID')
 
-# Editing Questions - New split view (added 26th April 2024)
-grd_EditQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grd_EditQs')
-lbl_QID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_QID')
-btn_SaveQuestion = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_SaveQuestion')
-#btn_SaveQuestion.Click += SaveChanges_MRA_Question
-txt_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_QuestionText')
-cbo_QuestionGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_QuestionGroup')
-cbo_QuestionAnswerList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_QuestionAnswerList')
-opt_CopyAnswersFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_CopyAnswersFrom')
-opt_BlankAnswerList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_BlankAnswerList')
-btn_AnswerListTypeUpdate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AnswerListTypeUpdate')
-#btn_AnswerListTypeUpdate.Click += updateAnswerList_forSelectedQuestion
+## Toolbar Buttons for Editing Questions ##
+btn_Questions_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_AddNew')
+#btn_Questions_AddNew.Click += AddNew_MRA_Question
+btn_Questions_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_Clipboard')
+btn_Questions_Clipboard.Click += btn_Questions_Clipboard_Click
+QuestionsClipboard_Popup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'QuestionsClipboard_Popup')
+QuestionsClipboard_Popup.Closed += QuestionsClipboard_Popup_Closed
+mi_Question_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_CopyToClipboard')
+mi_Question_CopyToClipboard.Click += mi_Question_CopyToClipboard_Click
+mi_Question_PasteFromClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_PasteFromClipboard')
+mi_Question_PasteFromClipboard.Click += mi_Question_PasteFromClipboard_Click
 
+#btn_Questions_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_CopyToClipboard')
+#btn_Questions_CopyToClipboard.Click += Duplicate_MRA_Question
+
+btn_Question_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveTop')
+btn_Question_MoveTop.Click += btn_Question_MoveTop_Click
+btn_Question_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveUp')
+btn_Question_MoveUp.Click += btn_Question_MoveUp_Click
+btn_Question_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveDown')
+btn_Question_MoveDown.Click += btn_Question_MoveDown_Click
+btn_Question_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveBottom')
+btn_Question_MoveBottom.Click += btn_Question_MoveBottom_Click
+btn_Question_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_DeleteSelected')
+btn_Question_DeleteSelected.Click += btn_Question_DeleteSelected_Click
+
+tb_MRA_NoQuestionsText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoQuestionsText')
+dg_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Questions')
+dg_MRA_Questions.SelectionChanged += dg_MRA_Questions_SelectionChanged
+
+## Editing Questions Area ##
+tb_ESQ_QuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ESQ_QuestionID')
+txt_ESQ_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionText')
+txt_ESQ_QuestionGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionGroup')
+btn_ESQ_SaveQuestion = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_ESQ_SaveQuestion')
+btn_ESQ_SaveQuestion.Click += btn_ESQ_SaveQuestion_Click
+
+#########################################################################
 
 # New Editable Answer List (as each Q is now having its own dedicated answer... no longer using 'groups' now we've added 'Email Comment' (which is specific to Question!)
 dg_EditMRA_AnswersPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_EditMRA_AnswersPreview')
@@ -741,7 +1010,7 @@ MRA_A_Sep6 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep6')
 
 ## P R E V I E W   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
 btn_MRAPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_BackToOverview')
-btn_MRAPreview_BackToOverview.Click += PreviewMRA_BackToOverview
+#btn_MRAPreview_BackToOverview.Click += PreviewMRA_BackToOverview
 lbl_MRA_Preview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_ID')
 lbl_MRA_Preview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_Name')
 lbl_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Score')
