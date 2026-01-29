@@ -307,13 +307,24 @@ def btn_MRATemplate_Edit_Click(s, event):
   # This function will load the 'Questions' tab for the selected item
   
   # if nothing selected, alert user and bomb-out now...
-  if dg_MRA_Templates.SelectedIndex == -1:
+  if lbl_MRATemplate_ID.Content == '0' or dg_MRA_Templates.SelectedIndex == UNSELECTED:
     MessageBox.Show("Nothing selected to Edit!", "Error: Edit selected Matter Risk Assessment...")
     return
-  else:
-    origItem = dg_MRA_Templates.SelectedItem  
+
+  origItem = dg_MRA_Templates.SelectedItem  
   
-  MessageBox.Show("EditSelected_Click", "DEBUG - TESTING")
+  # put details into header area of 'Questions' tab
+  tb_ThisMRAid.Text = str(lbl_MRATemplate_ID.Content)
+  tb_ThisMRAname.Text = str(tb_MRATemplate_Name.Text)
+
+  # refresh questions datagrid
+  dg_MRA_Questions_Refresh()
+
+  # show 'Questions' tab and hide 'Overview' tab
+  ti_MRA_Overview.Visibility = Visibility.Collapsed
+  ti_MRA_Questions.Visibility = Visibility.Visible
+  ti_MRA_Questions.IsSelected = True
+  #MessageBox.Show("EditSelected_Click", "DEBUG - TESTING")
   return
 
 # # # #  END OF:  Matter Risk Assessment Templates   # # # #
@@ -343,6 +354,16 @@ class MRA_Questions(object):
       return ''
 
 
+def btn_Questions_AddNew_Click(s, event):
+  # This function will add a new question to the current selected Matter Risk Assessment template
+  
+  templateID = int(tb_ThisMRAid.Text)
+  questionID = runSQL(codeToRun="SELECT ISNULL(MAX(QuestionID), 0) + 1 FROM Usr_MRAv2_Question", returnType='Int')
+  insertSQL = """INSERT INTO Usr_MRAv2_Question (QuestionID, QuestionText)
+                 VALUES ({qID}, 'New Question - please edit text')""".format(qID=questionID)
+
+  MessageBox.Show("Add New Question button click", "Add New Question...")
+  return
 
 def btn_Questions_Clipboard_Click(s, event):
   # This function will open the 'Questions Clipboard' window for copying/pasting questions between templates
@@ -436,12 +457,10 @@ def dg_MRA_Questions_EditArea_PopulateFromSelected():
 def dg_MRA_Questions_Refresh():
   # This function will refresh the 'MRA Questions' datagrid for the selected template
   
-  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
-    dg_MRA_Questions.ItemsSource = []
-    return
-  
   # otherwise, get TemplateID to use from this page
   templateID = int(tb_ThisMRAid.Text)
+  if templateID == -1:
+    return
 
   # form SQL to get questions for this template
   sql = """SELECT '0-QuestionID' = T.QuestionID,
@@ -478,9 +497,36 @@ def dg_MRA_Questions_Refresh():
   tmpC = ListCollectionView(tmpItem)
   tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraQ_QuestionGroup"))
   dg_MRA_Questions.ItemsSource = tmpC
-
+  
+  dg_MRA_Questions_SetVisibilityOfEditArea()
   #MessageBox.Show("Refresh MRA Questions datagrid", "DEBUG - Refresh MRA Questions...")
   return
+
+def dg_MRA_Questions_SetVisibilityOfEditArea():
+  # This function will set the visibility of the 'Edit Question' area below the datagrid depending on whether something is selected or not
+
+  if dg_MRA_Questions.Items.Count == 0:
+    tb_MRA_NoQuestionsText.Visibility = Visibility.Visible
+    dg_MRA_Questions.Visibility = Visibility.Collapsed
+  else:
+    tb_MRA_NoQuestionsText.Visibility = Visibility.Collapsed
+    dg_MRA_Questions.Visibility = Visibility.Visible
+
+  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
+    tb_ESQ_QuestionID.Text = ''
+    txt_ESQ_QuestionText.Text = ''
+    txt_ESQ_QuestionGroup.Text = ''
+    btn_ESQ_SaveQuestion.IsEnabled = False
+    tb_ESQ_QuestionID.IsEnabled = False
+    txt_ESQ_QuestionText.IsEnabled = False
+    txt_ESQ_QuestionGroup.IsEnabled = False
+  else:
+    btn_ESQ_SaveQuestion.IsEnabled = True
+    tb_ESQ_QuestionID.IsEnabled = True
+    txt_ESQ_QuestionText.IsEnabled = True
+    txt_ESQ_QuestionGroup.IsEnabled = True
+  return
+
 
 def btn_ESQ_SaveQuestion_Click(s, event):
   # This function will save the edited question details from the 'Edit Question' area below the datagrid
@@ -938,7 +984,7 @@ tb_MRA_SourceAnswerID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_
 
 ## Toolbar Buttons for Editing Questions ##
 btn_Questions_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_AddNew')
-#btn_Questions_AddNew.Click += AddNew_MRA_Question
+btn_Questions_AddNew.Click += btn_Questions_AddNew_Click
 btn_Questions_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_Clipboard')
 btn_Questions_Clipboard.Click += btn_Questions_Clipboard_Click
 QuestionsClipboard_Popup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'QuestionsClipboard_Popup')
