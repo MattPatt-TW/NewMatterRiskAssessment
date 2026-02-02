@@ -1793,6 +1793,7 @@ def populate_MRA_SelectAnswerCombo(s, event):
   else:
     return
   
+  #! MRAv2 This is where we would be looking at the MRA template joins, to filter out the old answer id
   mySQL = "SELECT AnswerText, Score, EmailComment, AnswerID FROM Usr_MRA_TemplateAs WHERE QuestionID = {0} ORDER BY DisplayOrder".format(tmpQID)
 
   _tikitDbAccess.Open(mySQL)
