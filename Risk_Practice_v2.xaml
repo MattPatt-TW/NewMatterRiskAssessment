@@ -137,7 +137,7 @@
                 <Label Foreground="Gray" Content="Name" Width="96" HorizontalContentAlignment="Right" />
                 <TextBox x:Name="tb_MRATemplate_Name" Text="[MRA NAME]" VerticalAlignment="Center" Width="340" Height="23" VerticalContentAlignment="Center"/>
                 <Label Content="ID" Foreground="Gray" Margin="6,0,0,0" HorizontalContentAlignment="Right"/>
-                <Label x:Name="lbl_MRATemplate_ID" Content="[ID]" Foreground="Gray" />
+                <Label x:Name="lbl_MRATemplate_ID" Content="0" Foreground="Gray" />
               </StackPanel>
 
 
@@ -388,25 +388,7 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" >
 
-          <GroupBox Header="This Matter Risk Assessment..." BorderBrush="Gray"  Width="550">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              
-              <TextBlock x:Name="tb_ThisMRAid" Text="-1" Foreground="Gray" Margin="4,0" FontWeight="Bold" Width="30"/>
-              <TextBlock x:Name="tb_ThisMRAname" Text="Name of NMRA" Margin="4,0" FontWeight="Bold"
-                         Foreground="Gray" TextTrimming="CharacterEllipsis" Width="494" />
-            </StackPanel>
-            
-          </GroupBox>
 
-
-          <Button x:Name="btn_BackToOverview_FromEditQs" ToolTip="Go back to the 'Overview' sheet"
-                  Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod"
-                  Height="34" Margin="20,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
-              <TextBlock Margin="4,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="50" TextWrapping="Wrap" />
-            </StackPanel>
-          </Button>
 
 
           <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="90,0,0,0">
@@ -486,20 +468,38 @@
               </Button>
 
               <Separator/>
-              
-              <ToggleButton x:Name="btn_Questions_Clipboard" Content="Clipboard..." ClickMode="Press" />
+
+              <ToggleButton x:Name="btn_Questions_Clipboard" ClickMode="Press" >
+                <StackPanel Orientation="Horizontal">
+                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\clipboard1.png" />
+                  <TextBlock Text="Clipboard..." Margin="3,4,0,4" TextAlignment="Left"/>
+                </StackPanel>
+              </ToggleButton>
               <Popup x:Name="QuestionsClipboard_Popup" 
-                     PlacementTarget="{Binding ElementName=btn_Questions_CopyToClipboard}"
+                     PlacementTarget="{Binding ElementName=btn_Questions_Clipboard}"
                      Placement="Bottom"
                      StaysOpen="False"
                      AllowsTransparency="True"
-                     PopupAnimation="Fade">
+                     PopupAnimation="Slide">
 
-                <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="6">
+                <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="2">
                   <StackPanel>
-                    <MenuItem Header="Copy to Clipboard" x:Name="mi_Question_CopyToClipboard" />
+                    <Button x:Name="mi_Question_CopyToClipboard" 
+                            Content="Copy to Clipboard"
+                            Padding="8,4"
+                            HorizontalContentAlignment="Left"
+                            BorderThickness="0"
+                            Background="Transparent"/>
+
                     <Separator/>
-                    <MenuItem Header="Paste from Clipboard" x:Name="mi_Question_PasteFromClipboard" />
+
+                    <Button x:Name="mi_Question_PasteFromClipboard" 
+                            Content="Paste from Clipboard"
+                            Padding="8,4"
+                            HorizontalContentAlignment="Left"
+                            BorderThickness="0"
+                            Background="Transparent"/>
+
 
                   </StackPanel>
                   
@@ -516,7 +516,7 @@
               </Button>
               <Separator Width="4"/>
 
-              <TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray"/>
+              <!--<TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray"/>
               <Button x:Name="btn_Question_MoveTop" ToolTip="Move the currently selected Question to the top of the list">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
@@ -554,7 +554,7 @@
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                   <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
                 </StackPanel>
-              </Button>
+              </Button>-->
               <Separator Width="4"/>
 
             </ToolBar>
@@ -563,8 +563,8 @@
 
           <TextBlock x:Name="tb_MRA_NoQuestionsText" 
                      Text="No questions currently exist for this Matter Risk Assessment... click the 'Add New...' button to add a new question" 
-                     TextWrapping="Wrap" Foreground="Red"  FontWeight="Bold" FontSize="20" Visibility="Collapsed" 
-                     Grid.Row="2" Grid.Column="0" Grid.RowSpan="3"/>
+                     TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Visibility="Collapsed" 
+                     Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" />
 
           <DataGrid x:Name="dg_MRA_Questions" Width="Auto" 
                     Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" 
@@ -723,7 +723,7 @@
             </Button>
             <Separator x:Name="MRA_A_Sep7" Width="4"/>
             
-            <Button x:Name="btn_A_MoveTop1" ToolTip="Move selected answer item to the top of the list">
+            <!--<Button x:Name="btn_A_MoveTop1" ToolTip="Move selected answer item to the top of the list">
               <StackPanel Orientation="Vertical">
                 <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
                 <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
@@ -760,7 +760,7 @@
                 <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                 <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
               </StackPanel>
-            </Button>
+            </Button>-->
             <Separator Width="4"/>
             
             <Label x:Name="lbl_MRA_Answer_Text" Visibility="Collapsed" />
@@ -852,6 +852,276 @@
          
       
     </TabItem>
+
+
+    <TabItem Header="New Edit Questions">
+      <TabItem.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>        
+      </TabItem.Resources>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1*" />
+          </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+          <RowDefinition Height="1*" />
+          <RowDefinition Height="15*" />
+        </Grid.RowDefinitions>
+
+          
+          <!-- TOP Toolbar section -->
+        <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
+          <GroupBox Header="This Matter Risk Assessment..." BorderBrush="Gray"  MaxWidth="550"
+                    Margin="2">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+              <TextBlock x:Name="tb_ThisMRAid" Text="-1" Foreground="Gray" Margin="4,0" FontWeight="Bold" />
+              <TextBlock x:Name="tb_ThisMRAname" Text="Name of NMRA" Margin="4,0" FontWeight="Bold"
+                         Foreground="Gray" TextTrimming="CharacterEllipsis"  />
+            </StackPanel>
+
+          </GroupBox>
+
+
+          <Button x:Name="btn_BackToOverview_FromEditQs" ToolTip="Go back to the 'Overview' sheet"
+                  Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod"
+                  Height="34" Margin="20,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
+              <TextBlock Margin="4,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="50" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+
+        </StackPanel>
+
+
+
+        <!-- LEFT: Tree -->
+          <Border Grid.Column="0" Grid.Row="1"
+                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
+                  CornerRadius="10">
+            
+            <TreeView x:Name="tvTemplate"
+                      ItemsSource="{Binding Groups}" >
+
+              <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
+                  <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"/>
+
+                  <HierarchicalDataTemplate.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Answers}">
+                      <TextBlock Text="{Binding QuestionText}" />
+
+                      <HierarchicalDataTemplate.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding AnswerText}" />
+                            <TextBlock Text="  (" />
+                            <TextBlock Text="{Binding Score}" />
+                            <TextBlock Text=")" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </HierarchicalDataTemplate.ItemTemplate>
+
+                    </HierarchicalDataTemplate>
+                  </HierarchicalDataTemplate.ItemTemplate>
+
+                </HierarchicalDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+
+          </Border>
+
+          <!-- RIGHT: Editor -->
+          <Border Grid.Column="1" Grid.Row="1"
+                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
+                  CornerRadius="10">
+            <DockPanel>
+
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                <TextBlock Text="Edit details" FontSize="16" FontWeight="Bold" />
+                <Button Content="Update"
+                        Margin="12,0,0,0"
+                        Width="90" Visibility="Collapsed"/>
+
+                <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Margin="100,0,0,0" Padding="6,0"/>
+                <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Margin="20,0,0,0" Padding="6,0"/>
+              </StackPanel>
+
+              <StackPanel>
+
+              <!-- GROUP EDITOR -->
+              <GroupBox Header="Question Group Details..." BorderBrush="Gray" Margin="0,4">
+                <StackPanel Orientation="Horizontal" Margin="0,4" >
+                  <TextBlock Text="Question Group" VerticalAlignment="Center"/>
+                  <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}"
+                           Width="400" Height="23" Margin="4,0,0,0"/>
+                </StackPanel>
+
+              </GroupBox>
+
+              <!-- QUESTION EDITOR -->
+              <GroupBox Header="Question Details..." BorderBrush="Gray" Margin="0,4" >
+                <StackPanel Margin="0,4">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="Question Display Order"  VerticalAlignment="Center" />
+                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}" 
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+
+                    <TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
+                    <Button x:Name="btn_Question_MoveTop" Margin="4,0,0,0" 
+                            ToolTip="Move the currently selected Question to the top of the list">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Question_MoveUp" Margin="4,0,0,0" 
+                            ToolTip="Move the currently selected Question up one row">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Question_MoveDown" Margin="4,0,0,0"
+                            ToolTip="Move the currently selected Question down one row">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Question_MoveBottom" Margin="4,0,0,0"
+                            ToolTip="Move the currently selected Question to the bottom of the list">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Question_DeleteSelected" Margin="4,0,0,0"
+                            Background="#FFFFA7A7" BorderBrush="DarkRed"
+                            ToolTip="Deletes the currently selected Question (requires confirmation)">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                  </StackPanel>
+
+                  <TextBlock Text="Question Text:" />
+                  <TextBox Text="{Binding SelectedQuestion.QuestionText}"
+                           AcceptsReturn="True"
+                           Height="80"
+                           TextWrapping="Wrap"/>
+
+                </StackPanel>
+                
+              </GroupBox>
+              
+              <!-- ANSWER EDITOR -->
+              <GroupBox Header="Answer Details..." BorderBrush="Gray" Margin="0,4" >
+                <StackPanel Margin="0,4">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="Answer Display Order"  VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}" 
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+                    <TextBlock Text="Move A:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
+                    <Button x:Name="btn_A_MoveTop1" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item to the top of the list">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_A_MoveUp1" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item up one row">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_A_MoveDown1" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item dowm one row">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_A_MoveBottom1" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item to the bottom of the list" >
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_DeleteSelectedListItem1" Margin="4,0,0,0" Background="#FFFFA7A7"  
+                            ToolTip="Delete the selected answer item (requires confirmation)...">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+
+                  </StackPanel>
+                  
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                    <TextBox Text="{Binding SelectedAnswer.Score}" 
+                             Width="80" Height="23" Margin="4,0,0,0"/>
+
+                    
+                  </StackPanel>
+                  
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
+
+                    <TextBox Text="{Binding SelectedAnswer.AnswerText}"
+                             AcceptsReturn="False"
+                             Height="23" Width="400"
+                             TextWrapping="Wrap"
+                             Margin="4,0,0,0" />
+
+                  </StackPanel>
+
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
+                    <TextBox Text="{Binding SelectedAnswer.EmailComment}" 
+                             Width="400" Height="46" Margin="4,0,0,0"/>
+                  </StackPanel>
+
+                </StackPanel>
+
+
+              </GroupBox>
+              
+
+
+              </StackPanel>
+
+
+            </DockPanel>
+          </Border>
+        </Grid>
+
+      
+    </TabItem>
+    
     <!-- E N D   O F   A N S W E R S   S E C T I O N --> 
 
     

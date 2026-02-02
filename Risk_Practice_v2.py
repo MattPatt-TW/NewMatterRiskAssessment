@@ -5,6 +5,8 @@
       <![CDATA[
 import clr
 #from TWUtils import runSQL
+clr.AddReference("System")            # for new MRA Edit Template tab code
+clr.AddReference("WindowsBase")       # for new MRA Edit Template tab code
 
 clr.AddReference('mscorlib')
 clr.AddReference('PresentationCore')
@@ -12,10 +14,12 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime
+from System import DateTime, EventHandler
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
+from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
+from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper
 from System.Windows import Data, UIElement, Visibility, Window
 from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
@@ -28,7 +32,7 @@ import re
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 UNSELECTED = -1
-
+_temp_id = -1
 
 # # # #   O N   L O A D   E V E N T   # # # #
 def myOnLoadEvent(s, event):
@@ -311,14 +315,15 @@ def btn_MRATemplate_Edit_Click(s, event):
     MessageBox.Show("Nothing selected to Edit!", "Error: Edit selected Matter Risk Assessment...")
     return
 
-  origItem = dg_MRA_Templates.SelectedItem  
-  
   # put details into header area of 'Questions' tab
   tb_ThisMRAid.Text = str(lbl_MRATemplate_ID.Content)
   tb_ThisMRAname.Text = str(tb_MRATemplate_Name.Text)
 
   # refresh questions datagrid
-  dg_MRA_Questions_Refresh()
+  #dg_MRA_Questions_Refresh()
+
+  # new treeview/template editor VM code
+  EditMRA_loadTreeViewStructure(selectedTemplateID=int(tb_ThisMRAid.Text))
 
   # show 'Questions' tab and hide 'Overview' tab
   ti_MRA_Overview.Visibility = Visibility.Collapsed
@@ -376,6 +381,7 @@ def QuestionsClipboard_Popup_Closed(s, event):
   # This function will uncheck the 'Questions Clipboard' button when the popup is closed
   
   btn_Questions_Clipboard.IsChecked = False
+  QuestionsClipboard_Popup.IsOpen = False
   return
 
 def mi_Question_CopyToClipboard_Click(s, event):
@@ -497,7 +503,7 @@ def dg_MRA_Questions_Refresh():
   tmpC = ListCollectionView(tmpItem)
   tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraQ_QuestionGroup"))
   dg_MRA_Questions.ItemsSource = tmpC
-  
+
   dg_MRA_Questions_SetVisibilityOfEditArea()
   #MessageBox.Show("Refresh MRA Questions datagrid", "DEBUG - Refresh MRA Questions...")
   return
@@ -910,6 +916,396 @@ def runSQL(codeToRun = '', showError = False, errorMsgText = '', errorMsgTitle =
     
 ###################################################################################################################################################
 
+## New MRA Edit Template tab code below ##
+
+class NotifyBase(INotifyPropertyChanged):
+  # This creates add_PropertyChanged/remove_PropertyChanged automatically
+  def __init__(self):
+    # store delegates that WPF adds via add_PropertyChanged
+    self._pc_handlers = []
+
+  # .NET event accessor: WPF calls this when binding subscribes
+  def add_PropertyChanged(self, handler):
+    if handler is None:
+      return
+    self._pc_handlers.append(handler)
+
+  # .NET event accessor: WPF calls this when binding unsubscribes
+  def remove_PropertyChanged(self, handler):
+    if handler is None:
+      return
+    # remove first matching instance
+    for i in range(len(self._pc_handlers) - 1, -1, -1):
+      if self._pc_handlers[i] == handler:
+        del self._pc_handlers[i]
+        break
+
+  
+  def _raise(self, prop_name):
+    if not self._pc_handlers:
+      return
+    args = PropertyChangedEventArgs(prop_name)
+    # iterate over a copy in case handlers mutate subscriptions
+    for h in list(self._pc_handlers):
+      h(self, args)
+
+
+class GroupVM(NotifyBase):
+  def __init__(self, group_name):
+    NotifyBase.__init__(self)
+    self._GroupName = group_name
+    #self.Questions = ObservableCollection[QuestionVM]()  # forward ref ok in IronPython at runtime
+    self.Questions = ObservableCollection[object]()
+
+  @property
+  def GroupName(self): return self._GroupName
+  @GroupName.setter
+  def GroupName(self, v):
+      self._GroupName = v
+      self._raise("GroupName")
+
+
+class QuestionVM(NotifyBase):
+  def __init__(self, question_id, text, question_display_order=0, parent_group=None):
+    NotifyBase.__init__(self)
+    self.QuestionID = question_id
+    self.ParentGroup = parent_group
+    self._QuestionText = text
+    self._QuestionDisplayOrder = question_display_order
+    #self.Answers = ObservableCollection[AnswerVM]()
+    self.Answers = ObservableCollection[object]()
+
+  @property
+  def QuestionText(self): return self._QuestionText
+  @QuestionText.setter
+  def QuestionText(self, v):
+      self._QuestionText = v
+      self._raise("QuestionText")
+
+  @property
+  def QuestionDisplayOrder(self): return self._QuestionDisplayOrder
+  @QuestionDisplayOrder.setter
+  def QuestionDisplayOrder(self, v):
+      self._QuestionDisplayOrder = v
+      self._raise("QuestionDisplayOrder")
+
+
+class AnswerVM(NotifyBase):
+  def __init__(self, answer_id, text, score, email_comment='', answer_display_order=0, parent_question=None):
+    NotifyBase.__init__(self)
+    self.AnswerID = answer_id
+    self.ParentQuestion = parent_question
+    self._AnswerText = text
+    self._Score = score
+    self._EmailComment = email_comment
+    self._AnswerDisplayOrder = answer_display_order
+
+  @property
+  def AnswerText(self): return self._AnswerText
+  @AnswerText.setter
+  def AnswerText(self, v):
+      self._AnswerText = v
+      self._raise("AnswerText")
+
+  @property
+  def Score(self): return self._Score
+  @Score.setter
+  def Score(self, v):
+      self._Score = v
+      self._raise("Score")
+
+  @property
+  def EmailComment(self): return self._EmailComment
+  @EmailComment.setter
+  def EmailComment(self, v):
+      self._EmailComment = v
+      self._raise("EmailComment")
+
+  @property
+  def AnswerDisplayOrder(self): return self._AnswerDisplayOrder
+  @AnswerDisplayOrder.setter
+  def AnswerDisplayOrder(self, v):
+      self._AnswerDisplayOrder = v
+      self._raise("AnswerDisplayOrder")
+
+
+class TemplateEditorVM(NotifyBase):
+  def __init__(self, template_id):
+    NotifyBase.__init__(self)
+    self.TemplateID = template_id
+    #self.Groups = ObservableCollection[GroupVM]()
+    self.Groups = ObservableCollection[object]()
+
+    self._SelectedItem = None
+    self._SelectedGroup = None
+    self._SelectedQuestion = None
+    self._SelectedAnswer = None
+
+  @property
+  def SelectedItem(self): return self._SelectedItem
+  
+  @SelectedItem.setter
+  def SelectedItem(self, v):
+      self._SelectedItem = v
+
+      # Reset
+      self._SelectedGroup = None
+      self._SelectedQuestion = None
+      self._SelectedAnswer = None
+
+      if v is None:
+        pass
+      elif isinstance(v, GroupVM):
+        self._SelectedGroup = v
+        # optionally auto-select first question/answer?
+        if v.Questions.Count > 0:
+          self._SelectedQuestion = v.Questions[0]
+          if self._SelectedQuestion.Answers.Count > 0:
+            self._SelectedAnswer = self._SelectedQuestion.Answers[0]
+
+      elif isinstance(v, QuestionVM):
+        self._SelectedQuestion = v
+        self._SelectedGroup = v.ParentGroup
+        if v.Answers.Count > 0:
+          self._SelectedAnswer = v.Answers[0]
+
+      elif isinstance(v, AnswerVM):
+        self._SelectedAnswer = v
+        self._SelectedQuestion = v.ParentQuestion
+        if self._SelectedQuestion is not None:
+          self._SelectedGroup = self._SelectedQuestion.ParentGroup
+
+      self._raise("SelectedItem")
+      self._raise("SelectedGroup")
+      self._raise("SelectedQuestion")
+      self._raise("SelectedAnswer")
+
+  @property
+  def SelectedGroup(self): return self._SelectedGroup
+
+  @property
+  def SelectedQuestion(self): return self._SelectedQuestion
+  
+  @property
+  def SelectedAnswer(self): return self._SelectedAnswer
+
+## above mostly supplied from ChatGPT with minor modifications (adding additional fields recently added to XAML) ##
+
+def tvTemplate_SelectedItemChanged(sender, e):
+  # This function will handle when the selected item in the Template TreeView changes
+
+  _tikitSender.DataContext.SelectedItem = e.NewValue
+
+  #MessageBox.Show("Template TreeView selected item changed", "DEBUG - Template TreeView Selected Item Changed...")
+  return
+
+
+def load_template_structure_from_reader(vm, dr):
+# This function will load the template structure from a data reader into the provided ViewModel (vm)
+
+  group_map = {}  # group_name -> GroupVM
+  q_map = {}      # (group_name, question_id) -> QuestionVM
+
+  # Optional: if you want stable ordering
+  group_names_in_order = []
+  question_keys_in_order = []  # track first-seen order
+
+  while dr.Read():
+    group_name = "" if dr.IsDBNull(0) else dr.GetString(0)            # QuestionGroup
+    q_order    = 0  if dr.IsDBNull(1) else int(dr.GetValue(1))        # QuestionOrder
+    q_id       = 0  if dr.IsDBNull(2) else int(dr.GetValue(2))        # QuestionID
+    q_text     = "" if dr.IsDBNull(3) else dr.GetString(3)            # QuestionText
+
+    a_order    = 0  if dr.IsDBNull(4) else int(dr.GetValue(4))        # AnswerOrder
+    a_id       = 0  if dr.IsDBNull(5) else int(dr.GetValue(5))        # AnswerID
+    a_text     = "" if dr.IsDBNull(6) else dr.GetString(6)            # AnswerText
+    email_c    = "" if dr.IsDBNull(7) else dr.GetString(7)            # EmailComment
+    score      = 0  if dr.IsDBNull(8) else int(dr.GetValue(8))        # Score
+
+    # Group
+    g = group_map.get(group_name)
+    if g is None:
+      g = GroupVM(group_name)
+      group_map[group_name] = g
+      group_names_in_order.append(group_name)
+
+    # Question
+    q_key = (group_name, q_id)
+    q = q_map.get(q_key)
+    if q is None:
+      q = QuestionVM(q_id, q_text, question_display_order=q_order, parent_group=g)
+      q_map[q_key] = q
+      g.Questions.Add(q)
+      question_keys_in_order.append(q_key)
+    else:
+      # keep updated values (optional)
+      q.QuestionText = q_text
+      q.QuestionDisplayOrder = q_order
+
+    # Answer (guard for LEFT JOIN nulls)
+    if a_id != 0:
+      a = AnswerVM(a_id, a_text, score, email_comment=email_c,
+                    answer_display_order=a_order, parent_question=q)
+      q.Answers.Add(a)
+
+  # Now sort within each group/question if you want strict ordering
+  # (ObservableCollection has no Sort, so rebuild in place)
+  for group_name in group_names_in_order:
+    g = group_map[group_name]
+
+    # sort questions by display order
+    qs = list(g.Questions)
+    qs.sort(key=lambda qq: (qq.QuestionDisplayOrder, qq.QuestionText))
+    g.Questions.Clear()
+    for q in qs:
+      # sort answers by answer display order
+      ans = list(q.Answers)
+      ans.sort(key=lambda aa: (aa.AnswerDisplayOrder, aa.AnswerText))
+      q.Answers.Clear()
+      for a in ans:
+        q.Answers.Add(a)
+      g.Questions.Add(q)
+
+  # Load into vm
+  vm.Groups.Clear()
+  for group_name in sorted(group_map.keys()):  # or group_names_in_order for first-seen order
+    vm.Groups.Add(group_map[group_name])
+
+  # Set initial selection
+  if vm.Groups.Count > 0:
+    vm.SelectedItem = vm.Groups[0]
+
+
+def EditMRA_loadTreeViewStructure(selectedTemplateID):
+
+  if selectedTemplateID is None or selectedTemplateID == 0:
+    return
+
+  # form sql to get template structure
+  sql = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText, 
+                  MRAT.AnswerOrder, MRAT.AnswerID, MRAA.AnswerText, MRAA.EmailComment, MRAT.Score
+          FROM Usr_MRAv2_Templates MRAT
+            JOIN Usr_MRAv2_TemplateDetails TD ON MRAT.TemplateID = TD.TemplateID
+            LEFT OUTER JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
+            LEFT OUTER JOIN Usr_MRAv2_Answer MRAA ON MRAT.AnswerID = MRAA.AnswerID
+          WHERE MRAT.TemplateID = {0}
+          ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.AnswerOrder""".format(selectedTemplateID)
+
+  vm = TemplateEditorVM(selectedTemplateID)
+  _tikitSender.DataContext = vm
+
+  _tikitDbAccess.Open(sql)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    load_template_structure_from_reader(vm, dr)
+    dr.Close()
+  _tikitDbAccess.Close()
+  return
+
+
+def next_question_order(group_vm):
+  if group_vm is None or group_vm.Questions.Count == 0:
+    return 1
+  return max([q.QuestionDisplayOrder for q in group_vm.Questions]) + 1
+
+def next_answer_order(question_vm):
+  if question_vm is None or question_vm.Answers.Count == 0:
+    return 1
+  return max([a.AnswerDisplayOrder for a in question_vm.Answers]) + 1
+
+
+# --- module-level temp negative ID generator for new items ---
+def _next_temp_id():
+  global _temp_id
+  _temp_id -= 1
+  return _temp_id
+
+def _renumber_questions(group_vm):
+  """Set QuestionDisplayOrder based on current list order (1..n)."""
+  if group_vm is None: return
+  i = 1
+  for q in group_vm.Questions:
+    q.QuestionDisplayOrder = i
+    i += 1
+
+def _renumber_answers(question_vm):
+  """Set AnswerDisplayOrder based on current list order (1..n)."""
+  if question_vm is None: return
+  i = 1
+  for a in question_vm.Answers:
+    a.AnswerDisplayOrder = i
+    i += 1
+
+def _ensure_selected_context(vm):
+  """
+  If a user selects a Group but no SelectedQuestion/Answer set yet,
+  populate sensible defaults. Your SelectedItem setter already does most of this,
+  but this can help after programmatic inserts.
+  """
+  if vm is None: return
+  if vm.SelectedGroup is None and vm.Groups.Count > 0:
+    vm.SelectedItem = vm.Groups[0]
+
+
+def btn_EditMRA_Question_Add_Click(sender, e):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  # Determine target group
+  g = vm.SelectedGroup
+  if g is None:
+    # Create a default group if nothing selected
+    g = GroupVM("New Group")
+    vm.Groups.Add(g)
+    vm.SelectedItem = g
+
+  # Create new question
+  new_qid = _next_temp_id()
+  q = QuestionVM(new_qid, "New question...", question_display_order=0, parent_group=g)
+  g.Questions.Add(q)
+
+  # Optional: create a starter answer so UI always has 3 levels populated
+  new_aid = _next_temp_id()
+  a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
+  q.Answers.Add(a)
+
+  # Renumber display orders based on current list position
+  _renumber_questions(g)
+  _renumber_answers(q)
+
+  # Select new question (or the answer if you prefer)
+  vm.SelectedItem = q
+  return
+
+def btn_EditMRA_Answer_Add_Click(sender, e):
+  
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  # Determine target question
+  q = vm.SelectedQuestion
+  if q is None and vm.SelectedAnswer is not None:
+    q = vm.SelectedAnswer.ParentQuestion
+
+  if q is None:
+    # Nothing to attach answer to
+    return
+
+  new_aid = _next_temp_id()
+  a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
+  q.Answers.Add(a)
+
+  _renumber_answers(q)
+
+  vm.SelectedItem = a
+  return
+
+
+######################################################################################################################
+
+
 ]]>
     </Init>
     <Loaded>
@@ -1084,6 +1480,14 @@ btn_preview_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'bt
 tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
 
 
+## New MRA Template Editor ViewModel ##
+#templateEditorVM = None
+tvTemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tvTemplate')      # tree view listing Question Group > Question > Answers
+tvTemplate.SelectedItemChanged += tvTemplate_SelectedItemChanged
+btn_EditMRA_Question_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_Add')
+btn_EditMRA_Question_Add.Click += btn_EditMRA_Question_Add_Click
+btn_EditMRA_Answer_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_Add')
+btn_EditMRA_Answer_Add.Click += btn_EditMRA_Answer_Add_Click
 
 
 # Define Actions and on load events
