@@ -399,36 +399,6 @@ def mi_Question_PasteFromClipboard_Click(s, event):
   return
 
 
-def btn_Question_MoveTop_Click(s, event):
-  # This function will move the selected question to the top of the list
-  
-  MessageBox.Show("Move Question to Top button click", "Move Question to Top...")
-  return
-
-def btn_Question_MoveUp_Click(s, event):
-  # This function will move the selected question up one position in the list
-  
-  MessageBox.Show("Move Question Up button click", "Move Question Up...")
-  return
-
-def btn_Question_MoveDown_Click(s, event):
-  # This function will move the selected question down one position in the list
-  
-  MessageBox.Show("Move Question Down button click", "Move Question Down...")
-  return
-
-def btn_Question_MoveBottom_Click(s, event):
-  # This function will move the selected question to the bottom of the list
-  
-  MessageBox.Show("Move Question to Bottom button click", "Move Question to Bottom...")
-  return
-
-def btn_Question_DeleteSelected_Click(s, event):
-  # This function will delete the selected question from the current template
-  
-  MessageBox.Show("Delete Selected Question button click", "Delete Selected Question...")
-  return
-
 def dg_MRA_Questions_SelectionChanged(s, event):
   # This function will handle when the selection changes in the 'MRA Questions' datagrid - it puts selected question details into the edit area below
 
@@ -1221,20 +1191,44 @@ def _next_temp_id():
   return _temp_id
 
 def _renumber_questions(group_vm):
-  """Set QuestionDisplayOrder based on current list order (1..n)."""
+  # Set QuestionDisplayOrder based on current list order (1..n).
   if group_vm is None: return
   i = 1
   for q in group_vm.Questions:
     q.QuestionDisplayOrder = i
     i += 1
+  return
 
 def _renumber_answers(question_vm):
-  """Set AnswerDisplayOrder based on current list order (1..n)."""
+  # Set AnswerDisplayOrder based on current list order (1..n).
   if question_vm is None: return
   i = 1
   for a in question_vm.Answers:
     a.AnswerDisplayOrder = i
     i += 1
+  return
+
+def _move_item_to_index(collection, item, new_index):
+  # Moves item to new_index within an ObservableCollection.
+  if collection is None or item is None:
+    return False
+
+  old_index = collection.IndexOf(item)
+  if old_index < 0:
+    return False
+
+  # clamp
+  if new_index < 0:
+    new_index = 0
+  if new_index > collection.Count - 1:
+    new_index = collection.Count - 1
+
+  if new_index == old_index:
+    return False
+
+  # ObservableCollection has Move(oldIndex,newIndex) in WPF
+  collection.Move(old_index, new_index)
+  return True
 
 def _ensure_selected_context(vm):
   """
@@ -1302,6 +1296,152 @@ def btn_EditMRA_Answer_Add_Click(sender, e):
   vm.SelectedItem = a
   return
 
+
+def btn_EditMRA_Question_MoveTop_Click(sender, e):
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if g is None or q is None:
+    return
+
+  if _move_item_to_index(g.Questions, q, 0):
+    _renumber_questions(g)
+    vm.SelectedItem = q  # keep selection stable
+  return
+
+def btn_EditMRA_Question_MoveUp_Click(sender, e):
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if g is None or q is None:
+    return
+
+  idx = g.Questions.IndexOf(q)
+  if idx <= 0:
+    return
+
+  if _move_item_to_index(g.Questions, q, idx - 1):
+    _renumber_questions(g)
+    vm.SelectedItem = q
+  return
+
+def btn_EditMRA_Question_MoveDown_Click(sender, e):
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if g is None or q is None:
+    return
+
+  idx = g.Questions.IndexOf(q)
+  if idx < 0 or idx >= g.Questions.Count - 1:
+    return
+
+  if _move_item_to_index(g.Questions, q, idx + 1):
+    _renumber_questions(g)
+    vm.SelectedItem = q
+  return
+
+def btn_EditMRA_Question_MoveBottom_Click(sender, e):
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if g is None or q is None:
+    return
+
+  if _move_item_to_index(g.Questions, q, g.Questions.Count - 1):
+    _renumber_questions(g)
+    vm.SelectedItem = q
+  return
+
+
+def btn_EditMRA_Question_DeleteSelected_Click(sender, e):
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if g is None or q is None:
+    return
+
+  # Confirm deletion
+  res = MessageBox.Show("Are you sure you want to delete the selected question and all its answers?", "Confirm Delete Question", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+  if res != MessageBoxResult.Yes:
+    return
+
+  g.Questions.Remove(q)
+  _renumber_questions(g)
+
+  _ensure_selected_context(vm)
+  return
+
+
+def btn_EditMRA_Answer_MoveTop_Click(sender, e):
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if q is None or a is None:
+    return
+
+  if _move_item_to_index(q.Answers, a, 0):
+    _renumber_answers(q)
+    vm.SelectedItem = a
+
+def btn_EditMRA_Answer_MoveUp_Click(sender, e):
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if q is None or a is None:
+    return
+
+  idx = q.Answers.IndexOf(a)
+  if idx <= 0:
+    return
+
+  if _move_item_to_index(q.Answers, a, idx - 1):
+    _renumber_answers(q)
+    vm.SelectedItem = a
+
+def btn_EditMRA_Answer_MoveDown_Click(sender, e):
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if q is None or a is None:
+    return
+
+  idx = q.Answers.IndexOf(a)
+  if idx < 0 or idx >= q.Answers.Count - 1:
+    return
+
+  if _move_item_to_index(q.Answers, a, idx + 1):
+    _renumber_answers(q)
+    vm.SelectedItem = a
+
+def btn_EditMRA_Answer_MoveBottom_Click(sender, e):
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if q is None or a is None:
+    return
+
+  if _move_item_to_index(q.Answers, a, q.Answers.Count - 1):
+    _renumber_answers(q)
+    vm.SelectedItem = a
+
+def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if q is None or a is None:
+    return
+
+  # Confirm deletion
+  res = MessageBox.Show("Are you sure you want to delete the selected answer?", "Confirm Delete Answer", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+  if res != MessageBoxResult.Yes:
+    return
+
+  q.Answers.Remove(a)
+  _renumber_answers(q)
+
+  _ensure_selected_context(vm)
+  return
 
 ######################################################################################################################
 
@@ -1393,16 +1533,6 @@ mi_Question_PasteFromClipboard.Click += mi_Question_PasteFromClipboard_Click
 #btn_Questions_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_CopyToClipboard')
 #btn_Questions_CopyToClipboard.Click += Duplicate_MRA_Question
 
-btn_Question_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveTop')
-btn_Question_MoveTop.Click += btn_Question_MoveTop_Click
-btn_Question_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveUp')
-btn_Question_MoveUp.Click += btn_Question_MoveUp_Click
-btn_Question_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveDown')
-btn_Question_MoveDown.Click += btn_Question_MoveDown_Click
-btn_Question_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_MoveBottom')
-btn_Question_MoveBottom.Click += btn_Question_MoveBottom_Click
-btn_Question_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Question_DeleteSelected')
-btn_Question_DeleteSelected.Click += btn_Question_DeleteSelected_Click
 
 tb_MRA_NoQuestionsText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoQuestionsText')
 dg_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Questions')
@@ -1489,6 +1619,27 @@ btn_EditMRA_Question_Add.Click += btn_EditMRA_Question_Add_Click
 btn_EditMRA_Answer_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_Add')
 btn_EditMRA_Answer_Add.Click += btn_EditMRA_Answer_Add_Click
 
+btn_EditMRA_Question_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveTop')
+btn_EditMRA_Question_MoveTop.Click += btn_EditMRA_Question_MoveTop_Click
+btn_EditMRA_Question_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveUp')
+btn_EditMRA_Question_MoveUp.Click += btn_EditMRA_Question_MoveUp_Click
+btn_EditMRA_Question_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveDown')
+btn_EditMRA_Question_MoveDown.Click += btn_EditMRA_Question_MoveDown_Click
+btn_EditMRA_Question_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveBottom')
+btn_EditMRA_Question_MoveBottom.Click += btn_EditMRA_Question_MoveBottom_Click
+btn_EditMRA_Question_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_DeleteSelected')
+btn_EditMRA_Question_DeleteSelected.Click += btn_EditMRA_Question_DeleteSelected_Click
+
+btn_EditMRA_Answer_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveTop')
+btn_EditMRA_Answer_MoveTop.Click += btn_EditMRA_Answer_MoveTop_Click
+btn_EditMRA_Answer_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveUp')
+btn_EditMRA_Answer_MoveUp.Click += btn_EditMRA_Answer_MoveUp_Click
+btn_EditMRA_Answer_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveDown')
+btn_EditMRA_Answer_MoveDown.Click += btn_EditMRA_Answer_MoveDown_Click
+btn_EditMRA_Answer_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveBottom')
+btn_EditMRA_Answer_MoveBottom.Click += btn_EditMRA_Answer_MoveBottom_Click
+btn_EditMRA_Answer_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_DeleteSelected')
+btn_EditMRA_Answer_DeleteSelected.Click += btn_EditMRA_Answer_DeleteSelected_Click
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')
