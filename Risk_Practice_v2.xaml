@@ -21,7 +21,7 @@
       <Canvas>
         <TextBlock Text="Use this page to configure a Matter Risk Assessment template and set which Case Types (or Departments) should use which"
                    Foreground="Gray" Canvas.Left="10" Canvas.Top="10" Width="812" />
-        
+
         <DataGrid x:Name="dg_MRA_Templates" Width="577" Height="611"
                   AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" 
                   IsTextSearchEnabled="True" Canvas.Top="41" Canvas.Left="10"
@@ -82,7 +82,7 @@
           </DataGrid.Columns>
         </DataGrid>
 
-        
+
         <StackPanel Orientation="Horizontal" Canvas.Left="690" Canvas.Top="41" HorizontalAlignment="Left" VerticalAlignment="Top" >
           <Button x:Name="btn_MRATemplate_AddNew" Margin="0,0,0,0">
             <StackPanel Orientation="Horizontal">
@@ -121,7 +121,7 @@
 
         </StackPanel>
 
-        
+
         <GroupBox Header="Meta-Data for the selected NMRA" Foreground="Gray" BorderBrush="Gray" Canvas.Left="602" Canvas.Top="90" 
                     Width="520"  HorizontalAlignment="Left" VerticalAlignment="Top"  >
 
@@ -132,7 +132,7 @@
 
             <StackPanel Orientation="Vertical" x:Name="stk_ST_SelectedMRA" >
 
-              
+
               <StackPanel  Orientation="Horizontal" Margin="0,2">
                 <Label Foreground="Gray" Content="Name" Width="96" HorizontalContentAlignment="Right" />
                 <TextBox x:Name="tb_MRATemplate_Name" Text="[MRA NAME]" VerticalAlignment="Center" Width="340" Height="23" VerticalContentAlignment="Center"/>
@@ -191,7 +191,7 @@
                              VerticalAlignment="Center" Grid.Column="3" Grid.Row="3" />
 
                 </Grid>
-                
+
                 <!--<StackPanel Orientation="Vertical">
                   <TextBlock Text="Low score is 0 to 'Medium (from)' minus 1" Foreground="Gray" Margin="0,2"/>
                   <TextBlock Text="Medium score is 'Medium (from)' to 'High (from)' minus 1" Foreground="Gray" Margin="0,2"/>
@@ -367,7 +367,7 @@
               </GroupBox>
 
             </StackPanel>
-            
+
           </StackPanel>
 
         </GroupBox>
@@ -378,22 +378,22 @@
 
     <TabItem Header="Edit MRA Template..." x:Name="ti_MRA_Questions" >
       <TabItem.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>        
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
       </TabItem.Resources>
 
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
-            <ColumnDefinition Width="1*" />
-          </Grid.ColumnDefinitions>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1*" />
+          <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
           <RowDefinition Height="1*" />
           <RowDefinition Height="14*" />
         </Grid.RowDefinitions>
 
-          
-          <!-- TOP Toolbar section -->
+
+        <!-- TOP Toolbar section -->
         <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
           <GroupBox Header="This Matter Risk Assessment..." BorderBrush="Gray"  MaxWidth="550"
                     Margin="2" VerticalAlignment="Center">
@@ -434,15 +434,16 @@
 
             </StackPanel>
           </GroupBox>
+          
 
-          <ToggleButton x:Name="btn_Questions_Clipboard" ClickMode="Press" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4,0">
+          <ToggleButton x:Name="btn_Clipboard_Copy" ClickMode="Press" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4,0">
             <StackPanel Orientation="Horizontal">
               <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\clipboard1.png" />
-              <TextBlock Text="Clipboard..." Margin="3,4,0,4" TextAlignment="Left"/>
+              <TextBlock Text="Clipboard - Copy..." Margin="3,4,0,4" TextAlignment="Left"/>
             </StackPanel>
           </ToggleButton>
-          <Popup x:Name="QuestionsClipboard_Popup" 
-                 PlacementTarget="{Binding ElementName=btn_Questions_Clipboard}"
+          <Popup x:Name="Clipboard_Popup_Copy" 
+                 PlacementTarget="{Binding ElementName=btn_Clipboard_Copy}"
                  Placement="Bottom"
                  StaysOpen="False"
                  AllowsTransparency="True"
@@ -450,8 +451,8 @@
 
             <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="2">
               <StackPanel>
-                <Button x:Name="mi_Question_CopyToClipboard" 
-                        Content="Copy to Clipboard"
+                <Button x:Name="btn_CopyToClipboard_QuestionOnly" 
+                        Content="Current Question only"
                         Padding="8,4"
                         HorizontalContentAlignment="Left"
                         BorderThickness="0"
@@ -459,77 +460,98 @@
 
                 <Separator/>
 
-                <Button x:Name="mi_Question_PasteFromClipboard" 
-                        Content="Paste from Clipboard"
+                <Button x:Name="btn_CopyToClipboard_QuestionAndAnswers" 
+                        Content="Current Question and all its Answers"
                         Padding="8,4"
                         HorizontalContentAlignment="Left"
                         BorderThickness="0"
                         Background="Transparent"/>
 
+                <Separator/>
+
+                <Button x:Name="btn_CopyToClipboard_AnswersAll" 
+                        Content="All Answers for current Question"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left"
+                        BorderThickness="0"
+                        Background="Transparent"/>
+
+                <Separator/>
+
+                <Button x:Name="btn_CopyToClipboard_AnswerOnly" 
+                        Content="Current Answer only"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left"
+                        BorderThickness="0"
+                        Background="Transparent"/>
 
               </StackPanel>
 
             </Border>
 
           </Popup>
+
+          <Button x:Name="btn_Clipboard_Paste" Content="Clipboard Paste" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4"/>
+
         </StackPanel>
 
 
 
         <!-- LEFT: Tree -->
-          <Border Grid.Column="0" Grid.Row="1"
+        <Border Grid.Column="0" Grid.Row="1"
                   Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
                   CornerRadius="10">
-            
-            <TreeView x:Name="tvTemplate"
+
+
+          <TreeView x:Name="tvTemplate"
                       ItemsSource="{Binding Groups}" 
                       ScrollViewer.HorizontalScrollBarVisibility="Auto" 
                       ScrollViewer.VerticalScrollBarVisibility="Auto" >
 
-              <TreeView.ItemTemplate>
-                <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
-                  <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"/>
+            <TreeView.ItemTemplate>
+              <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
+                <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="530"/>
 
-                  <HierarchicalDataTemplate.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Answers}">
-                      <TextBlock Text="{Binding QuestionText}" />
+                <HierarchicalDataTemplate.ItemTemplate>
+                  <HierarchicalDataTemplate ItemsSource="{Binding Answers}">
+                    <TextBlock Text="{Binding QuestionText}" TextWrapping="Wrap" MaxWidth="500"/>
 
-                      <HierarchicalDataTemplate.ItemTemplate>
-                        <DataTemplate>
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding AnswerText}" />
-                            <TextBlock Text="  (" />
-                            <TextBlock Text="{Binding Score}" />
-                            <TextBlock Text=")" />
-                          </StackPanel>
-                        </DataTemplate>
-                      </HierarchicalDataTemplate.ItemTemplate>
+                    <HierarchicalDataTemplate.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="{Binding AnswerText}" />
+                          <TextBlock Text="  (" />
+                          <TextBlock Text="{Binding Score}" />
+                          <TextBlock Text=")" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </HierarchicalDataTemplate.ItemTemplate>
 
-                    </HierarchicalDataTemplate>
-                  </HierarchicalDataTemplate.ItemTemplate>
+                  </HierarchicalDataTemplate>
+                </HierarchicalDataTemplate.ItemTemplate>
 
-                </HierarchicalDataTemplate>
-              </TreeView.ItemTemplate>
-            </TreeView>
+              </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
 
-          </Border>
+        </Border>
 
-          <!-- RIGHT: Editor -->
-          <Border Grid.Column="1" Grid.Row="1"
+        <!-- RIGHT: Editor -->
+        <Border Grid.Column="1" Grid.Row="1"
                   Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
                   CornerRadius="10">
-            <DockPanel>
+          <DockPanel>
 
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock Text="Edit details" FontSize="16" FontWeight="Bold" />
-                <Button Content="Update"
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
+              <TextBlock Text="Edit details" FontSize="16" FontWeight="Bold" />
+              <Button Content="Update"
                         Margin="12,0,0,0"
                         Width="90" Visibility="Collapsed"/>
 
-                
-              </StackPanel>
 
-              <StackPanel>
+            </StackPanel>
+
+            <StackPanel>
 
               <!-- GROUP EDITOR -->
               <GroupBox BorderBrush="Gray" Margin="0,4">
@@ -539,9 +561,9 @@
                     <Border Width="254" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
                     <Button x:Name="btn_EditMRA_Group_Add" Content="Add New Group" Padding="6,2"/>
                   </StackPanel>
-                  
+
                 </GroupBox.Header>
-                
+
                 <StackPanel Orientation="Horizontal" Margin="0,4" >
                   <TextBlock Text="Question Group" VerticalAlignment="Center"/>
                   <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}" Padding="2"
@@ -557,11 +579,11 @@
                     <TextBlock Text="Question Details..." VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
                     <Border Width="284" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
                     <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Padding="6,2"/>
-                    
+
                   </StackPanel>
 
                 </GroupBox.Header>
-                
+
                 <StackPanel Margin="0,4">
 
                   <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
@@ -621,9 +643,9 @@
                            TextWrapping="Wrap"/>
 
                 </StackPanel>
-                
+
               </GroupBox>
-              
+
               <!-- ANSWER EDITOR -->
               <GroupBox BorderBrush="Gray" Margin="0,4" >
                 <GroupBox.Header>
@@ -633,7 +655,7 @@
                     <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Padding="6,2"/>
                   </StackPanel>
                 </GroupBox.Header>
-                
+
                 <StackPanel Margin="0,4">
 
                   <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
@@ -684,15 +706,15 @@
 
 
                   </StackPanel>
-                  
+
                   <StackPanel Orientation="Horizontal" Margin="0,4">
                     <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
                     <TextBox Text="{Binding SelectedAnswer.Score}" 
                              Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
 
-                    
+
                   </StackPanel>
-                  
+
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
 
@@ -737,9 +759,9 @@
                     <TextBlock Text="{Binding DebugLines.Count, StringFormat=x{0}}"
                                 Foreground="Gray" Margin="8,0,0,0" TextAlignment="Center" Width="30"/>
                   </StackPanel>
-                  
+
                 </Expander.Header>
-                
+
                 <DockPanel>
                   <ListBox ItemsSource="{Binding DebugLines}"
                            FontFamily="Consolas"
@@ -759,17 +781,17 @@
             </StackPanel>
 
 
-            </DockPanel>
-          </Border>
-        </Grid>
+          </DockPanel>
+        </Border>
+      </Grid>
 
-      
+
     </TabItem>
-    
-    <!-- E N D   O F   A N S W E R S   S E C T I O N --> 
 
-    
-    
+    <!-- E N D   O F   A N S W E R S   S E C T I O N -->
+
+
+
     <TabItem Header="Preview" x:Name="ti_MRA_Preview" >
       <Canvas Background="#FFF3EFB3">
         <Label Content="PREVIEWING: " Foreground="Red" Canvas.Left="10" Canvas.Top="10" />

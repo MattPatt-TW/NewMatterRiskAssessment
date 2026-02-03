@@ -37,6 +37,17 @@ UNSELECTED = -1
 _temp_id = -1
 LOG_ROOT = r"\\tw-p4wapp01\PartnerDev\Managing Partner\Forms\NMRA and FileReviews\MRA_Log"
 
+# ---------- Module-level clipboard ----------
+MRA_CLIPBOARD = {
+    "Mode": None,                 # "Q_ONLY" | "Q_AND_ALL_A" | "ALL_A" | "A_ONLY"
+    "SourceTemplateID": None,
+    "SourceQuestionID": None,
+    "SourceAnswerID": None,
+    "QuestionText": "",
+    "Answers": []                 # list of dicts: {"AnswerText":..., "Score":..., "EmailComment":...}
+}
+# --------------------------------------------
+
 # # # #   O N   L O A D   E V E N T   # # # #
 def myOnLoadEvent(s, event):
   # populate drop-downs
@@ -346,35 +357,228 @@ def btn_MRATemplate_Edit_Click(s, event):
 # # # #  END OF:  Matter Risk Assessment Templates   # # # #
 
 
-def btn_Questions_Clipboard_Click(s, event):
+def btn_Clipboard_Copy_Click(s, event):
   # This function will open the 'Questions Clipboard' window for copying/pasting questions between templates
   
-  QuestionsClipboard_Popup.IsOpen = btn_Questions_Clipboard.IsChecked
+  Clipboard_Popup_Copy.IsOpen = btn_Clipboard_Copy.IsChecked
   #MessageBox.Show("Questions Clipboard button click", "Open Questions Clipboard...")
   return
 
-def QuestionsClipboard_Popup_Closed(s, event):
+def Clipboard_Popup_Copy_Closed(s, event):
   # This function will uncheck the 'Questions Clipboard' button when the popup is closed
   
-  btn_Questions_Clipboard.IsChecked = False
-  QuestionsClipboard_Popup.IsOpen = False
+  btn_Clipboard_Copy.IsChecked = False
+  Clipboard_Popup_Copy.IsOpen = False
   return
 
-def mi_Question_CopyToClipboard_Click(s, event):
-  # This function will copy the selected question to the clipboard
+def _answer_to_dict(a):
+  return {
+      "AnswerText": a.AnswerText or "",
+      "Score": int(a.Score) if a.Score is not None and str(a.Score) != "" else 0,
+      "EmailComment": a.EmailComment or ""
+    }
+
+def _set_clipboard_indicators(mode, tid, qid, aid):
+  tb_copied = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_CopiedWhat')
+  tb_tid    = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceTemplateID')
+  tb_qid    = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceQuestionID')
+  tb_aid    = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceAnswerID')
+
+  if tb_copied is not None: tb_copied.Text = str(mode or "")
+  if tb_tid is not None:    tb_tid.Text = str(tid if tid is not None else -1)
+  if tb_qid is not None:    tb_qid.Text = str(qid if qid is not None else -1)
+  if tb_aid is not None:    tb_aid.Text = str(aid if aid is not None else -1)
+  return
+
+def _add_answers_to_question(vm, q, answer_dicts):
+  if q is None:
+    return
+
+  # local temp id generator (same approach you used earlier)
+  # assumes you have _next_temp_id() implemented
+  for ad in answer_dicts:
+      aid = _next_temp_id()
+      a = AnswerVM(
+          aid,
+          ad.get("AnswerText", ""),
+          ad.get("Score", 0),
+          email_comment=ad.get("EmailComment", ""),
+          answer_display_order=0,
+          parent_question=q
+      )
+      q.Answers.Add(a)
+
+  _renumber_answers(q)
+  return
+
+def btn_CopyToClipboard_QuestionOnly_Click(s, event):
+  # This function will copy only the question text to the clipboard
+
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  if q is None:
+    return
+
+  MRA_CLIPBOARD["Mode"] = "Q_ONLY"
+  MRA_CLIPBOARD["SourceTemplateID"] = vm.TemplateID
+  MRA_CLIPBOARD["SourceQuestionID"] = q.QuestionID
+  MRA_CLIPBOARD["SourceAnswerID"] = None
+  MRA_CLIPBOARD["QuestionText"] = q.QuestionText or ""
+  MRA_CLIPBOARD["Answers"] = []
+
+  _set_clipboard_indicators("Question only", vm.TemplateID, q.QuestionID, None)
+
+  Clipboard_Popup_Copy_Closed(s, event)
+  MessageBox.Show("Copied Question Only to Clipboard", "Copied Question Only to Clipboard...")
+  return
+
+def btn_CopyToClipboard_QuestionAndAnswers_Click(s, event):
+  # This function will copy the question and all possible answers to the clipboard
   
-  QuestionsClipboard_Popup_Closed(s, event)
-  MessageBox.Show("Copy Question to Clipboard menu item click", "Copy Question to Clipboard...")
-  return
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  if q is None:
+    return
 
-def mi_Question_PasteFromClipboard_Click(s, event):
-  # This function will paste the question from the clipboard to the current template
+  MRA_CLIPBOARD["Mode"] = "Q_AND_ALL_A"
+  MRA_CLIPBOARD["SourceTemplateID"] = vm.TemplateID
+  MRA_CLIPBOARD["SourceQuestionID"] = q.QuestionID
+  MRA_CLIPBOARD["SourceAnswerID"] = None
+  MRA_CLIPBOARD["QuestionText"] = q.QuestionText or ""
+  MRA_CLIPBOARD["Answers"] = [_answer_to_dict(a) for a in q.Answers]
+
+  _set_clipboard_indicators("Question + all answers", vm.TemplateID, q.QuestionID, None)
   
-  QuestionsClipboard_Popup_Closed(s, event)
-  MessageBox.Show("Paste Question from Clipboard menu item click", "Paste Question from Clipboard...")
+  Clipboard_Popup_Copy_Closed(s, event)
+  MessageBox.Show("Copied Question and Answers to Clipboard", "Copied Question and Answers to Clipboard...")
+  return
+
+def btn_CopyToClipboard_AnswersAll_Click(s, event):
+  # This function will copy all possible answers to the clipboard
+  
+  vm = _tikitSender.DataContext
+  q = vm.SelectedQuestion
+  if q is None:
+    return
+
+  MRA_CLIPBOARD["Mode"] = "ALL_A"
+  MRA_CLIPBOARD["SourceTemplateID"] = vm.TemplateID
+  MRA_CLIPBOARD["SourceQuestionID"] = q.QuestionID
+  MRA_CLIPBOARD["SourceAnswerID"] = None
+  MRA_CLIPBOARD["QuestionText"] = ""
+  MRA_CLIPBOARD["Answers"] = [_answer_to_dict(a) for a in q.Answers]
+
+  _set_clipboard_indicators("All answers", vm.TemplateID, q.QuestionID, None)
+
+  Clipboard_Popup_Copy_Closed(s, event)
+  MessageBox.Show("Copied All Answers to Clipboard", "Copied All Answers to Clipboard...")
+  return
+
+def btn_CopyToClipboard_AnswerOnly_Click(s, event):
+  # This function will copy only the selected answer to the clipboard
+
+  vm = _tikitSender.DataContext
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if a is None or q is None:
+    return
+
+  MRA_CLIPBOARD["Mode"] = "A_ONLY"
+  MRA_CLIPBOARD["SourceTemplateID"] = vm.TemplateID
+  MRA_CLIPBOARD["SourceQuestionID"] = q.QuestionID
+  MRA_CLIPBOARD["SourceAnswerID"] = a.AnswerID
+  MRA_CLIPBOARD["QuestionText"] = ""
+  MRA_CLIPBOARD["Answers"] = [_answer_to_dict(a)]
+
+  _set_clipboard_indicators("Single answer", vm.TemplateID, q.QuestionID, a.AnswerID)  
+  
+  Clipboard_Popup_Copy_Closed(s, event)
+  MessageBox.Show("Copied Answer Only to Clipboard", "Copied Answer Only to Clipboard...")
   return
 
 
+def btn_Clipboard_Paste_Click(s, event):
+  # This function will paste the contents of the clipboard into the selected question/answer area
+  vm = _tikitSender.DataContext
+  clipboard_paste(vm)
+  
+  return
+
+
+def clipboard_paste(vm):
+  mode = MRA_CLIPBOARD.get("Mode")
+  if not mode:
+    MessageBox.Show("Clipboard is empty.", "Paste", MessageBoxButtons.OK, MessageBoxIcon.Information)
+    return
+
+  # Ensure group exists for new question creation
+  g = vm.SelectedGroup
+  if g is None and vm.Groups.Count > 0:
+    g = vm.Groups[0]
+
+  # Determine if we should paste into selected or create new
+  q_selected = vm.SelectedQuestion
+
+  contains_qtext = mode in ("Q_ONLY", "Q_AND_ALL_A")
+  contains_answers = mode in ("Q_AND_ALL_A", "ALL_A", "A_ONLY")
+
+  target_q = q_selected
+
+  # If question text is included, allow overwrite or create new
+  if contains_qtext:
+    if target_q is not None:
+        res = MessageBox.Show(
+            "Paste question text into the selected question?\n\nYes = overwrite selected\nNo = create new question",
+            "Paste Question",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question
+        )
+        if res == DialogResult.No:
+          target_q = None
+
+    if target_q is None:
+        # create a new question in selected group
+        if g is None:
+            g = GroupVM("New Group")
+            vm.Groups.Add(g)
+
+        qid = _next_temp_id()
+        target_q = QuestionVM(qid, "New question...", question_display_order=0, parent_group=g)
+        g.Questions.Add(target_q)
+        _renumber_questions(g)
+
+    # Apply question text
+    target_q.QuestionText = MRA_CLIPBOARD.get("QuestionText", "")
+
+  # If answers are included, decide where they go
+  if contains_answers:
+    if target_q is None:
+        # no selected question and we didn't paste/create one above
+        if g is None:
+            g = GroupVM("New Group")
+            vm.Groups.Add(g)
+
+        qid = _next_temp_id()
+        target_q = QuestionVM(qid, "New question...", question_display_order=0, parent_group=g)
+        g.Questions.Add(target_q)
+        _renumber_questions(g)
+
+    # Optional: ask append vs replace
+    if target_q.Answers.Count > 0:
+        res = MessageBox.Show(
+            "Add copied answers to the selected question?\n\nYes = append\nNo = replace existing answers",
+            "Paste Answers",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question
+        )
+        if res == DialogResult.No:
+            target_q.Answers.Clear()
+
+    _add_answers_to_question(vm, target_q, MRA_CLIPBOARD.get("Answers", []))
+
+  # Select something sensible after paste
+  vm.SelectedItem = target_q
+  return
 
  
 # # # #   C A S E   T Y P E   D E F A U L T S   # # # #
@@ -1533,18 +1737,22 @@ tb_MRA_SourceQuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MR
 tb_MRA_SourceAnswerID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceAnswerID')
 
 ## Toolbar Buttons for Editing Questions ##
-btn_Questions_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_Clipboard')
-btn_Questions_Clipboard.Click += btn_Questions_Clipboard_Click
-QuestionsClipboard_Popup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'QuestionsClipboard_Popup')
-QuestionsClipboard_Popup.Closed += QuestionsClipboard_Popup_Closed
-mi_Question_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_CopyToClipboard')
-mi_Question_CopyToClipboard.Click += mi_Question_CopyToClipboard_Click
-mi_Question_PasteFromClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_PasteFromClipboard')
-mi_Question_PasteFromClipboard.Click += mi_Question_PasteFromClipboard_Click
+btn_Clipboard_Copy = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Clipboard_Copy')
+btn_Clipboard_Copy.Click += btn_Clipboard_Copy_Click
+Clipboard_Popup_Copy = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'Clipboard_Popup_Copy')
+Clipboard_Popup_Copy.Closed += Clipboard_Popup_Copy_Closed
 
-#btn_Questions_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_CopyToClipboard')
-#btn_Questions_CopyToClipboard.Click += Duplicate_MRA_Question
+btn_CopyToClipboard_QuestionOnly = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_QuestionOnly')
+btn_CopyToClipboard_QuestionOnly.Click += btn_CopyToClipboard_QuestionOnly_Click
+btn_CopyToClipboard_QuestionAndAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_QuestionAndAnswers')
+btn_CopyToClipboard_QuestionAndAnswers.Click += btn_CopyToClipboard_QuestionAndAnswers_Click
+btn_CopyToClipboard_AnswersAll = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_AnswersAll')
+btn_CopyToClipboard_AnswersAll.Click += btn_CopyToClipboard_AnswersAll_Click
+btn_CopyToClipboard_AnswerOnly = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_AnswerOnly')
+btn_CopyToClipboard_AnswerOnly.Click += btn_CopyToClipboard_AnswerOnly_Click
 
+btn_Clipboard_Paste = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Clipboard_Paste')
+btn_Clipboard_Paste.Click += btn_Clipboard_Paste_Click
 
 tb_MRA_NoQuestionsText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoQuestionsText')
 lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
