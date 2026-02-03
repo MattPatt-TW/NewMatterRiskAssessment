@@ -375,350 +375,6 @@
       </Canvas>
     </TabItem>
 
-    <TabItem Header="Editing Questions" >
-
-      <!-- Trying to think how this should look in new format 
-           Questions are technically 'global', so may want facility to drag-and-drop from pool of 'global' to 'this mra'
-           (initial thoughts were perhaps a treeview - so list Question in top level, and list all answers beneath (instead of separate 'edit' area)
-           N'ah, scrapping above... going with 'Copy' and 'Paste' buttons instead.
-      
-      -->
-
-      <StackPanel Orientation="Vertical">
-
-
-        <Grid x:Name="grd_EditQs"  >
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="108"/>
-            <ColumnDefinition Width="400" />
-            <ColumnDefinition Width="100" MinWidth="100" MaxWidth="900" />
-            <ColumnDefinition Width="6"  />
-            <ColumnDefinition Width="98" x:Name="col_EditSelQ"/>
-            <ColumnDefinition Width="200"  />
-            <ColumnDefinition Width="100"  />
-            <ColumnDefinition   />
-
-          </Grid.ColumnDefinitions>
-          <Grid.RowDefinitions>
-            
-            <RowDefinition Height="26" />
-            <RowDefinition Height="40" />
-            <RowDefinition Height="440" />
-            <RowDefinition Height="23" />
-            <RowDefinition Height="30" />
-            <RowDefinition Height="30" />
-            <RowDefinition Height="30" />
-          </Grid.RowDefinitions>
-
-          <GridSplitter HorizontalAlignment="Center"   
-                        VerticalAlignment="Stretch"   
-                        Grid.Column="3"  
-                        Grid.Row="0"
-                        Grid.RowSpan="7"
-                        Width="6" Background="Silver"
-                        ToolTip="Click and drag me to view more or less of one particular side" 
-                        Margin="0,0,0,0">
-            <GridSplitter.Template>
-              <ControlTemplate TargetType="{x:Type GridSplitter}">
-                <Grid>
-                  <Button Content="⁞" FontWeight="Bold"/>
-                  <!-- Use vertical ellipsis character as the arrow -->
-                  <Rectangle Fill="#00FFFFFF" />
-                  <!-- Transparent background to allow resizing -->
-                </Grid>
-              </ControlTemplate>
-            </GridSplitter.Template>
-          </GridSplitter>
-
-          
-          <TextBlock Text="Questions" FontWeight="Bold" Foreground="Gray" 
-                     HorizontalAlignment="Center"  VerticalAlignment="Center" FontSize="14"
-                     Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"/>
-
-
-          <ToolBarTray IsLocked="True"  
-                       Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3">
-            <ToolBar  >
-              <TextBlock Text="Questions:" Foreground="Gray" VerticalAlignment="Center" Visibility="Collapsed"/>
-              <Button x:Name="btn_Questions_AddNew"  ToolTip="Add a new blank Question to the list">
-                <StackPanel Orientation="Horizontal">
-                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                  <TextBlock Margin="3,4,0,4" Text="Add New..."   TextAlignment="Left" Visibility="Visible"/>
-                </StackPanel>
-              </Button>
-
-              <Separator/>
-
-              
-              
-              <Button x:Name="btn_Questions_CopyToClipboard" Visibility="Collapsed"
-                      ToolTip="Copies the Question (and all it's current answers) to the 'clipboard' - go into another MRA template and click 'Paste from Clipboard' to copy the Question there">
-                <StackPanel Orientation="Horizontal">
-                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                  <TextBlock Margin="3,4,0,4" Text="Copy To Clipboard" TextAlignment="Left" Visibility="Visible"/>
-                </StackPanel>
-              </Button>
-              <Separator Width="4"/>
-
-              
-            </ToolBar>
-
-          </ToolBarTray>
-
-          <TextBlock x:Name="tb_MRA_NoQuestionsText" 
-                     Text="No questions currently exist for this Matter Risk Assessment... click the 'Add New...' button to add a new question" 
-                     TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Visibility="Collapsed" 
-                     Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" />
-
-          <DataGrid x:Name="dg_MRA_Questions" Width="Auto" 
-                    Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" 
-                    AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
-                    AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,3.8,4" 
-                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
-
-            <DataGrid.Resources>
-              <Style x:Key="RightAligned" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-              </Style>
-              <Style x:Key="Center" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-              </Style>
-
-              <!--This is the style to be used by the 'Question Group'-->
-              <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                <Setter Property="Margin" Value="0,2,0,4"/>
-                <Setter Property="Template">
-                  <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type GroupItem}" >
-                      <Expander x:Name="exp" IsExpanded="True"
-                                Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,1"
-                                Foreground="Black" Padding="0,2,0,0">
-                        <Expander.Header>
-                          <DockPanel>
-                            <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                            <TextBlock Text=" (Count of Questions: " FontWeight="Bold" />
-                            <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                            <TextBlock Text=")" FontWeight="Bold" />
-                          </DockPanel>
-                        </Expander.Header>
-                        <ItemsPresenter />
-                      </Expander>
-
-                    </ControlTemplate>
-                  </Setter.Value>
-                </Setter>
-
-              </Style>
-
-            </DataGrid.Resources>
-
-            <!--This just sets the group style-->
-            <DataGrid.GroupStyle>
-              <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                <GroupStyle.Panel>
-                  <ItemsPanelTemplate >
-                    <DataGridRowsPresenter />
-                  </ItemsPanelTemplate>
-                </GroupStyle.Panel>
-              </GroupStyle>
-            </DataGrid.GroupStyle>
-
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QuestionID}" Visibility="Hidden"/>
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QDisplayOrder}" />
-
-              <DataGridTemplateColumn Header="Question Text" IsReadOnly="True" Width="500" >
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding mraQ_QuestionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-
-              <DataGridTextColumn Header="QuestionGroup" IsReadOnly="True" Width="110" Visibility="Collapsed"
-                                  Binding="{Binding mraQ_QuestionGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              
-
-              <DataGridTemplateColumn Header="Count of Answers" IsReadOnly="True" Width="110" >
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding mraQ_CountAnswers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-
-              <!--<DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding clCountUsed}"/>-->
-            </DataGrid.Columns>
-          </DataGrid>
-
-          <!--<GroupBox Header="Edit Selected Question / New Question" Grid.Row="6" Margin="6" BorderBrush="Gray" >
-        </GroupBox>-->
-
-          <!-- A N S W E R S   S E C T I O N -->
-
-
-
-          <TextBlock Text="Answers" Foreground="Gray" FontWeight="Bold" FontSize="14"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" 
-                     Grid.Row="0" Grid.Column="4" Grid.ColumnSpan="4"/>
-
-          <ToolBar IsManipulationEnabled="False" Margin="4,0,0,0" 
-                   Grid.Row="1" Grid.Column="4" Grid.ColumnSpan="4">
-
-            <Button x:Name="btn_AddNewListItem1" ToolTip="Add new answer item">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep1"/>
-            
-            <Button x:Name="btn_CopySelectedAnswerItem" ToolTip="Duplicate selected answer item">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep2" Width="4"/>
-            
-            <Button x:Name="btn_CopyAllAnswerItems" ToolTip="Duplicate ALL answer items">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                <TextBlock Margin="3,4,0,4" Text="Duplicate All answer items" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep7" Width="4"/>
-            
-            <!--<Button x:Name="btn_A_MoveTop1" ToolTip="Move selected answer item to the top of the list">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep3"/>
-            
-            <Button x:Name="btn_A_MoveUp1" ToolTip="Move selected answer item up one row">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep4"/>
-            
-            <Button x:Name="btn_A_MoveDown1"  ToolTip="Move selected answer item dowm one row">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep5"/>
-
-            <Button x:Name="btn_A_MoveBottom1"  ToolTip="Move selected answer item to the bottom of the list" >
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>
-            <Separator x:Name="MRA_A_Sep6" Width="4"/>
-            
-            <Button x:Name="btn_DeleteSelectedListItem1" Background="#FFFFA7A7"  ToolTip="Delete the selected answer item (requires confirmation)...">
-              <StackPanel Orientation="Vertical">
-                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
-              </StackPanel>
-            </Button>-->
-            <Separator Width="4"/>
-            
-            <Label x:Name="lbl_MRA_Answer_Text" Visibility="Collapsed" />
-            <Label x:Name="lbl_MRA_Answer_Score" Visibility="Collapsed" />
-            <Label x:Name="lbl_MRA_Answer_EmailComment" Visibility="Collapsed" />
-          </ToolBar>
-
-          <TextBlock x:Name="lbl_NoAnswers" 
-                     Text="No answers currently exist - use the 'Answer Options' area above to copy answers from another question, or click '+' button to add new" 
-                     Foreground="Red" FontWeight="Bold" TextWrapping="Wrap" FontSize="16" Margin="4,0" 
-                     Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="4"/>
-
-          <DataGrid x:Name="dg_EditMRA_AnswersPreview"  Width="Auto"
-                    AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
-                    AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="4,0,2,4"
-                    Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="4" 
-                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
-
-            <DataGrid.Resources>
-              <Style x:Key="RightAligned" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-              </Style>
-              <Style x:Key="Center" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-              </Style>
-              <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                <Setter Property="Background" Value="Green"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                <Setter Property="BorderBrush" Value="Wheat"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Width" Value="Auto"/>
-              </Style>
-
-            </DataGrid.Resources>
-
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQA_DO}" />
-              <DataGridTextColumn Header="Answer Text" IsReadOnly="False" Width="Auto" MinWidth="70"
-                                  Binding="{Binding mraQA_Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-              <DataGridTextColumn Header="Score" IsReadOnly="False" Width="60"
-                                  Binding="{Binding mraQA_Score, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-              <DataGridTextColumn Header="Email Comment" IsReadOnly="False" Width="Auto" MinWidth="100"
-                                  Binding="{Binding mraQA_EC, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-              <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding mraQA_ID}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40" Binding="{Binding mraQA_RowID}" Visibility="Collapsed"/>
-
-            </DataGrid.Columns>
-
-
-          </DataGrid>
-
-
-          <TextBlock Text="Edit Selected Answer" Foreground="Gray" FontWeight="Bold" 
-                     TextAlignment="Center" VerticalAlignment="Center"
-                     Grid.Row="3" Grid.Column="5" Grid.ColumnSpan="2"/>
-
-          <TextBlock x:Name="lbl_AID" Text="ID" Foreground="Gray" 
-                     VerticalAlignment="Center"
-                     Grid.Row="3" Grid.Column="7"/>
-
-          <TextBlock Text="Answer Text" Foreground="Gray"  Margin="4,0"
-                     HorizontalAlignment="Right"  VerticalAlignment="Center" 
-                     Grid.Row="4" Grid.Column="4"/>
-
-          <TextBox x:Name="txt_AnswerText" Margin="2" 
-                   VerticalAlignment="Center" Text="this is a sample answer"
-                   Grid.Row="4" Grid.Column="5" />
-
-          <TextBlock Text="Score" Foreground="Gray"  Margin="4,0"
-                     HorizontalAlignment="Right"  VerticalAlignment="Center" 
-                     Grid.Row="4" Grid.Column="6"/>
-          <TextBox x:Name="txt_AnswerScore" Margin="2"
-                   VerticalAlignment="Center" 
-                   Grid.Row="4" Grid.Column="7" />
-
-          <TextBlock Text="Email Comment" Foreground="Gray"  Margin="4,0"
-                     HorizontalAlignment="Right"  VerticalAlignment="Top" 
-                     Grid.Row="5" Grid.Column="4" Grid.RowSpan="2"/>
-          <TextBox x:Name="txt_AnswerEmailComment" TextWrapping="Wrap"   Padding="0" Margin="2"
-                   Grid.Row="5" Grid.Column="5" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
-
-          <Button x:Name="btn_SaveAnswer" Content="Save" Padding="4" MaxHeight="26" MaxWidth="50" 
-                  Grid.Row="5" Grid.Column="7"  Grid.RowSpan="2"/>
-
-        </Grid>
-
-      </StackPanel>
-         
-      
-    </TabItem>
-
 
     <TabItem Header="Edit MRA Template..." x:Name="ti_MRA_Questions" >
       <TabItem.Resources>
@@ -826,7 +482,9 @@
                   CornerRadius="10">
             
             <TreeView x:Name="tvTemplate"
-                      ItemsSource="{Binding Groups}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                      ItemsSource="{Binding Groups}" 
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto" 
+                      ScrollViewer.VerticalScrollBarVisibility="Auto" >
 
               <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
@@ -868,14 +526,22 @@
                         Margin="12,0,0,0"
                         Width="90" Visibility="Collapsed"/>
 
-                <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Margin="20,0,0,0" Padding="6,0"/>
-                <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Margin="20,0,0,0" Padding="6,0"/>
+                
               </StackPanel>
 
               <StackPanel>
 
               <!-- GROUP EDITOR -->
-              <GroupBox Header="Question Group Details..." BorderBrush="Gray" Margin="0,4">
+              <GroupBox BorderBrush="Gray" Margin="0,4">
+                <GroupBox.Header>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Question Group Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
+                    <Border Width="254" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Group_Add" Content="Add New Group" Padding="6,2"/>
+                  </StackPanel>
+                  
+                </GroupBox.Header>
+                
                 <StackPanel Orientation="Horizontal" Margin="0,4" >
                   <TextBlock Text="Question Group" VerticalAlignment="Center"/>
                   <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}" Padding="2"
@@ -885,10 +551,20 @@
               </GroupBox>
 
               <!-- QUESTION EDITOR -->
-              <GroupBox Header="Question Details..." BorderBrush="Gray" Margin="0,4" >
+              <GroupBox BorderBrush="Gray" Margin="0,4" >
+                <GroupBox.Header>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Question Details..." VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
+                    <Border Width="284" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Padding="6,2"/>
+                    
+                  </StackPanel>
+
+                </GroupBox.Header>
+                
                 <StackPanel Margin="0,4">
 
-                  <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
                     <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
                     <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
                              Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
@@ -949,7 +625,15 @@
               </GroupBox>
               
               <!-- ANSWER EDITOR -->
-              <GroupBox Header="Answer Details..." BorderBrush="Gray" Margin="0,4" >
+              <GroupBox BorderBrush="Gray" Margin="0,4" >
+                <GroupBox.Header>
+                  <StackPanel Orientation="Horizontal" >
+                    <TextBlock Text="Answer Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
+                    <Border Width="304" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Padding="6,2"/>
+                  </StackPanel>
+                </GroupBox.Header>
+                
                 <StackPanel Margin="0,4">
 
                   <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
@@ -1060,7 +744,7 @@
                   <ListBox ItemsSource="{Binding DebugLines}"
                            FontFamily="Consolas"
                            FontSize="12"
-                           Height="140" Margin="2"
+                           Height="117" Margin="2"
                            ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListBox.ItemTemplate>
                       <DataTemplate>

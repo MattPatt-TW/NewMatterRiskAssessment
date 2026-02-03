@@ -1112,11 +1112,30 @@ def _ensure_selected_context(vm):
     vm.SelectedItem = vm.Groups[0]
 
 
+def btn_EditMRA_Group_Add_Click(sender, e):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  new_group = GroupVM("New Group")
+  vm.Groups.Add(new_group)
+  vm.SelectedItem = new_group
+
+  # we ought to add dummy question/answer too so UI has 3 levels populated
+  EditMRA_Question_AddNew(vm)
+  return
+
+
 def btn_EditMRA_Question_Add_Click(sender, e):
   vm = _tikitSender.DataContext
   if vm is None:
     return
 
+  EditMRA_Question_AddNew(vm)
+  return
+
+
+def EditMRA_Question_AddNew(vm):
   # Determine target group
   g = vm.SelectedGroup
   if g is None:
@@ -1565,6 +1584,8 @@ tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPrevie
 #templateEditorVM = None
 tvTemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tvTemplate')      # tree view listing Question Group > Question > Answers
 tvTemplate.SelectedItemChanged += tvTemplate_SelectedItemChanged
+btn_EditMRA_Group_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_Add')
+btn_EditMRA_Group_Add.Click += btn_EditMRA_Group_Add_Click
 btn_EditMRA_Question_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_Add')
 btn_EditMRA_Question_Add.Click += btn_EditMRA_Question_Add_Click
 btn_EditMRA_Answer_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_Add')
