@@ -33,9 +33,11 @@ import re
 
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
-UNSELECTED = -1
 _temp_id = -1
+
+## GLOBAL CONSTANTS##
 LOG_ROOT = r"\\tw-p4wapp01\PartnerDev\Managing Partner\Forms\NMRA and FileReviews\MRA_Log"
+UNSELECTED = -1
 
 # ---------- Module-level clipboard ----------
 MRA_CLIPBOARD = {
