@@ -4,6 +4,7 @@
     <Init>
       <![CDATA[
 import clr
+
 #from TWUtils import runSQL
 clr.AddReference("System")            # for new MRA Edit Template tab code
 clr.AddReference("WindowsBase")       # for new MRA Edit Template tab code
@@ -14,13 +15,14 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime, EventHandler
+from System import DateTime, Environment, String
+from System.IO import Path, File, Directory
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
 from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
 from System.Collections.ObjectModel import ObservableCollection
-from System.Windows import Controls, Forms, LogicalTreeHelper
+from System.Windows import Controls, Forms, LogicalTreeHelper, Clipboard 
 from System.Windows import Data, UIElement, Visibility, Window
 from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
@@ -33,6 +35,7 @@ import re
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 UNSELECTED = -1
 _temp_id = -1
+LOG_ROOT = r"\\tw-p4wapp01\PartnerDev\Managing Partner\Forms\NMRA and FileReviews\MRA_Log"
 
 # # # #   O N   L O A D   E V E N T   # # # #
 def myOnLoadEvent(s, event):
@@ -324,6 +327,14 @@ def btn_MRATemplate_Edit_Click(s, event):
 
   # new treeview/template editor VM code
   EditMRA_loadTreeViewStructure(selectedTemplateID=int(tb_ThisMRAid.Text))
+  vm = _tikitSender.DataContext
+  # note: vm.Debug to populate our on-screen debug text box, and 'log_line' to write to users daily log file
+  if vm is None:
+    vm.Debug("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))  
+    log_line("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))
+  else:
+    vm.Debug("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
+    log_line("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
 
   # show 'Questions' tab and hide 'Overview' tab
   ti_MRA_Overview.Visibility = Visibility.Collapsed
@@ -334,41 +345,6 @@ def btn_MRATemplate_Edit_Click(s, event):
 
 # # # #  END OF:  Matter Risk Assessment Templates   # # # #
 
-# # # #    Q U E S T I O N S   # # # #
-class MRA_Questions(object):
-  def __init__(self, myQuestionID, myQuestionText, myQuestionGroup, myDisplayOrder, myCountAnswers):
-    self.mraQ_QuestionID = myQuestionID
-    self.mraQ_QuestionText = myQuestionText
-    self.mraQ_QuestionGroup = myQuestionGroup
-    self.mraQ_QDisplayOrder = myDisplayOrder
-    self.mraQ_CountAnswers = myCountAnswers
-    return
-
-  def __getitem__(self, index):
-    if index == 'QuestionID':
-      return self.mraQ_QuestionID
-    elif index == 'QuestionText':
-      return self.mraQ_QuestionText
-    elif index == 'QuestionGroup':
-      return self.mraQ_QuestionGroup
-    elif index == 'DisplayOrder':
-      return self.mraQ_QDisplayOrder
-    elif index == 'CountAnswers':
-      return self.mraQ_CountAnswers
-    else:
-      return ''
-
-
-def btn_Questions_AddNew_Click(s, event):
-  # This function will add a new question to the current selected Matter Risk Assessment template
-  
-  templateID = int(tb_ThisMRAid.Text)
-  questionID = runSQL(codeToRun="SELECT ISNULL(MAX(QuestionID), 0) + 1 FROM Usr_MRAv2_Question", returnType='Int')
-  insertSQL = """INSERT INTO Usr_MRAv2_Question (QuestionID, QuestionText)
-                 VALUES ({qID}, 'New Question - please edit text')""".format(qID=questionID)
-
-  MessageBox.Show("Add New Question button click", "Add New Question...")
-  return
 
 def btn_Questions_Clipboard_Click(s, event):
   # This function will open the 'Questions Clipboard' window for copying/pasting questions between templates
@@ -398,127 +374,6 @@ def mi_Question_PasteFromClipboard_Click(s, event):
   MessageBox.Show("Paste Question from Clipboard menu item click", "Paste Question from Clipboard...")
   return
 
-
-def dg_MRA_Questions_SelectionChanged(s, event):
-  # This function will handle when the selection changes in the 'MRA Questions' datagrid - it puts selected question details into the edit area below
-
-  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
-    dg_MRA_Questions_EditArea_Clear()
-    return
-  else:
-    dg_MRA_Questions_EditArea_PopulateFromSelected()
-  
-  # for now, just show a message box
-  #MessageBox.Show("Selection changed in MRA Questions datagrid", "DEBUG - MRA Questions Selection Changed...")
-  return
-
-def dg_MRA_Questions_EditArea_Clear():
-  # This function will clear the 'Edit Question' area below the 'MRA Questions' datagrid
-  
-  tb_ESQ_QuestionID.Text = ''
-  txt_ESQ_QuestionText.Text = ''
-  txt_ESQ_QuestionGroup.Text = ''
-  return
-
-def dg_MRA_Questions_EditArea_PopulateFromSelected():
-  # This function will populate the 'Edit Question' area below the 'MRA Questions' datagrid from the selected question
-  
-  selItem = dg_MRA_Questions.SelectedItem
-  tb_ESQ_QuestionID.Text = str(selItem['QuestionID'])
-  txt_ESQ_QuestionText.Text = str(selItem['QuestionText'])
-  txt_ESQ_QuestionGroup.Text = str(selItem['QuestionGroup'])
-  return
-
-
-def dg_MRA_Questions_Refresh():
-  # This function will refresh the 'MRA Questions' datagrid for the selected template
-  
-  # otherwise, get TemplateID to use from this page
-  templateID = int(tb_ThisMRAid.Text)
-  if templateID == -1:
-    return
-
-  # form SQL to get questions for this template
-  sql = """SELECT '0-QuestionID' = T.QuestionID,
-                  '1-QuestionText' = Q.QuestionText,
-                  '2-QuestionGroup' = T.QuestionGroup,
-                  '3-DisplayOrder' = T.DisplayOrder,
-                  '4-CountAs' = (SELECT COUNT(T1.AnswerID) FROM Usr_MRAv2_Templates T1 WHERE T1.TemplateID = {tID} AND T1.QuestionID = T.QuestionID)
-            FROM Usr_MRAv2_Templates T
-                JOIN Usr_MRAv2_Question Q ON T.QuestionID = Q.QuestionID
-            WHERE T.TemplateID = {tID}
-            GROUP BY T.QuestionID, Q.QuestionText, T.QuestionGroup, T.DisplayOrder
-            ORDER BY T.QuestionGroup, T.DisplayOrder""".format(tID=templateID)
-
-  tmpItem = []
-  _tikitDbAccess.Open(sql)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpQuestionID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          tmpQuestionText = '' if dr.IsDBNull(1) else dr.GetString(1)
-          tmpQuestionGroup = '' if dr.IsDBNull(2) else dr.GetString(2)
-          tmpDisplayOrder = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          tmpCountAnswers = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          
-          tmpItem.append(MRA_Questions(myQuestionID=tmpQuestionID, myQuestionText=tmpQuestionText, myQuestionGroup=tmpQuestionGroup,
-                                       myDisplayOrder=tmpDisplayOrder, myCountAnswers=tmpCountAnswers))
-    dr.Close()
-  _tikitDbAccess.Close()
-
-  # add Grouping on 'QuestionGroup'
-  # note: added ', CollectionView, ListCollectionView, PropertyGroupDescription' to 'from System.Windows.Data import Binding ' (line 20)
-  tmpC = ListCollectionView(tmpItem)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraQ_QuestionGroup"))
-  dg_MRA_Questions.ItemsSource = tmpC
-
-  dg_MRA_Questions_SetVisibilityOfEditArea()
-  #MessageBox.Show("Refresh MRA Questions datagrid", "DEBUG - Refresh MRA Questions...")
-  return
-
-def dg_MRA_Questions_SetVisibilityOfEditArea():
-  # This function will set the visibility of the 'Edit Question' area below the datagrid depending on whether something is selected or not
-
-  if dg_MRA_Questions.Items.Count == 0:
-    tb_MRA_NoQuestionsText.Visibility = Visibility.Visible
-    dg_MRA_Questions.Visibility = Visibility.Collapsed
-  else:
-    tb_MRA_NoQuestionsText.Visibility = Visibility.Collapsed
-    dg_MRA_Questions.Visibility = Visibility.Visible
-
-  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
-    tb_ESQ_QuestionID.Text = ''
-    txt_ESQ_QuestionText.Text = ''
-    txt_ESQ_QuestionGroup.Text = ''
-    btn_ESQ_SaveQuestion.IsEnabled = False
-    tb_ESQ_QuestionID.IsEnabled = False
-    txt_ESQ_QuestionText.IsEnabled = False
-    txt_ESQ_QuestionGroup.IsEnabled = False
-  else:
-    btn_ESQ_SaveQuestion.IsEnabled = True
-    tb_ESQ_QuestionID.IsEnabled = True
-    txt_ESQ_QuestionText.IsEnabled = True
-    txt_ESQ_QuestionGroup.IsEnabled = True
-  return
-
-
-def btn_ESQ_SaveQuestion_Click(s, event):
-  # This function will save the edited question details from the 'Edit Question' area below the datagrid
-  
-  #! Note: because of new structure we need to:
-  # 1) update 'Usr_MRAv2_Question' table for question text -
-  #    first check if this text already exists
-  #      - if yes, use THAT QuestionID instead (avoids having multiple identical questions in the table);
-  #      - if no, update question text for current QuestionID
-  # 2) update 'Usr_MRAv2_Templates' table for question group and display order (using the QuestionID from step 1)
-  # Note: we may need to also update any 'Answers' linked to this question if the QuestionID changes (ie: new question text added)
-  #       so will want an 'originalQuestionID' variable to use for 'UPDATE' substitutions if needed (as shouldn't just delete/ignore current answers). 
-
-  MessageBox.Show("Save Edited Question button click", "Save Edited Question...")
-  return
-# # # #   E N D   O F :   Q U E S T I O N S   # # # #
 
 
  
@@ -887,6 +742,13 @@ def runSQL(codeToRun = '', showError = False, errorMsgText = '', errorMsgTitle =
 ###################################################################################################################################################
 
 ## New MRA Edit Template tab code below ##
+## We have a few classes to represent the ViewModel for the Template Editor ##
+# These classes implement INotifyPropertyChanged to support data binding in WPF
+# We also use ObservableCollection for collections that can change dynamically
+# GroupVM - represents a group of questions
+# QuestionVM - represents a question with its answers
+# AnswerVM - represents an answer to a question
+# TemplateEditorVM - represents the overall template editor view model
 
 class NotifyBase(INotifyPropertyChanged):
   # This creates add_PropertyChanged/remove_PropertyChanged automatically
@@ -1006,10 +868,20 @@ class TemplateEditorVM(NotifyBase):
     #self.Groups = ObservableCollection[GroupVM]()
     self.Groups = ObservableCollection[object]()
 
+    self.DebugLines = ObservableCollection[String]() # for debugging output (list of strings)
+    self._debug_max = 400
+
     self._SelectedItem = None
     self._SelectedGroup = None
     self._SelectedQuestion = None
     self._SelectedAnswer = None
+
+  def Debug(self, msg):
+    # timestamp optional; keep it simple
+    self.DebugLines.Add(String.Format("{0}", msg))
+    if self.DebugLines.Count > self._debug_max:
+      self.DebugLines.RemoveAt(0)
+    self._raise("DebugLines")
 
   @property
   def SelectedItem(self): return self._SelectedItem
@@ -1231,11 +1103,10 @@ def _move_item_to_index(collection, item, new_index):
   return True
 
 def _ensure_selected_context(vm):
-  """
-  If a user selects a Group but no SelectedQuestion/Answer set yet,
-  populate sensible defaults. Your SelectedItem setter already does most of this,
-  but this can help after programmatic inserts.
-  """
+  #  If a user selects a Group but no SelectedQuestion/Answer set yet,
+  # populate sensible defaults. Your SelectedItem setter already does most of this,
+  # but this can help after programmatic inserts.
+
   if vm is None: return
   if vm.SelectedGroup is None and vm.Groups.Count > 0:
     vm.SelectedItem = vm.Groups[0]
@@ -1271,6 +1142,7 @@ def btn_EditMRA_Question_Add_Click(sender, e):
   # Select new question (or the answer if you prefer)
   vm.SelectedItem = q
   return
+
 
 def btn_EditMRA_Answer_Add_Click(sender, e):
   
@@ -1362,8 +1234,8 @@ def btn_EditMRA_Question_DeleteSelected_Click(sender, e):
     return
 
   # Confirm deletion
-  res = MessageBox.Show("Are you sure you want to delete the selected question and all its answers?", "Confirm Delete Question", MessageBoxButton.YesNo, MessageBoxImage.Warning)
-  if res != MessageBoxResult.Yes:
+  res = MessageBox.Show("Are you sure you want to delete the selected question and all its answers?", "Confirm Delete Question", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+  if res != DialogResult.Yes:
     return
 
   g.Questions.Remove(q)
@@ -1433,8 +1305,8 @@ def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
     return
 
   # Confirm deletion
-  res = MessageBox.Show("Are you sure you want to delete the selected answer?", "Confirm Delete Answer", MessageBoxButton.YesNo, MessageBoxImage.Warning)
-  if res != MessageBoxResult.Yes:
+  res = MessageBox.Show("Are you sure you want to delete the selected answer?", "Confirm Delete Answer", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+  if res != DialogResult.Yes:
     return
 
   q.Answers.Remove(a)
@@ -1442,6 +1314,129 @@ def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
 
   _ensure_selected_context(vm)
   return
+
+# --- Logging and VM Dumping Utilities ---
+def _ensure_dir(path):
+  if not Directory.Exists(path):
+    Directory.CreateDirectory(path)
+
+def _safe_username():
+  try:
+    return Environment.UserName
+  except:
+    return "unknown_user"
+
+def _safe_machine():
+  try:
+    return Environment.MachineName
+  except:
+    return "unknown_machine"
+
+def _local_fallback_root():
+  # e.g. C:\Users\you\AppData\Local\Temp\MRA_Log
+  return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "MRA_Log")
+
+def _get_log_dir():
+  # structure: \\ParnerUNC\MRA_Log\YYYY-MM-DD\
+  today = DateTime.Now.ToString("yyyy-MM-dd")
+  net_dir = Path.Combine(LOG_ROOT, today)
+
+  try:
+    _ensure_dir(net_dir)
+    return net_dir
+  except:
+    # network share down / permissions issue -> fallback local
+    fb = Path.Combine(_local_fallback_root(), today)
+    _ensure_dir(fb)
+    return fb
+
+def log_line(message, template_id=None):
+  # Appends a line to a daily per-user log file.
+  log_dir = _get_log_dir()
+
+  user = _safe_username()
+  machine = _safe_machine()
+  file_name = "{0}_{1}.log".format(user, machine)  # per user+machine
+  path = Path.Combine(log_dir, file_name)
+
+  ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")
+  tid = "" if template_id is None else " TID={0}".format(template_id)
+  line = "{0}{1} {2}\r\n".format(ts, tid, str(message))
+
+  # append with basic retry
+  try:
+    File.AppendAllText(path, line)
+  except Exception as ex:
+    # last-resort: try local fallback
+    fb_dir = Path.Combine(_local_fallback_root(), DateTime.Now.ToString("yyyy-MM-dd"))
+    _ensure_dir(fb_dir)
+    fb_path = Path.Combine(fb_dir, file_name)
+    File.AppendAllText(fb_path, line)
+
+  return path  # return path for convenience
+
+
+def btn_EditMRA_CopyDebugLog_Click(sender, e):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  # Copy debug log to clipboard
+  log_text = "\r\n".join([str(x) for x in vm.DebugLines])
+  Clipboard.SetText(log_text)
+  MessageBox.Show("Debug log copied to clipboard.", "Debug Log Copied", MessageBoxButtons.OK, MessageBoxIcon.Information)
+  return
+
+
+def btn_DumpVM_Click(sender, e):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+  path = dump_vm_to_file(vm)
+
+  # ask user if they want to open the file
+  result = MessageBox.Show("The MRA structure has been exported to:\n{0}\n\nDo you want to open the file now?".format(path), "VM Dump Created", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+  if result == DialogResult.Yes:
+    try:
+      Process.Start("notepad.exe", path)
+    except Exception as ex:
+      MessageBox.Show("Could not open the file automatically:\n{0}".format(str(ex)), "Error Opening File", MessageBoxButtons.OK, MessageBoxIcon.Error)
+  return
+
+def dump_template_vm_text(vm):
+  lines = []
+  lines.append("TemplateID={0}".format(vm.TemplateID))
+  lines.append("Groups={0}".format(vm.Groups.Count))
+
+  for g in vm.Groups:
+    lines.append("")
+    lines.append("GROUP: '{0}'\nQuestions={1}".format(g.GroupName, g.Questions.Count))
+    for q in g.Questions:
+      lines.append("  Q#{0}  QID={1}  '{2}'".format(q.QuestionDisplayOrder, q.QuestionID, q.QuestionText))
+      for a in q.Answers:
+        lines.append("    A#{0}  AID={1}  Score={2}  Text='{3}'  EmailComment='{4}'".format(
+                  a.AnswerDisplayOrder, a.AnswerID, a.Score, a.AnswerText, a.EmailComment
+              ))
+  return "\r\n".join(lines)
+
+
+def dump_vm_to_file(vm, prefix="MRA_VM_DUMP"):
+  log_dir = _get_log_dir()
+  ts = DateTime.Now.ToString("yyyyMMdd_HHmmssfff")
+  user = _safe_username()
+  machine = _safe_machine()
+
+  fname = "{0}_{1}_{2}_TID{3}.txt".format(prefix, user, machine, vm.TemplateID)
+  # Add timestamp to avoid overwrites
+  fname = "{0}_{1}.txt".format(fname.replace(".txt", ""), ts)
+
+  path = Path.Combine(log_dir, fname)
+
+  content = dump_template_vm_text(vm)
+  File.WriteAllText(path, content)
+
+  log_line("VM dump written: {0}".format(path), vm.TemplateID)
+  return path
 
 ######################################################################################################################
 
@@ -1519,8 +1514,6 @@ tb_MRA_SourceQuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MR
 tb_MRA_SourceAnswerID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceAnswerID')
 
 ## Toolbar Buttons for Editing Questions ##
-btn_Questions_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_AddNew')
-btn_Questions_AddNew.Click += btn_Questions_AddNew_Click
 btn_Questions_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_Clipboard')
 btn_Questions_Clipboard.Click += btn_Questions_Clipboard_Click
 QuestionsClipboard_Popup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'QuestionsClipboard_Popup')
@@ -1535,49 +1528,7 @@ mi_Question_PasteFromClipboard.Click += mi_Question_PasteFromClipboard_Click
 
 
 tb_MRA_NoQuestionsText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoQuestionsText')
-dg_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Questions')
-dg_MRA_Questions.SelectionChanged += dg_MRA_Questions_SelectionChanged
-
-## Editing Questions Area ##
-tb_ESQ_QuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ESQ_QuestionID')
-txt_ESQ_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionText')
-txt_ESQ_QuestionGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionGroup')
-btn_ESQ_SaveQuestion = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_ESQ_SaveQuestion')
-btn_ESQ_SaveQuestion.Click += btn_ESQ_SaveQuestion_Click
-
-#########################################################################
-
-# New Editable Answer List (as each Q is now having its own dedicated answer... no longer using 'groups' now we've added 'Email Comment' (which is specific to Question!)
-dg_EditMRA_AnswersPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_EditMRA_AnswersPreview')
-#dg_EditMRA_AnswersPreview.SelectionChanged += dg_EditMRA_AnswersPreview_SelectionChanged
-#dg_EditMRA_AnswersPreview.CellEditEnding += dg_EditMRA_AnswersPreview_CellEditEnding
-lbl_MRA_Answer_Text = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_Text')
-lbl_MRA_Answer_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_Score')
-lbl_MRA_Answer_EmailComment = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_EmailComment')
-
-btn_AddNewListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewListItem1')
-#btn_AddNewListItem1.Click += dg_EditMRA_AnswersPreview_addNew
-btn_CopySelectedListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedListItem1')
-#btn_CopySelectedListItem1.Click += dg_EditMRA_AnswersPreview_duplicate
-btn_A_MoveTop1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveTop1')
-#btn_A_MoveTop1.Click += dg_EditMRA_AnswersPreview_moveToTop
-btn_A_MoveUp1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveUp1')
-#btn_A_MoveUp1.Click += dg_EditMRA_AnswersPreview_moveUp
-btn_A_MoveDown1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveDown1')
-#btn_A_MoveDown1.Click += dg_EditMRA_AnswersPreview_moveDown
-btn_A_MoveBottom1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveBottom1')
-#btn_A_MoveBottom1.Click += dg_EditMRA_AnswersPreview_moveToBottom
-btn_DeleteSelectedListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedListItem1')
-#btn_DeleteSelectedListItem1.Click += dg_EditMRA_AnswersPreview_deleteSelected
 lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
-
-# separators on Editing Questions of MRA (in Answers List)
-MRA_A_Sep1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep1')
-MRA_A_Sep2 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep2')
-MRA_A_Sep3 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep3')
-MRA_A_Sep4 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep4')
-MRA_A_Sep5 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep5')
-MRA_A_Sep6 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep6')
 
 
 ## P R E V I E W   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
@@ -1640,6 +1591,11 @@ btn_EditMRA_Answer_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 
 btn_EditMRA_Answer_MoveBottom.Click += btn_EditMRA_Answer_MoveBottom_Click
 btn_EditMRA_Answer_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_DeleteSelected')
 btn_EditMRA_Answer_DeleteSelected.Click += btn_EditMRA_Answer_DeleteSelected_Click
+
+btn_EditMRA_CopyDebugLog = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_CopyDebugLog')
+btn_EditMRA_CopyDebugLog.Click += btn_EditMRA_CopyDebugLog_Click
+btn_DumpVM = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DumpVM')
+btn_DumpVM.Click += btn_DumpVM_Click
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')

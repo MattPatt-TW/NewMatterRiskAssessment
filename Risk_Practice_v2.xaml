@@ -1,1651 +1,1343 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<tfb>
-  <RiskPracticeV2>
-    <Init>
-      <![CDATA[
-import clr
-#from TWUtils import runSQL
-clr.AddReference("System")            # for new MRA Edit Template tab code
-clr.AddReference("WindowsBase")       # for new MRA Edit Template tab code
+<Canvas
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    mc:Ignorable="d"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="800" d:DesignWidth="1200" Height="auto" Width="auto"  
+    Background="#FFEFF3FC" Name="RiskPracticeV2">
+
+  <Label x:Name="lbl_FormHeader" Content="MRAv2 - Test"
+         Height="32" Canvas.Left="10" Canvas.Top="10" Width="590" FontWeight="Bold" Foreground="Navy" FontSize="16"/>
+
+
+  <TabControl x:Name="tc_MRA" 
+              Canvas.Left="10" Canvas.Top="42" 
+              Height="690" Width="1154" 
+              Background="#FFEFF3FC" BorderBrush="#FF7E98EE" 
+              TabStripPlacement="Top" >
+
+    <TabItem Header="Risk Assessments Overview" x:Name="ti_MRA_Overview" >
+      <Canvas>
+        <TextBlock Text="Use this page to configure a Matter Risk Assessment template and set which Case Types (or Departments) should use which"
+                   Foreground="Gray" Canvas.Left="10" Canvas.Top="10" Width="812" />
+        
+        <DataGrid x:Name="dg_MRA_Templates" Width="577" Height="611"
+                  AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" 
+                  IsTextSearchEnabled="True" Canvas.Top="41" Canvas.Left="10"
+                  CanUserResizeRows="False" HeadersVisibility="All" 
+                  RowDetailsVisibilityMode="Visible" 
+                  HorizontalAlignment="Center" VerticalAlignment="Top">
+
+          <DataGrid.Resources>
+
+            <Style x:Key="Center" TargetType="{x:Type DataGridCell}">
+              <Setter Property="TextBlock.TextAlignment" Value="Center"/>
+            </Style>
+
+            <Style x:Key="DubHeightColumn" TargetType="{x:Type DataGridColumnHeader}">
+              <Setter Property="ContentTemplate">
+                <Setter.Value>
+                  <DataTemplate>
+                    <TextBlock TextWrapping="Wrap" Text="{Binding}" TextAlignment="Center" Width="{Binding}"/>
+                  </DataTemplate>
+                </Setter.Value>
+              </Setter>
+              <Setter Property="HorizontalContentAlignment" Value="Center" />
+              <Setter Property="VerticalContentAlignment" Value="Center" />
+              <Setter Property="BorderThickness" Value="1" />
+              <Setter Property="Width" Value="Auto" />
+              <Setter Property="Height" Value="42"/>
+            </Style>
+
+          </DataGrid.Resources>
+
+
+
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="T ID" IsReadOnly="True" Width="40" 
+                                HeaderStyle="{StaticResource DubHeightColumn}"
+                                Binding="{Binding mraT_TemplateID}"/>
+            <DataGridTextColumn Header="Name" IsReadOnly="True" Width="330" 
+                                Binding="{Binding mraT_TemplateName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <DataGridTextColumn Header="Expires in ?? days" IsReadOnly="True" Width="60" 
+                                Binding="{Binding mraT_TemplateExpiryDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                CellStyle="{StaticResource Center}"/>
+            <DataGridTextColumn Header="Question Count" IsReadOnly="True" Width="60" 
+                                Binding="{Binding mraT_QCount}"
+                                HeaderStyle="{StaticResource DubHeightColumn}" 
+                                CellStyle="{StaticResource Center}" />
+            <!--<DataGridTextColumn Header="ID" IsReadOnly="True" Width="100" Binding="{Binding ID}"/>   -->
+
+            <DataGridTextColumn Header="ID" IsReadOnly="True" Width="60" 
+                                  Binding="{Binding mraT_ID}"
+                                  Visibility="Collapsed" />
+            <DataGridTextColumn Header="Med Score From" IsReadOnly="True" Width="60" 
+                                  Binding="{Binding mraT_ScoreMedFrom}"
+                                  Visibility="Collapsed" />
+            <DataGridTextColumn Header="High Score From" IsReadOnly="True" Width="60" 
+                                  Binding="{Binding mraT_ScoreHighFrom}"
+                                  Visibility="Collapsed" />
+
+          </DataGrid.Columns>
+        </DataGrid>
+
+        
+        <StackPanel Orientation="Horizontal" Canvas.Left="690" Canvas.Top="41" HorizontalAlignment="Left" VerticalAlignment="Top" >
+          <Button x:Name="btn_MRATemplate_AddNew" Margin="0,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+              <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="btn_MRATemplate_CopySelected" IsEnabled="False"  Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+              <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="btn_MRATemplate_Preview" IsEnabled="False" Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Test2.png"/>
+              <TextBlock Margin="3,4,0,4" Text="Preview Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="btn_MRATemplate_Edit" IsEnabled="False" Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+              <TextBlock Margin="3,4,0,4" Text="Edit Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <Button x:Name="btn_MRATemplate_DeleteSelected" Background="#FFFFA7A7" IsEnabled="False" Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+              <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+        </StackPanel>
+
+        
+        <GroupBox Header="Meta-Data for the selected NMRA" Foreground="Gray" BorderBrush="Gray" Canvas.Left="602" Canvas.Top="90" 
+                    Width="520"  HorizontalAlignment="Left" VerticalAlignment="Top"  >
+
+          <StackPanel Orientation="Vertical">
+            <TextBlock x:Name="tb_MRA_NoneSelected" Visibility="Collapsed" TextAlignment="Center" 
+                         Text="A 'Matter Risk Assessment' is not currently selected!  (select from list or click 'Add New...')" 
+                         Foreground="Red" FontWeight="Bold" TextWrapping="Wrap"  />
+
+            <StackPanel Orientation="Vertical" x:Name="stk_ST_SelectedMRA" >
 
-clr.AddReference('mscorlib')
-clr.AddReference('PresentationCore')
-clr.AddReference('PresentationFramework')
-clr.AddReference('System.Windows.Forms')
-
-from datetime import datetime
-from System import DateTime, EventHandler
-from System.Diagnostics import Process
-from System.Globalization import DateTimeStyles
-from System.Collections.Generic import Dictionary
-from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
-from System.Collections.ObjectModel import ObservableCollection
-from System.Windows import Controls, Forms, LogicalTreeHelper
-from System.Windows import Data, UIElement, Visibility, Window
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
-from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
-from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
-from System.Windows.Input import KeyEventHandler
-from System.Windows.Media import Brush, Brushes
-import re
-
-## GLOBAL VARIABLES ##
-preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
-UNSELECTED = -1
-_temp_id = -1
-
-# # # #   O N   L O A D   E V E N T   # # # #
-def myOnLoadEvent(s, event):
-  # populate drop-downs
-  populate_MRATemplate_CaseTypeCombo()
-  
-  #MessageBox.Show("DEBUG - POPULATING LISTS")
-  refresh_MRA_Templates()                      # Matter Risk Assessment (main overview / templates) 
-  
-  # hide 'Edit Questions' and 'Preview' tabs
-  ti_MRA_Questions.Visibility = Visibility.Collapsed
-  ti_MRA_Preview.Visibility = Visibility.Collapsed
-  
-  # hide other controls not needed until something is selected...
-  #tb_ST_NoMRA_Selected.Visibility = Visibility.Visible
-  #MessageBox.Show("Hello world! - OnLoad Finished")
-  return
-
-# # # #   M A T T E R   R I S K   A S S E S S M E N T   T E M P L A T E S   # # # #
-
-class MRA_Templates(object):
-  def __init__(self, myTemplateID, myName, myQCount, myExpiryDays, myRowID, myScoreMedFrom=0, myScoreHighFrom=0):
-    self.mraT_TemplateID = myTemplateID
-    self.mraT_TemplateName = myName
-    self.mraT_QCount = myQCount
-    self.mraT_TemplateExpiryDays = myExpiryDays
-    self.mraT_ID = myRowID
-    self.mraT_ScoreMedFrom = myScoreMedFrom
-    self.mraT_ScoreHighFrom = myScoreHighFrom
-    return
-
-  def __getitem__(self, index):
-    if index == 'TemplateID':           # Note: this is the 'TemplateID' (main ID we'll use whenever linking to other tables) 
-      return self.mraT_TemplateID
-    elif index == 'ID':                 # Note: this is the actual unique 'ID' (row ID)
-      return self.mraT_ID
-    elif index == 'Name':
-      return self.mraT_TemplateName
-    elif index == 'QCount':
-      return self.mraT_QCount
-    elif index == 'ExpiryDays':
-      return self.mraT_TemplateExpiryDays
-    elif index == 'ScoreMedFrom':
-      return self.mraT_ScoreMedFrom
-    elif index == 'ScoreHighFrom':
-      return self.mraT_ScoreHighFrom
-    else:
-      return ''
-  
-
-def refresh_MRA_Templates():
-  # This funtion populates the main Matter Risk Assessment data grid (and also populates the combo drop-downs in the 'Department' and 'Case Type' defaults area)
-  
-  # SQL to populate datagrid
-  getTableSQL = """SELECT TD.TemplateID, TD.ID, TD.Name, TD.DaysUntil_IncompleteLock, 
-                          TD.ScoreMediumTrigger, TD.ScoreHighTrigger, 
-                          'Q Count' = (SELECT COUNT(QuestionID) FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = TD.TemplateID)
-                   FROM Usr_MRAv2_TemplateDetails TD ORDER BY TD.TemplateID"""
-  
-  tmpItem = []
-  
-  _tikitDbAccess.Open(getTableSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tTemplateID = 0 if dr.IsDBNull(0) else dr.GetValue(0)               
-          tID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          templateName = '' if dr.IsDBNull(2) else dr.GetString(2)
-          templateExpiryDays = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          tScoreMedFrom = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          tScoreHighFrom = 0 if dr.IsDBNull(5) else dr.GetValue(5)
-          tQCount = 0 if dr.IsDBNull(6) else dr.GetValue(6)
-          
-          tmpItem.append(MRA_Templates(myTemplateID=tTemplateID, myName=templateName, myQCount=tQCount, 
-                                       myExpiryDays=templateExpiryDays, myRowID=tID, myScoreMedFrom=tScoreMedFrom, myScoreHighFrom=tScoreHighFrom))
-    dr.Close()
-  _tikitDbAccess.Close()
-
-  dg_MRA_Templates.ItemsSource = tmpItem
-  dg_MRA_Templates_SetVisibilityOfEditArea()
-  return
-
-def dg_MRA_Templates_SetVisibilityOfEditArea():
-  # This function will set the visibility of the 'Template Details' edit area depending on whether something is selected in the datagrid or not
-
-  # if nothing in list, hide 'edit' fields and exit early
-  if dg_MRA_Templates.Items.Count == 0:
-    #dg_MRA_Templates.Visibility = Visibility.Collapsed
-    tb_MRA_NoneSelected.Visibility = Visibility.Visible
-    stk_ST_SelectedMRA.Visibility = Visibility.Collapsed
-    return
-
-  # set visibility based on selection
-  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
-    tb_MRA_NoneSelected.Visibility = Visibility.Visible
-    stk_ST_SelectedMRA.Visibility = Visibility.Collapsed
-  else:
-    tb_MRA_NoneSelected.Visibility = Visibility.Collapsed
-    stk_ST_SelectedMRA.Visibility = Visibility.Visible
-  return
-
-def dg_MRA_Template_SelectionChanged(s, event):
-  # This function will populate the label controls to temp store ID and Name
-  #! updated 26/08/2025 to include the other new fields we added
-
-  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
-    MRATemplateDetails_ClearFields()
-  else:
-    MRATemplateDetails_PopulateFieldsFromDataGrid()
-  dg_MRA_Templates_SetVisibilityOfEditArea()
-  return
-
-
-def MRATemplateDetails_PopulateFieldsFromDataGrid():
-  # This function will populate the fields on the 'Template Details' area for the selected MRA Template
-
-  try:
-    selItem = dg_MRA_Templates.SelectedItem
-  except:
-    #MessageBox.Show("Error obtaining selected Matter Risk Assessment Template details", "Error: Populate Selected Matter Risk Assessment Template Details...")
-    return
-  
-  tb_MRATemplate_Name.Text = str(selItem['Name'])
-  lbl_MRATemplate_ID.Content = str(selItem['TemplateID'])
-  tb_MRATemplate_ExpiresInXdays.Text = str(selItem['ExpiryDays']) if selItem['ExpiryDays'] is not None else '0'
-  tb_ScoreMedFrom.Text = str(selItem['ScoreMedFrom']) if selItem['ScoreMedFrom'] is not None else '0'
-  tb_ScoreHighFrom.Text = str(selItem['ScoreHighFrom']) if selItem['ScoreHighFrom'] is not None else '0'
-  # now calculate other values
-  tb_ScoreLowTo.Text = str(int(selItem['ScoreMedFrom']) - 1) if selItem['ScoreMedFrom'] is not None else '0'
-  tb_ScoreMedTo.Text = str(int(selItem['ScoreHighFrom']) - 1) if selItem['ScoreHighFrom'] is not None else '0'
-
-
-  # set button states
-  btn_MRATemplate_CopySelected.IsEnabled = True
-  btn_MRATemplate_Preview.IsEnabled = True
-  btn_MRATemplate_Edit.IsEnabled = True
-  btn_MRATemplate_DeleteSelected.IsEnabled = True #if int(dg_MRA_Templates.SelectedItem['CountUsed']) == 0 else False
-  btn_MRATemplate_SaveHeaderDetails.IsEnabled = True
-
-  # load case type defaults DataGrid for this template
-  refresh_MRA_CaseType_Defaults()
-  return
-
-
-def MRATemplateDetails_ClearFields():
-  # This function will clear the fields on the 'Template Details' area for the selected MRA Template
-
-  tb_MRATemplate_Name.Text = ''
-  lbl_MRATemplate_ID.Content = ''
-  tb_MRATemplate_ExpiresInXdays.Text = '0'
-  tb_ScoreLowTo.Text = '0'
-  tb_ScoreMedFrom.Text = '0'
-  tb_ScoreMedTo.Text = '0'
-  tb_ScoreHighFrom.Text = '0'
-
-  # set button states
-  btn_MRATemplate_CopySelected.IsEnabled = False
-  btn_MRATemplate_Preview.IsEnabled = False
-  btn_MRATemplate_Edit.IsEnabled = False
-  btn_MRATemplate_DeleteSelected.IsEnabled = False
-  btn_MRATemplate_SaveHeaderDetails.IsEnabled = False 
-
-  # clear case type defaults datagrid
-  dg_MRATemplate_CaseTypes.ItemsSource = []
-  return
-
-
-def btn_MRATemplate_SaveHeaderDetails_Click(s, event):
-  # This is the 'Save' button on the 'List of NMRA Templates' tab, and saves the 'header'/details to the selected template
-
-  # firstly check something is selected
-  if dg_MRA_Templates.SelectedIndex == -1:
-    MessageBox.Show("No Matter Risk Assessment Template has been selected!\nPlease select a template before clicking 'Save Changes'", "Error: Save Changes to Selected Matter Risk Assessment Template...")
-    return
-
-  itemID = lbl_MRATemplate_ID.Content
-  newName = str(tb_MRATemplate_Name.Text)
-  newName = newName.replace("'", "''")
-
-  try:
-    newExpDays = int(tb_MRATemplate_ExpiresInXdays.Text)
-  except:
-    MessageBox.Show("The 'Expires in ?? days' value must be a whole number (integer)", "Error: Save Changes to Selected NMRA Template...")
-    return
-  
-  try:
-    newScoreMedFrom = int(tb_ScoreMedFrom.Text)
-    newScoreHighFrom = int(tb_ScoreHighFrom.Text)
-  except:
-    MessageBox.Show("The 'Score Medium From' and 'Score High From' values must be whole numbers (integers)", "Error: Save Changes to Selected NMRA Template...")
-    return
-  
-  # form the SQL to update
-  updateSQL = """UPDATE Usr_MRAv2_TemplateDetails SET Name = '{0}', DaysUntil_IncompleteLock = {1}, ScoreMediumTrigger = {2}, ScoreHighTrigger = {3}
-                 WHERE TemplateID = {4}""".format(newName, newExpDays, newScoreMedFrom, newScoreHighFrom, itemID)
-
-  # do update
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(updateSQL))
-    
-    MessageBox.Show("Successfully updated details of selected Matter Risk Assessment Template", "Save Changes to Selected NMRA Template - Success...")
-  except:
-    MessageBox.Show("There was an error amending the details of the Matter Risk Assessment Template, using SQL:\n" + str(updateSQL), "Error: Amending Details of Matter Risk Assessment Template...")
-    return
-  
-  MRATemplates_refreshAndReselect(withTemplateID=itemID)
-  return
-
-
-def btn_MRATemplate_AddNew_Click(s, event):
-  # This function will add a new row to the 'MRAv2_TemplateDetails' table
-  
-  #! Added 29/07/2025: Get next new TypeID so we can add it directly in the INSERT statement
-  nextTypeID = runSQL(codeToRun="SELECT ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails", returnType='Int')
-  insertSQL = """[SQL: INSERT INTO Usr_MRAv2_TemplateDetails (Name, DaysUntil_IncompleteLock, ScoreMediumTrigger, ScoreHighTrigger, TemplateID)
-                 VALUES ('NMRA - new', 29, 0, 0, {0})]""".format(nextTypeID)
-  
-  try:
-    _tikitResolver.Resolve(insertSQL)
-  except:
-    MessageBox.Show("There was an error trying to create a new Matter Risk Assessment, using SQL:\n" + str(insertSQL), "Error: Adding new Matter Risk Assessment...")
-    return
-  
-  # refresh data grid and select last item
-  MRATemplates_refreshAndReselect(withTemplateID=nextTypeID)
-  return
-
-
-def MRATemplates_refreshAndReselect(withTemplateID=None):
-  # This function will refresh the MRA Templates data grid and re-select the current selected item (if possible)
-  # get current itemID
-  if withTemplateID is not None:
-    currentSelectedID = withTemplateID
-  else:
-    currentSelectedID = dg_MRA_Templates.SelectedItem['TemplateID'] if dg_MRA_Templates.SelectedIndex != -1 else None
-
-  refresh_MRA_Templates()
-
-  # reselect item
-  if currentSelectedID is not None:
-    tCount = -1
-    for x in dg_MRA_Templates.Items:
-      tCount += 1
-      if str(x['TemplateID']) == str(currentSelectedID):
-        dg_MRA_Templates.SelectedIndex = tCount
-        dg_MRA_Templates.ScrollIntoView(dg_MRA_Templates.Items[tCount])
-        break
-
-  return
-
-
-def btn_MRATemplate_CopySelected_Click(s, event):
-  # This function will duplicate the selected Matter Risk Assessment (including the questions) AND ANSWERS - NEED TO REVIEW
-
-  MessageBox.Show("Copy selected MRA button click", "Duplicating Matter Risk Assessment...")
-  return
-
-
-def btn_MRATemplate_DeleteSelected_Click(s, event):
-  # This function will delete the selected Matter Risk Assessment template (and any questions associated to it)
-
-  MessageBox.Show("Delete selected MRA button click", "Delete Matter Risk Assessment...")
-  return
-  
-  
-def btn_MRATemplate_Preview_Click(s, event):
-  # This function will load the 'Preview' tab (made to look like 'matter-level' XAML) for the selected item
-
-  MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
-  return
-  
-  
-def btn_MRATemplate_Edit_Click(s, event):
-  # This function will load the 'Questions' tab for the selected item
-  
-  # if nothing selected, alert user and bomb-out now...
-  if lbl_MRATemplate_ID.Content == '0' or dg_MRA_Templates.SelectedIndex == UNSELECTED:
-    MessageBox.Show("Nothing selected to Edit!", "Error: Edit selected Matter Risk Assessment...")
-    return
-
-  # put details into header area of 'Questions' tab
-  tb_ThisMRAid.Text = str(lbl_MRATemplate_ID.Content)
-  tb_ThisMRAname.Text = str(tb_MRATemplate_Name.Text)
-
-  # refresh questions datagrid
-  #dg_MRA_Questions_Refresh()
-
-  # new treeview/template editor VM code
-  EditMRA_loadTreeViewStructure(selectedTemplateID=int(tb_ThisMRAid.Text))
-
-  # show 'Questions' tab and hide 'Overview' tab
-  ti_MRA_Overview.Visibility = Visibility.Collapsed
-  ti_MRA_Questions.Visibility = Visibility.Visible
-  ti_MRA_Questions.IsSelected = True
-  #MessageBox.Show("EditSelected_Click", "DEBUG - TESTING")
-  return
-
-# # # #  END OF:  Matter Risk Assessment Templates   # # # #
-
-# # # #    Q U E S T I O N S   # # # #
-class MRA_Questions(object):
-  def __init__(self, myQuestionID, myQuestionText, myQuestionGroup, myDisplayOrder, myCountAnswers):
-    self.mraQ_QuestionID = myQuestionID
-    self.mraQ_QuestionText = myQuestionText
-    self.mraQ_QuestionGroup = myQuestionGroup
-    self.mraQ_QDisplayOrder = myDisplayOrder
-    self.mraQ_CountAnswers = myCountAnswers
-    return
-
-  def __getitem__(self, index):
-    if index == 'QuestionID':
-      return self.mraQ_QuestionID
-    elif index == 'QuestionText':
-      return self.mraQ_QuestionText
-    elif index == 'QuestionGroup':
-      return self.mraQ_QuestionGroup
-    elif index == 'DisplayOrder':
-      return self.mraQ_QDisplayOrder
-    elif index == 'CountAnswers':
-      return self.mraQ_CountAnswers
-    else:
-      return ''
-
-
-def btn_Questions_AddNew_Click(s, event):
-  # This function will add a new question to the current selected Matter Risk Assessment template
-  
-  templateID = int(tb_ThisMRAid.Text)
-  questionID = runSQL(codeToRun="SELECT ISNULL(MAX(QuestionID), 0) + 1 FROM Usr_MRAv2_Question", returnType='Int')
-  insertSQL = """INSERT INTO Usr_MRAv2_Question (QuestionID, QuestionText)
-                 VALUES ({qID}, 'New Question - please edit text')""".format(qID=questionID)
-
-  MessageBox.Show("Add New Question button click", "Add New Question...")
-  return
-
-def btn_Questions_Clipboard_Click(s, event):
-  # This function will open the 'Questions Clipboard' window for copying/pasting questions between templates
-  
-  QuestionsClipboard_Popup.IsOpen = btn_Questions_Clipboard.IsChecked
-  #MessageBox.Show("Questions Clipboard button click", "Open Questions Clipboard...")
-  return
-
-def QuestionsClipboard_Popup_Closed(s, event):
-  # This function will uncheck the 'Questions Clipboard' button when the popup is closed
-  
-  btn_Questions_Clipboard.IsChecked = False
-  QuestionsClipboard_Popup.IsOpen = False
-  return
-
-def mi_Question_CopyToClipboard_Click(s, event):
-  # This function will copy the selected question to the clipboard
-  
-  QuestionsClipboard_Popup_Closed(s, event)
-  MessageBox.Show("Copy Question to Clipboard menu item click", "Copy Question to Clipboard...")
-  return
-
-def mi_Question_PasteFromClipboard_Click(s, event):
-  # This function will paste the question from the clipboard to the current template
-  
-  QuestionsClipboard_Popup_Closed(s, event)
-  MessageBox.Show("Paste Question from Clipboard menu item click", "Paste Question from Clipboard...")
-  return
-
-
-def dg_MRA_Questions_SelectionChanged(s, event):
-  # This function will handle when the selection changes in the 'MRA Questions' datagrid - it puts selected question details into the edit area below
-
-  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
-    dg_MRA_Questions_EditArea_Clear()
-    return
-  else:
-    dg_MRA_Questions_EditArea_PopulateFromSelected()
-  
-  # for now, just show a message box
-  #MessageBox.Show("Selection changed in MRA Questions datagrid", "DEBUG - MRA Questions Selection Changed...")
-  return
-
-def dg_MRA_Questions_EditArea_Clear():
-  # This function will clear the 'Edit Question' area below the 'MRA Questions' datagrid
-  
-  tb_ESQ_QuestionID.Text = ''
-  txt_ESQ_QuestionText.Text = ''
-  txt_ESQ_QuestionGroup.Text = ''
-  return
-
-def dg_MRA_Questions_EditArea_PopulateFromSelected():
-  # This function will populate the 'Edit Question' area below the 'MRA Questions' datagrid from the selected question
-  
-  selItem = dg_MRA_Questions.SelectedItem
-  tb_ESQ_QuestionID.Text = str(selItem['QuestionID'])
-  txt_ESQ_QuestionText.Text = str(selItem['QuestionText'])
-  txt_ESQ_QuestionGroup.Text = str(selItem['QuestionGroup'])
-  return
-
-
-def dg_MRA_Questions_Refresh():
-  # This function will refresh the 'MRA Questions' datagrid for the selected template
-  
-  # otherwise, get TemplateID to use from this page
-  templateID = int(tb_ThisMRAid.Text)
-  if templateID == -1:
-    return
-
-  # form SQL to get questions for this template
-  sql = """SELECT '0-QuestionID' = T.QuestionID,
-                  '1-QuestionText' = Q.QuestionText,
-                  '2-QuestionGroup' = T.QuestionGroup,
-                  '3-DisplayOrder' = T.DisplayOrder,
-                  '4-CountAs' = (SELECT COUNT(T1.AnswerID) FROM Usr_MRAv2_Templates T1 WHERE T1.TemplateID = {tID} AND T1.QuestionID = T.QuestionID)
-            FROM Usr_MRAv2_Templates T
-                JOIN Usr_MRAv2_Question Q ON T.QuestionID = Q.QuestionID
-            WHERE T.TemplateID = {tID}
-            GROUP BY T.QuestionID, Q.QuestionText, T.QuestionGroup, T.DisplayOrder
-            ORDER BY T.QuestionGroup, T.DisplayOrder""".format(tID=templateID)
-
-  tmpItem = []
-  _tikitDbAccess.Open(sql)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpQuestionID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          tmpQuestionText = '' if dr.IsDBNull(1) else dr.GetString(1)
-          tmpQuestionGroup = '' if dr.IsDBNull(2) else dr.GetString(2)
-          tmpDisplayOrder = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          tmpCountAnswers = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          
-          tmpItem.append(MRA_Questions(myQuestionID=tmpQuestionID, myQuestionText=tmpQuestionText, myQuestionGroup=tmpQuestionGroup,
-                                       myDisplayOrder=tmpDisplayOrder, myCountAnswers=tmpCountAnswers))
-    dr.Close()
-  _tikitDbAccess.Close()
-
-  # add Grouping on 'QuestionGroup'
-  # note: added ', CollectionView, ListCollectionView, PropertyGroupDescription' to 'from System.Windows.Data import Binding ' (line 20)
-  tmpC = ListCollectionView(tmpItem)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraQ_QuestionGroup"))
-  dg_MRA_Questions.ItemsSource = tmpC
-
-  dg_MRA_Questions_SetVisibilityOfEditArea()
-  #MessageBox.Show("Refresh MRA Questions datagrid", "DEBUG - Refresh MRA Questions...")
-  return
-
-def dg_MRA_Questions_SetVisibilityOfEditArea():
-  # This function will set the visibility of the 'Edit Question' area below the datagrid depending on whether something is selected or not
-
-  if dg_MRA_Questions.Items.Count == 0:
-    tb_MRA_NoQuestionsText.Visibility = Visibility.Visible
-    dg_MRA_Questions.Visibility = Visibility.Collapsed
-  else:
-    tb_MRA_NoQuestionsText.Visibility = Visibility.Collapsed
-    dg_MRA_Questions.Visibility = Visibility.Visible
-
-  if dg_MRA_Questions.SelectedIndex == UNSELECTED:
-    tb_ESQ_QuestionID.Text = ''
-    txt_ESQ_QuestionText.Text = ''
-    txt_ESQ_QuestionGroup.Text = ''
-    btn_ESQ_SaveQuestion.IsEnabled = False
-    tb_ESQ_QuestionID.IsEnabled = False
-    txt_ESQ_QuestionText.IsEnabled = False
-    txt_ESQ_QuestionGroup.IsEnabled = False
-  else:
-    btn_ESQ_SaveQuestion.IsEnabled = True
-    tb_ESQ_QuestionID.IsEnabled = True
-    txt_ESQ_QuestionText.IsEnabled = True
-    txt_ESQ_QuestionGroup.IsEnabled = True
-  return
-
-
-def btn_ESQ_SaveQuestion_Click(s, event):
-  # This function will save the edited question details from the 'Edit Question' area below the datagrid
-  
-  #! Note: because of new structure we need to:
-  # 1) update 'Usr_MRAv2_Question' table for question text -
-  #    first check if this text already exists
-  #      - if yes, use THAT QuestionID instead (avoids having multiple identical questions in the table);
-  #      - if no, update question text for current QuestionID
-  # 2) update 'Usr_MRAv2_Templates' table for question group and display order (using the QuestionID from step 1)
-  # Note: we may need to also update any 'Answers' linked to this question if the QuestionID changes (ie: new question text added)
-  #       so will want an 'originalQuestionID' variable to use for 'UPDATE' substitutions if needed (as shouldn't just delete/ignore current answers). 
-
-  MessageBox.Show("Save Edited Question button click", "Save Edited Question...")
-  return
-# # # #   E N D   O F :   Q U E S T I O N S   # # # #
-
-
- 
-# # # #   C A S E   T Y P E   D E F A U L T S   # # # #
-class caseType_Defaults(object):
-  def __init__(self, myCaseTypeName, myRowID, myCaseTypeID, myDeptName, myDeptID):
-    self.mraT_CaseTypeName = myCaseTypeName 
-    self.mraT_RowID = myRowID
-    self.mraT_CaseTypeID = myCaseTypeID
-    self.mraT_DeptName = myDeptName
-    self.mraT_DeptID = myDeptID
-    return
-    
-  def __getitem__(self, index):
-    if index == 'CaseTypeName':
-      return self.mraT_CaseTypeName
-    elif index == 'CaseTypeID':
-      return self.mraT_CaseTypeID
-    elif index == 'DeptName':
-      return self.mraT_DeptName
-    elif index == 'DeptID':
-      return self.mraT_DeptID
-    elif index == 'RowID':
-      return self.mraT_RowID
-    else:
-      return ''
-      
-def refresh_MRA_CaseType_Defaults():
-  # This function will populate the 'Case Types' datagrid (for selecting which Matter Risk Assessment template to be used)
-  
-  # if nothing selected, exit now
-  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
-    dg_MRATemplate_CaseTypes.ItemsSource = []
-    return
-
-  getTableSQL = """SELECT '0-RowID' = CTD.ID, 
-                          '1-CaseTypeName' = CT.Description, 
-                          '2-CaseTypeID' = CTD.CaseTypesCode,
-                          '3-DeptName' = CTG.Name,
-                          '4-DeptID' = CT.CaseTypeGroupRef
-                   FROM Usr_MRAv2_CaseTypeDefaults CTD
-                      LEFT OUTER JOIN Usr_MRAv2_TemplateDetails TD ON CTD.TemplateID = TD.TemplateID
-                      LEFT OUTER JOIN CaseTypes CT ON CTD.CaseTypesCode = CT.Code
-                      LEFT OUTER JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID
-                   WHERE CTD.TemplateID = {templateID}""".format(templateID=dg_MRA_Templates.SelectedItem['TemplateID'])
-
-  tmpItem = []
-  _tikitDbAccess.Open(getTableSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpRowID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          tmpCaseTypeName = '' if dr.IsDBNull(1) else dr.GetString(1) 
-          tmpCaseTypeID = 0 if dr.IsDBNull(2) else dr.GetValue(2)
-          tmpDeptName = '' if dr.IsDBNull(3) else dr.GetString(3)
-          tmpDeptID = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          
-          tmpItem.append(caseType_Defaults(myCaseTypeName=tmpCaseTypeName, myRowID=tmpRowID, 
-                                           myCaseTypeID=tmpCaseTypeID, myDeptName=tmpDeptName, myDeptID=tmpDeptID))
-
-    dr.Close()
-  
-  #close db connection
-  _tikitDbAccess.Close()
-  
-  # added the following 19th June 2024 - this will display list grouped by 'Department' (CaseTypeGroup) name
-  # note: added ', CollectionView, ListCollectionView, PropertyGroupDescription' to 'from System.Windows.Data import Binding ' (line 20)
-  tmpC = ListCollectionView(tmpItem)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription("mraT_DeptName"))
-
-  dg_MRATemplate_CaseTypes.ItemsSource = tmpC     #tmpItem    # use 'tmpItem' if don't want to show 'groupings' in DataGrid
-  return
-
-
-def btn_CaseTypeLinkToTemplate_add_Click(s, event):
-  # This function will link the selected Case Type to the current selected Matter Risk Assessment Template
-  
-  templateID = lbl_MRATemplate_ID.Content      #dg_MRA_Templates.SelectedItem['TemplateID']
-  caseTypeID = cbo_MRATemplate_CaseType.SelectedItem['CaseTypeID']
-
-  # first check if this link already exists
-  checkSQL = """SELECT COUNT(*) FROM Usr_MRAv2_CaseTypeDefaults 
-                WHERE TemplateID = {tID} AND CaseTypesCode = {ctID}""".format(tID=templateID, ctID=caseTypeID)
-  existingCount = runSQL(codeToRun=checkSQL, returnType='Int')
-
-  if existingCount > 0:
-    MessageBox.Show("The selected Case Type is already linked to this Matter Risk Assessment Template!", "Error: Link Case Type to Matter Risk Assessment Template...")
-    return
-  
-  # else add the link
-  insertSQL = """INSERT INTO Usr_MRAv2_CaseTypeDefaults (TemplateID, CaseTypesCode)
-                 VALUES ({tID}, {ctID})""".format(tID=templateID, ctID=caseTypeID)
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(insertSQL))
-    refresh_MRA_CaseType_Defaults()
-  except:
-    MessageBox.Show("There was an error trying to link the selected Case Type to this Matter Risk Assessment Template, using SQL:\n" + str(insertSQL), "Error: Link Case Type to Matter Risk Assessment Template...")
-    return
-  
-  #MessageBox.Show("Add Case Type to Template link button click", "Link Case Type to Matter Risk Assessment Template...")
-  return
-
-def btn_CaseTypeLinkToTemplate_remove_Click(s, event):
-  # This function will remove the link between the selected Case Type and the current selected Matter Risk Assessment Template
-
-  if dg_MRATemplate_CaseTypes.SelectedIndex == UNSELECTED:
-    MessageBox.Show("No Case Type selected to remove the link for!", "Error: Unlink Case Type from Matter Risk Assessment Template...")
-    return
-  
-  # else, double-check user wants to do this - if no, exit now
-  confirmResult = MessageBox.Show("Are you sure you want to unlink the selected Case Type from this Matter Risk Assessment Template?", 
-                                  "Confirm: Unlink Case Type from Matter Risk Assessment Template...", 
-                                  MessageBoxButtons.YesNo, MessageBoxIcon.Question)
-  if confirmResult == DialogResult.No:
-    return
-
-  # continue to remove link
-  # get IDs to use - making sure to convert to integers to avoid SQL errors (exit early if can't be converted to integer)
-  try:
-    templateID = int(lbl_MRATemplate_ID.Content)      #dg_MRA_Templates.SelectedItem['TemplateID']
-    caseTypeID = int(dg_MRATemplate_CaseTypes.SelectedItem['CaseTypeID'])
-  except:
-    MessageBox.Show("Error obtaining selected Matter Risk Assessment TemplateID or CaseType code", "Error: Unlink Case Type from Matter Risk Assessment Template...")
-    return
-
-  deleteSQL = """DELETE FROM Usr_MRAv2_CaseTypeDefaults 
-                 WHERE TemplateID = {tID} AND CaseTypesCode = {ctID}""".format(tID=templateID, ctID=caseTypeID)
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(deleteSQL))
-    refresh_MRA_CaseType_Defaults()
-  except:
-    MessageBox.Show("There was an error trying to unlink the selected Case Type from this Matter Risk Assessment Template, using SQL:\n" + str(deleteSQL), "Error: Unlink Case Type from Matter Risk Assessment Template...")
-    return
-
-  #MessageBox.Show("Remove Case Type to Template link button click", "Unlink Case Type from Matter Risk Assessment Template...")
-  return
-
-
-  
-def btn_BackToOverview_FromEditQs_Click(s, event):
-  # This function should clear the 'Questions' tab and take us back to the 'Risk Assessment Overview' tab
-  ti_MRA_Questions.Visibility = Visibility.Collapsed
-  ti_MRA_Overview.Visibility = Visibility.Visible
-  ti_MRA_Overview.IsSelected = True
-  refresh_MRA_Templates()
-  return
-  
-  
-class caseType_Item(object):
-  def __init__(self, myCaseTypeID, myCaseTypeName, myDeptName):
-    self.mraT_CaseTypeCode = myCaseTypeID
-    self.mraT_CaseTypeName = myCaseTypeName
-    self.mraT_DepartmentName = myDeptName
-    return
-    
-  def __getitem__(self, index):
-    if index == 'CaseTypeID':
-      return self.mraT_CaseTypeCode
-    elif index == 'CaseTypeName':
-      return self.mraT_CaseTypeName
-    elif index == 'DeptName':
-      return self.mraT_DepartmentName
-    else:
-      return ''
-    
-def populate_MRATemplate_CaseTypeCombo():
-  # This function will populate the 'Case Type' combo box on the 'Template Details' area
-  
-  getSQL = """SELECT 'Dept' = CTG.Name, 'CaseType Desc' = CT.Description, 'CaseTypeCode' = CT.Code 
-              FROM CaseTypes CT 
-                LEFT OUTER JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID
-              ORDER BY CTG.Name, CT.Description"""
-
-  tmpItem = []
-  _tikitDbAccess.Open(getSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpDeptName = '' if dr.IsDBNull(0) else dr.GetString(0)
-          tmpCaseTypeName = '' if dr.IsDBNull(1) else dr.GetString(1)
-          tmpCaseTypeID = 0 if dr.IsDBNull(2) else dr.GetValue(2)
-          
-          tmpItem.append(caseType_Item(myCaseTypeID=tmpCaseTypeID, myCaseTypeName=tmpCaseTypeName, myDeptName=tmpDeptName))
-
-    dr.Close()
-  _tikitDbAccess.Close()
-
-  tmpList = ListCollectionView(tmpItem)
-  # group on Department name
-  tmpList.GroupDescriptions.Add(PropertyGroupDescription("mraT_DepartmentName"))
-  cbo_MRATemplate_CaseType.ItemsSource = tmpList
-  return
-
-
-
-def runSQL(codeToRun = '', showError = False, errorMsgText = '', errorMsgTitle = '', 
-           useAltResolver = False, returnType = 'String', textBoxForOutput = None):
-  # Traditionally, we used to use _tikitResolver.Resolve() as-is, but have since found that it's better to wrap this within Python's 'try: except:' construct.
-  # In order to minimise code, I made this reusable function to do so plus allow for a custom message to be displayed upon error.  See below for explanation of inputs/arguments:
-  # codeToRun             = Full SQL of code to run. No need to wrap in '[SQL: code_Here]' as we can do that here
-  # showError             = True | False (default). Indicates whether or not to display message box upon error
-  # errorMsgText          = (empty string default). Text to display in the body of the message box upon error (note: actual SQL will automatically be included, so no need to re-supply that)
-  # errorMsgTitle         = (empty string default). Text to display in the title bar of the message box upon error
-  # useAltResolver        = True | False (default). Indicates whether to use the alternative resolver (eg: for stored procedures, CTEs, etc) or not
-  # returnType            = 'String' (default) | 'Int' | 'DataReader'. Indicates what type of value to return from the SQL execution
-  #! ^ above params added, as there are two different 'resolver' methods in use, one for normal SQL statements, and another for stored procedures, CTEs, etc.
-  #!   Therefore, re-written this function to also be able to use the other with the same 'runSQL()' function
-  # textBoxForOutput      = None (defatul) | TextBox. If supplied, will output the result of the SQL execution into this TextBox
-  # codeToRun_returnValue = (empty string default). This expects a standard 'SELECT' statement, and should be what you'd like returned from this procedure.
-  #                         Eg: your main 'codeToRun' may be an 'INSERT INTO...' and you would like the code/ID/row_number of the added item returned - with the
-  #                             'codeToRun_returnValue' parameter, you can specify the SQL to retrieve such info... Generally speaking, this is usually immediately
-  #                             after an 'INSERT INTO' in my code anyway, so just need to pass as a param here instead.
-  #                         ^ ignoring this... seemed like a good idea, but couldn't make use off in this particular project (WIP WriteOff)
-  #                           What we do here is: 1) count existing rows match entity/matter; 2) if none exist, add one; 3) get id of row for entity/matter
-  #                           (therefore there's not really any 'wastage' there, and don't gain anything by having param in here [because in above example
-  #                            the code to 'insert' is behind an 'if' statement, so if there were already rows that exist, we'd never get new id])
-  #                           If anything, it may just make more sense to have smaller functions where we can whack these multi-line SQL's into (eg purpose specific)
-
-  # Note: calling procedure can use like we do with '_tikitResolver()', that is: 
-  # - tmpValue = runSQL("SELECT YEAR()")   # to capture value into a variable, or:
-  # - runSQL("INSERT INTO x () VALUES()")  # to just run the SQL without saving to variable
-  
-  #! Note: if adding 'returnSQL' param, we'll want to add a check at beginning for any 'INSERT | UPDATE | DELETE' keywords to help identify when to return 'TRUE | FALSE' (to state event happened)
-  #! or in case of 'SELECT'
-
-  if textBoxForOutput is not None:
-    textBoxForOutput.Text += "{0} > runSQL(showError: {2}; errorMsgText: '{3}'; errorMsgTitle: '{4}'; useAltResolver: {5}; returnType: '{6}')\ncodeToRun: {1}\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                                                                                                                                                                        codeToRun,
-                                                                                                                                                                        showError,
-                                                                                                                                                                        errorMsgText,
-                                                                                                                                                                        errorMsgTitle,
-                                                                                                                                                                        useAltResolver,
-                                                                                                                                                                        returnType)
-
-
-  # if no code actually supplied, exit early
-  if len(codeToRun) < 10:
-    if textBoxForOutput is not None:
-      textBoxForOutput.Text += "{0}> Output: Error - length of code doesn't appear long enough\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    else:
-      if showError == True:
-        MessageBox.Show("The supplied 'codeToRun' doesn't appear long enough, please check and update this code if necessary.\nPassed SQL: " + str(codeToRun), "ERROR: runSQL...")
-    return "Error"
-  
-  # search for 'INSERT INTO' | 'UPDATE' | 'DELETE' in passed 'code to run'...
-  pattern = r'\b(?:INSERT\s+INTO|DELETE|UPDATE)\b'
-  isActionSQL = bool(re.search(pattern, codeToRun, re.IGNORECASE))
-  if isActionSQL == True and textBoxForOutput is not None:
-    textBoxForOutput.Text += "SQL contains 'INSERT | UPDATE | DELETE' (will return 'TRUE|FALSE' indicating success instead)\n"
-
-
-  if useAltResolver == False:
-    # Use the standard 'resolver' for normal/simple 'SELECT' statements, or 'INSERT', 'UPDATE', 'DELETE' etc.
-    # Add '[SQL: ]' wrapper if not already included
-    if codeToRun[:5] == "[SQL:":
-      fCodeToRun = codeToRun
-    else:
-      fCodeToRun = "[SQL: {0}]".format(codeToRun)
-  
-    # try to execute the SQL
-    try:
-      tmpValue = _tikitResolver.Resolve(fCodeToRun)
-      didError = False
-
-      # if a TextBox was supplied, then output the result into it
-      if textBoxForOutput is not None:
-        if isActionSQL == True:
-          textBoxForOutput.Text += '{0} > Output: True (INSERT|UPDATE|DELETE executed successfully)\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        else:
-          if returnType == 'Int':
-            textBoxForOutput.Text += '{0} > Output: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tmpValue)
-          else:
-            textBoxForOutput.Text += "{0} > Output: '{1}'\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tmpValue)
-
-      # return an integer to calling proc if requested
-      if returnType == 'Int':
-        return int(tmpValue) if tmpValue is not None else 0
-      else:
-        return tmpValue
-
-    except Exception as e:
-      didError = True
-      # there was an error... check to see if opted to show message or not...
-      if showError == True:
-        MessageBox.Show("{0}\nSQL used:\n{1}\nException:{2}".format(errorMsgText, codeToRun, str(e)), errorMsgTitle)
-      
-            # if a TextBox was supplied, then output the result into it
-      if textBoxForOutput is not None:
-        if isActionSQL == True:
-          textBoxForOutput.Text += '{0} > Output: False (INSERT|UPDATE|DELETE did not execute)...\nException: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e))
-        else:
-          textBoxForOutput.Text += '{0} > Output: Error - Unexpected Error Occurred...\nException: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e))
-
-      if returnType == 'Int':
-        return 0
-      else:
-        return "Error"
-    
-  else:
-    # use alternative resolver for executing stored procedures, or other complex SQL (eg: CTEs)
-    didError = False
-
-    try:
-      _tikitDbAccess.Open(codeToRun)
-      if _tikitDbAccess._dr is not None:
-        dr = _tikitDbAccess._dr
-        if dr.HasRows:
-          while dr.Read():
-
-            if returnType == 'String':
-              # return the first column as a string
-              tmpValue = dr.GetString(0) if not dr.IsDBNull(0) else ''
-
-            elif returnType == 'Int':
-              # return the first column as an integer
-              tmpValue = dr.GetValue(0) if not dr.IsDBNull(0) else 0
               
-            #elif returnType == 'DataReader':
-            #  # return the DataReader object itself
-            #  return dr
-        else:
-          if returnType == 'String':
-            # if no rows returned, return an empty string
-            tmpValue = ''
-          elif returnType == 'Int':
-            # if no rows returned, return 0
-            tmpValue = 0
-        dr.Close()
-      _tikitDbAccess.Close()
+              <StackPanel  Orientation="Horizontal" Margin="0,2">
+                <Label Foreground="Gray" Content="Name" Width="96" HorizontalContentAlignment="Right" />
+                <TextBox x:Name="tb_MRATemplate_Name" Text="[MRA NAME]" VerticalAlignment="Center" Width="340" Height="23" VerticalContentAlignment="Center"/>
+                <Label Content="ID" Foreground="Gray" Margin="6,0,0,0" HorizontalContentAlignment="Right"/>
+                <Label x:Name="lbl_MRATemplate_ID" Content="0" Foreground="Gray" />
+              </StackPanel>
 
-      # output value to text box
-      if textBoxForOutput is not None:
-        if isActionSQL == True:
-          textBoxForOutput.Text += '{0} > Output: True (INSERT|UPDATE|DELETE executed successfully)\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        else:
-          if returnType == 'Int':
-            textBoxForOutput.Text += '{0} > Output: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tmpValue)
-          else:
-            textBoxForOutput.Text += "{0} > Output: '{1}'\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tmpValue)
 
-      return tmpValue
-  
-    except Exception as e:
-      # if there was an error with the CTE supplied, we'll get to here, so update outputs accordingly
-      didError = True
 
-      if showError == True:
-        MessageBox.Show("{0}\nSQL used:\n{1}\nException:{2}".format(errorMsgText, codeToRun, str(e)), errorMsgTitle)
+              <StackPanel Orientation="Horizontal" Margin="0,2">
+                <Label Content="Expires in ? days" Foreground="Gray" Width="96"/>
+                <TextBox x:Name="tb_MRATemplate_ExpiresInXdays" VerticalAlignment="Center" Width="28" TextAlignment="Center" Height="23" VerticalContentAlignment="Center" />
+                <Label Content="(# of days that a High-Risk NMRA will last before a new one is needed)" Foreground="Gray" FontStyle="Italic" />
+              </StackPanel>
 
-      # if a TextBox was supplied, then output the result into it
-      if textBoxForOutput is not None:
-        if isActionSQL == True:
-          textBoxForOutput.Text += '{0} > Output: False (INSERT|UPDATE|DELETE did not execute)...\nException: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e))
-        else:
-          textBoxForOutput.Text += '{0} > Output: Error - Unexpected Error Occurred...\nException: {1}\n'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e))        
+              <GroupBox Header="Score Triggers" HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,4" >
+                <Grid x:Name="grd_Scores" >
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="130" />
 
-      if returnType == 'Int':
-        return 0
-      else:
-        return "Error"
+                  </Grid.ColumnDefinitions>
+
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="18" />
+                    <RowDefinition Height="26" />
+                    <RowDefinition Height="26" />
+                    <RowDefinition Height="26" />
+
+                  </Grid.RowDefinitions>
+
+                  <TextBlock Text="FROM" FontWeight="Bold" TextAlignment="Center" Grid.Column="1" Grid.Row="0" />
+                  <TextBlock Text="TO"  FontWeight="Bold" TextAlignment="Left" Grid.Column="3" Grid.Row="0" />
+
+                  <TextBlock Text="Low" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center" Grid.Column="0" Grid.Row="1" />
+                  <TextBlock Text="0" TextAlignment="Center"  VerticalAlignment="Center" Grid.Column="1" Grid.Row="1" />
+                  <TextBlock Text="?Low To"  x:Name="tb_ScoreLowTo"
+                             VerticalAlignment="Center" 
+                             Grid.Column="3" Grid.Row="1" />
+
+                  <TextBlock Text="Medium" FontWeight="Bold" TextAlignment="Right"  VerticalAlignment="Center" Grid.Column="0" Grid.Row="2" />
+                  <TextBox x:Name="tb_ScoreMedFrom" VerticalAlignment="Center" Width="50" Height="23" 
+                           TextAlignment="Center" VerticalContentAlignment="Center"
+                           Grid.Column="1" Grid.Row="2"/>
+
+                  <TextBlock Text="?MedTo"  x:Name="tb_ScoreMedTo"
+                             VerticalAlignment="Center" Grid.Column="3" Grid.Row="2" />
+
+                  <TextBlock Text="High" FontWeight="Bold" TextAlignment="Right"  VerticalAlignment="Center" Grid.Column="0" Grid.Row="3" />
+                  <TextBox x:Name="tb_ScoreHighFrom" VerticalAlignment="Center" Width="50" Height="23" 
+                           TextAlignment="Center" VerticalContentAlignment="Center" 
+                           Grid.Column="1" Grid.Row="3"/>
+                  <TextBlock Text="this number or greater" 
+                             VerticalAlignment="Center" Grid.Column="3" Grid.Row="3" />
+
+                </Grid>
+                
+                <!--<StackPanel Orientation="Vertical">
+                  <TextBlock Text="Low score is 0 to 'Medium (from)' minus 1" Foreground="Gray" Margin="0,2"/>
+                  <TextBlock Text="Medium score is 'Medium (from)' to 'High (from)' minus 1" Foreground="Gray" Margin="0,2"/>
+                  <TextBlock Text="High score is 'High (from)' or above" Foreground="Gray" Margin="0,2"/>
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+
+                    <Label Content="Medium (from)" Foreground="Gray" Width="96" HorizontalContentAlignment="Right"/>
+                    <TextBox x:Name="tb_ScoreMedFrom1" VerticalAlignment="Center" Width="50" Height="23" 
+                                 TextAlignment="Center" VerticalContentAlignment="Center" />
+                    <Label Content="High (from)" Foreground="Gray" Width="96" HorizontalContentAlignment="Right" Margin="6,0,0,0"/>
+                    <TextBox x:Name="tb_ScoreHighFrom1" VerticalAlignment="Center" Width="50" Height="23" 
+                                 TextAlignment="Center" VerticalContentAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>-->
+
+
+              </GroupBox>
+
+
+
+
+              <Button x:Name="btn_MRATemplate_SaveHeaderDetails" Content="Save NMRA Header Details" 
+                      Height="30" Margin="90,6,90,14" Background="LightGreen" BorderBrush="DarkGreen"/>
+
+
+              <GroupBox Header="Applicable to CaseType(s)..." HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,0,0,4">
+                <StackPanel Orientation="Vertical" Margin="2,4">
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <DataGrid x:Name="dg_MRATemplate_CaseTypes" Height="220" MaxWidth="280"
+                              AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
+                              AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0" 
+                              CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+                      <DataGrid.Resources>
+                        <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                          <Setter Property="Margin" Value="0,2,0,4"/>
+                          <!--<Setter Property="Padding" Value="0,2,0,0" />-->
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="{x:Type GroupItem}" >
+                                <Expander x:Name="exp" IsExpanded="True"
+                                          Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
+                                          Foreground="Black" Padding="0,2,0,0">
+                                  <Expander.Header>
+                                    <DockPanel>
+                                      <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                      <TextBlock Text=" (" FontWeight="Bold" />
+                                      <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                      <TextBlock Text=")" FontWeight="Bold" />
+                                    </DockPanel>
+                                  </Expander.Header>
+                                  <ItemsPresenter />
+                                </Expander>
+
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+
+                        </Style>
+
+                      </DataGrid.Resources>
+
+                      <DataGrid.GroupStyle>
+                        <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                          <GroupStyle.Panel>
+                            <ItemsPanelTemplate >
+                              <DataGridRowsPresenter />
+                            </ItemsPanelTemplate>
+                          </GroupStyle.Panel>
+                        </GroupStyle>
+                      </DataGrid.GroupStyle>
+
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Case Type Name" IsReadOnly="True" Width="250" >
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <TextBlock Text="{Binding mraT_CaseTypeName}" TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center" Height="Auto"/>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+
+                        <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="220" Binding="{Binding mraT_RowID}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="CaseType ID" IsReadOnly="True" Binding="{Binding mraT_CaseTypeID}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="Department Name" IsReadOnly="True" Binding="{Binding mraT_DeptName}" Visibility="Collapsed"/>
+                        <DataGridTextColumn Header="Department ID" IsReadOnly="True"  Binding="{Binding mraT_DeptID}" Visibility="Collapsed"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Button x:Name="btn_CaseTypeLinkToTemplate_remove" Padding="4" VerticalAlignment="Center" Background="#FFFFA7A7" BorderBrush="DarkRed">
+                      <TextBlock Text="Remove Selected" TextWrapping="Wrap" Width="62" TextAlignment="Center"/>
+                    </Button>
+                  </StackPanel>
+
+
+
+                  <GroupBox Header="Add CaseType..." BorderBrush="Gray" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                      <Label Foreground="Gray" Content="Add for Case Type" HorizontalContentAlignment="Right" Visibility="Collapsed"/>
+
+                      <ComboBox x:Name="cbo_MRATemplate_CaseType" Width="240">
+                        <!-- Collapsible group headers -->
+                        <ComboBox.GroupStyle>
+                          <GroupStyle>
+                            <GroupStyle.ContainerStyle>
+                              <Style TargetType="{x:Type GroupItem}">
+                                <Setter Property="Template">
+                                  <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type GroupItem}">
+                                      <Expander IsExpanded="True" Margin="0,2,0,6">
+                                        <Expander.Header>
+                                          <StackPanel>
+                                            <TextBlock Text="{Binding Name}"
+                                                     FontWeight="SemiBold"
+                                                     Margin="2,4,2,2" />
+                                            <Separator Margin="0,0,0,2"/>
+                                          </StackPanel>
+                                        </Expander.Header>
+
+                                        <!-- The grouped items render here -->
+                                        <ItemsPresenter />
+                                      </Expander>
+                                    </ControlTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                              </Style>
+                            </GroupStyle.ContainerStyle>
+                          </GroupStyle>
+                        </ComboBox.GroupStyle>
+
+                        <!-- Optional: light separator between items (within a group) -->
+                        <!--<ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem">
+                          <Setter Property="Padding" Value="2,2,2,2"/>
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="ComboBoxItem">
+                                <Border>
+                                  <StackPanel>
+                                    <ContentPresenter />
+                                    <Separator Margin="0,2,0,0"/>
+                                  </StackPanel>
+                                </Border>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+                        </Style>
+                      </ComboBox.ItemContainerStyle>-->
+
+                        <!-- Your existing item template -->
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Text="{Binding mraT_CaseTypeCode, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                              <TextBlock Text="{Binding mraT_CaseTypeName, Mode=TwoWay}" Width="Auto" />
+                              <TextBlock Text="{Binding mraT_DepartmentName, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <Button x:Name="btn_CaseTypeLinkToTemplate_add" Content="Add" Padding="4" Margin="4,0,0,0"
+                            VerticalAlignment="Center" Background="LightGreen" BorderBrush="DarkGreen"/>
+                    </StackPanel>
+                  </GroupBox>
+
+
+                </StackPanel>
+
+              </GroupBox>
+
+            </StackPanel>
+            
+          </StackPanel>
+
+        </GroupBox>
+
+      </Canvas>
+    </TabItem>
+
+    <TabItem Header="Editing Questions" >
+
+      <!-- Trying to think how this should look in new format 
+           Questions are technically 'global', so may want facility to drag-and-drop from pool of 'global' to 'this mra'
+           (initial thoughts were perhaps a treeview - so list Question in top level, and list all answers beneath (instead of separate 'edit' area)
+           N'ah, scrapping above... going with 'Copy' and 'Paste' buttons instead.
+      
+      -->
+
+      <StackPanel Orientation="Vertical">
+
+
+        <Grid x:Name="grd_EditQs"  >
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="108"/>
+            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="100" MinWidth="100" MaxWidth="900" />
+            <ColumnDefinition Width="6"  />
+            <ColumnDefinition Width="98" x:Name="col_EditSelQ"/>
+            <ColumnDefinition Width="200"  />
+            <ColumnDefinition Width="100"  />
+            <ColumnDefinition   />
+
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            
+            <RowDefinition Height="26" />
+            <RowDefinition Height="40" />
+            <RowDefinition Height="440" />
+            <RowDefinition Height="23" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="30" />
+          </Grid.RowDefinitions>
+
+          <GridSplitter HorizontalAlignment="Center"   
+                        VerticalAlignment="Stretch"   
+                        Grid.Column="3"  
+                        Grid.Row="0"
+                        Grid.RowSpan="7"
+                        Width="6" Background="Silver"
+                        ToolTip="Click and drag me to view more or less of one particular side" 
+                        Margin="0,0,0,0">
+            <GridSplitter.Template>
+              <ControlTemplate TargetType="{x:Type GridSplitter}">
+                <Grid>
+                  <Button Content="⁞" FontWeight="Bold"/>
+                  <!-- Use vertical ellipsis character as the arrow -->
+                  <Rectangle Fill="#00FFFFFF" />
+                  <!-- Transparent background to allow resizing -->
+                </Grid>
+              </ControlTemplate>
+            </GridSplitter.Template>
+          </GridSplitter>
+
+          
+          <TextBlock Text="Questions" FontWeight="Bold" Foreground="Gray" 
+                     HorizontalAlignment="Center"  VerticalAlignment="Center" FontSize="14"
+                     Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"/>
+
+
+          <ToolBarTray IsLocked="True"  
+                       Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3">
+            <ToolBar  >
+              <TextBlock Text="Questions:" Foreground="Gray" VerticalAlignment="Center" Visibility="Collapsed"/>
+              <Button x:Name="btn_Questions_AddNew"  ToolTip="Add a new blank Question to the list">
+                <StackPanel Orientation="Horizontal">
+                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                  <TextBlock Margin="3,4,0,4" Text="Add New..."   TextAlignment="Left" Visibility="Visible"/>
+                </StackPanel>
+              </Button>
+
+              <Separator/>
+
+              
+              
+              <Button x:Name="btn_Questions_CopyToClipboard" Visibility="Collapsed"
+                      ToolTip="Copies the Question (and all it's current answers) to the 'clipboard' - go into another MRA template and click 'Paste from Clipboard' to copy the Question there">
+                <StackPanel Orientation="Horizontal">
+                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                  <TextBlock Margin="3,4,0,4" Text="Copy To Clipboard" TextAlignment="Left" Visibility="Visible"/>
+                </StackPanel>
+              </Button>
+              <Separator Width="4"/>
+
+              
+            </ToolBar>
+
+          </ToolBarTray>
+
+          <TextBlock x:Name="tb_MRA_NoQuestionsText" 
+                     Text="No questions currently exist for this Matter Risk Assessment... click the 'Add New...' button to add a new question" 
+                     TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Visibility="Collapsed" 
+                     Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" />
+
+          <DataGrid x:Name="dg_MRA_Questions" Width="Auto" 
+                    Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" 
+                    AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
+                    AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,3.8,4" 
+                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+            <DataGrid.Resources>
+              <Style x:Key="RightAligned" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+              </Style>
+              <Style x:Key="Center" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+              </Style>
+
+              <!--This is the style to be used by the 'Question Group'-->
+              <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                <Setter Property="Margin" Value="0,2,0,4"/>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type GroupItem}" >
+                      <Expander x:Name="exp" IsExpanded="True"
+                                Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,1"
+                                Foreground="Black" Padding="0,2,0,0">
+                        <Expander.Header>
+                          <DockPanel>
+                            <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                            <TextBlock Text=" (Count of Questions: " FontWeight="Bold" />
+                            <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                            <TextBlock Text=")" FontWeight="Bold" />
+                          </DockPanel>
+                        </Expander.Header>
+                        <ItemsPresenter />
+                      </Expander>
+
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+
+              </Style>
+
+            </DataGrid.Resources>
+
+            <!--This just sets the group style-->
+            <DataGrid.GroupStyle>
+              <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                <GroupStyle.Panel>
+                  <ItemsPanelTemplate >
+                    <DataGridRowsPresenter />
+                  </ItemsPanelTemplate>
+                </GroupStyle.Panel>
+              </GroupStyle>
+            </DataGrid.GroupStyle>
+
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QuestionID}" Visibility="Hidden"/>
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQ_QDisplayOrder}" />
+
+              <DataGridTemplateColumn Header="Question Text" IsReadOnly="True" Width="500" >
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding mraQ_QuestionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <DataGridTextColumn Header="QuestionGroup" IsReadOnly="True" Width="110" Visibility="Collapsed"
+                                  Binding="{Binding mraQ_QuestionGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              
+
+              <DataGridTemplateColumn Header="Count of Answers" IsReadOnly="True" Width="110" >
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding mraQ_CountAnswers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="Auto" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!--<DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding clCountUsed}"/>-->
+            </DataGrid.Columns>
+          </DataGrid>
+
+          <!--<GroupBox Header="Edit Selected Question / New Question" Grid.Row="6" Margin="6" BorderBrush="Gray" >
+        </GroupBox>-->
+
+          <!-- A N S W E R S   S E C T I O N -->
+
+
+
+          <TextBlock Text="Answers" Foreground="Gray" FontWeight="Bold" FontSize="14"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" 
+                     Grid.Row="0" Grid.Column="4" Grid.ColumnSpan="4"/>
+
+          <ToolBar IsManipulationEnabled="False" Margin="4,0,0,0" 
+                   Grid.Row="1" Grid.Column="4" Grid.ColumnSpan="4">
+
+            <Button x:Name="btn_AddNewListItem1" ToolTip="Add new answer item">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep1"/>
+            
+            <Button x:Name="btn_CopySelectedAnswerItem" ToolTip="Duplicate selected answer item">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep2" Width="4"/>
+            
+            <Button x:Name="btn_CopyAllAnswerItems" ToolTip="Duplicate ALL answer items">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                <TextBlock Margin="3,4,0,4" Text="Duplicate All answer items" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep7" Width="4"/>
+            
+            <!--<Button x:Name="btn_A_MoveTop1" ToolTip="Move selected answer item to the top of the list">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep3"/>
+            
+            <Button x:Name="btn_A_MoveUp1" ToolTip="Move selected answer item up one row">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep4"/>
+            
+            <Button x:Name="btn_A_MoveDown1"  ToolTip="Move selected answer item dowm one row">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep5"/>
+
+            <Button x:Name="btn_A_MoveBottom1"  ToolTip="Move selected answer item to the bottom of the list" >
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>
+            <Separator x:Name="MRA_A_Sep6" Width="4"/>
+            
+            <Button x:Name="btn_DeleteSelectedListItem1" Background="#FFFFA7A7"  ToolTip="Delete the selected answer item (requires confirmation)...">
+              <StackPanel Orientation="Vertical">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+              </StackPanel>
+            </Button>-->
+            <Separator Width="4"/>
+            
+            <Label x:Name="lbl_MRA_Answer_Text" Visibility="Collapsed" />
+            <Label x:Name="lbl_MRA_Answer_Score" Visibility="Collapsed" />
+            <Label x:Name="lbl_MRA_Answer_EmailComment" Visibility="Collapsed" />
+          </ToolBar>
+
+          <TextBlock x:Name="lbl_NoAnswers" 
+                     Text="No answers currently exist - use the 'Answer Options' area above to copy answers from another question, or click '+' button to add new" 
+                     Foreground="Red" FontWeight="Bold" TextWrapping="Wrap" FontSize="16" Margin="4,0" 
+                     Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="4"/>
+
+          <DataGrid x:Name="dg_EditMRA_AnswersPreview"  Width="Auto"
+                    AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
+                    AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="4,0,2,4"
+                    Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="4" 
+                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+            <DataGrid.Resources>
+              <Style x:Key="RightAligned" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+              </Style>
+              <Style x:Key="Center" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+              </Style>
+              <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="Green"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="BorderBrush" Value="Wheat"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Width" Value="Auto"/>
+              </Style>
+
+            </DataGrid.Resources>
+
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding mraQA_DO}" />
+              <DataGridTextColumn Header="Answer Text" IsReadOnly="False" Width="Auto" MinWidth="70"
+                                  Binding="{Binding mraQA_Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              <DataGridTextColumn Header="Score" IsReadOnly="False" Width="60"
+                                  Binding="{Binding mraQA_Score, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              <DataGridTextColumn Header="Email Comment" IsReadOnly="False" Width="Auto" MinWidth="100"
+                                  Binding="{Binding mraQA_EC, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding mraQA_ID}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40" Binding="{Binding mraQA_RowID}" Visibility="Collapsed"/>
+
+            </DataGrid.Columns>
+
+
+          </DataGrid>
+
+
+          <TextBlock Text="Edit Selected Answer" Foreground="Gray" FontWeight="Bold" 
+                     TextAlignment="Center" VerticalAlignment="Center"
+                     Grid.Row="3" Grid.Column="5" Grid.ColumnSpan="2"/>
+
+          <TextBlock x:Name="lbl_AID" Text="ID" Foreground="Gray" 
+                     VerticalAlignment="Center"
+                     Grid.Row="3" Grid.Column="7"/>
+
+          <TextBlock Text="Answer Text" Foreground="Gray"  Margin="4,0"
+                     HorizontalAlignment="Right"  VerticalAlignment="Center" 
+                     Grid.Row="4" Grid.Column="4"/>
+
+          <TextBox x:Name="txt_AnswerText" Margin="2" 
+                   VerticalAlignment="Center" Text="this is a sample answer"
+                   Grid.Row="4" Grid.Column="5" />
+
+          <TextBlock Text="Score" Foreground="Gray"  Margin="4,0"
+                     HorizontalAlignment="Right"  VerticalAlignment="Center" 
+                     Grid.Row="4" Grid.Column="6"/>
+          <TextBox x:Name="txt_AnswerScore" Margin="2"
+                   VerticalAlignment="Center" 
+                   Grid.Row="4" Grid.Column="7" />
+
+          <TextBlock Text="Email Comment" Foreground="Gray"  Margin="4,0"
+                     HorizontalAlignment="Right"  VerticalAlignment="Top" 
+                     Grid.Row="5" Grid.Column="4" Grid.RowSpan="2"/>
+          <TextBox x:Name="txt_AnswerEmailComment" TextWrapping="Wrap"   Padding="0" Margin="2"
+                   Grid.Row="5" Grid.Column="5" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+
+          <Button x:Name="btn_SaveAnswer" Content="Save" Padding="4" MaxHeight="26" MaxWidth="50" 
+                  Grid.Row="5" Grid.Column="7"  Grid.RowSpan="2"/>
+
+        </Grid>
+
+      </StackPanel>
+         
+      
+    </TabItem>
+
+
+    <TabItem Header="Edit MRA Template..." x:Name="ti_MRA_Questions" >
+      <TabItem.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>        
+      </TabItem.Resources>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1*" />
+          </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+          <RowDefinition Height="1*" />
+          <RowDefinition Height="14*" />
+        </Grid.RowDefinitions>
+
+          
+          <!-- TOP Toolbar section -->
+        <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
+          <GroupBox Header="This Matter Risk Assessment..." BorderBrush="Gray"  MaxWidth="550"
+                    Margin="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+              <TextBlock x:Name="tb_ThisMRAid" Text="-1" Foreground="Gray" Margin="4,0" FontWeight="Bold" />
+              <TextBlock x:Name="tb_ThisMRAname" Text="Name of NMRA" Margin="4,0" FontWeight="Bold"
+                         Foreground="Gray" TextTrimming="CharacterEllipsis"  />
+            </StackPanel>
+
+          </GroupBox>
+
+
+          <Button x:Name="btn_BackToOverview_FromEditQs" ToolTip="Go back to the 'Overview' sheet"
+                  Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod"
+                  Height="34" Margin="20,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
+              <TextBlock Margin="4,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="50" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+
+          <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." VerticalAlignment="Center"
+                    Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="90,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Copied what:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_CopiedWhat" 
+                         Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
+              <TextBlock Text="TID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceTemplateID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock Text="QID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceQuestionID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock Text="AID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceAnswerID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+
+            </StackPanel>
+          </GroupBox>
+
+          <ToggleButton x:Name="btn_Questions_Clipboard" ClickMode="Press" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4,0">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\clipboard1.png" />
+              <TextBlock Text="Clipboard..." Margin="3,4,0,4" TextAlignment="Left"/>
+            </StackPanel>
+          </ToggleButton>
+          <Popup x:Name="QuestionsClipboard_Popup" 
+                 PlacementTarget="{Binding ElementName=btn_Questions_Clipboard}"
+                 Placement="Bottom"
+                 StaysOpen="False"
+                 AllowsTransparency="True"
+                 PopupAnimation="Slide">
+
+            <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="2">
+              <StackPanel>
+                <Button x:Name="mi_Question_CopyToClipboard" 
+                        Content="Copy to Clipboard"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left"
+                        BorderThickness="0"
+                        Background="Transparent"/>
+
+                <Separator/>
+
+                <Button x:Name="mi_Question_PasteFromClipboard" 
+                        Content="Paste from Clipboard"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left"
+                        BorderThickness="0"
+                        Background="Transparent"/>
+
+
+              </StackPanel>
+
+            </Border>
+
+          </Popup>
+        </StackPanel>
+
+
+
+        <!-- LEFT: Tree -->
+          <Border Grid.Column="0" Grid.Row="1"
+                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
+                  CornerRadius="10">
+            
+            <TreeView x:Name="tvTemplate"
+                      ItemsSource="{Binding Groups}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" >
+
+              <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
+                  <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"/>
+
+                  <HierarchicalDataTemplate.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Answers}">
+                      <TextBlock Text="{Binding QuestionText}" />
+
+                      <HierarchicalDataTemplate.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding AnswerText}" />
+                            <TextBlock Text="  (" />
+                            <TextBlock Text="{Binding Score}" />
+                            <TextBlock Text=")" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </HierarchicalDataTemplate.ItemTemplate>
+
+                    </HierarchicalDataTemplate>
+                  </HierarchicalDataTemplate.ItemTemplate>
+
+                </HierarchicalDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+
+          </Border>
+
+          <!-- RIGHT: Editor -->
+          <Border Grid.Column="1" Grid.Row="1"
+                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
+                  CornerRadius="10">
+            <DockPanel>
+
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="Edit details" FontSize="16" FontWeight="Bold" />
+                <Button Content="Update"
+                        Margin="12,0,0,0"
+                        Width="90" Visibility="Collapsed"/>
+
+                <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Margin="20,0,0,0" Padding="6,0"/>
+                <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Margin="20,0,0,0" Padding="6,0"/>
+              </StackPanel>
+
+              <StackPanel>
+
+              <!-- GROUP EDITOR -->
+              <GroupBox Header="Question Group Details..." BorderBrush="Gray" Margin="0,4">
+                <StackPanel Orientation="Horizontal" Margin="0,4" >
+                  <TextBlock Text="Question Group" VerticalAlignment="Center"/>
+                  <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}" Padding="2"
+                           Width="400" Height="23" Margin="4,0,0,0"/>
+                </StackPanel>
+
+              </GroupBox>
+
+              <!-- QUESTION EDITOR -->
+              <GroupBox Header="Question Details..." BorderBrush="Gray" Margin="0,4" >
+                <StackPanel Margin="0,4">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Center">
+                    <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
+                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+
+                    <TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
+                    <Button x:Name="btn_EditMRA_Question_MoveTop" Margin="4,0,0,0" 
+                            ToolTip="Move the currently selected Question to the top of the list">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Question_MoveUp" Margin="4,0,0,0" 
+                            ToolTip="Move the currently selected Question up one row">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Question_MoveDown" Margin="4,0,0,0"
+                            ToolTip="Move the currently selected Question down one row">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Question_MoveBottom" Margin="4,0,0,0"
+                            ToolTip="Move the currently selected Question to the bottom of the list">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Question_DeleteSelected" Margin="4,0,0,0"
+                            Background="#FFFFA7A7" BorderBrush="DarkRed"
+                            ToolTip="Deletes the currently selected Question (requires confirmation)">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                  </StackPanel>
+
+                  <TextBlock Text="Question Text:" />
+                  <TextBox Text="{Binding SelectedQuestion.QuestionText}"
+                           AcceptsReturn="True"
+                           Height="80"
+                           TextWrapping="Wrap"/>
+
+                </StackPanel>
+                
+              </GroupBox>
+              
+              <!-- ANSWER EDITOR -->
+              <GroupBox Header="Answer Details..." BorderBrush="Gray" Margin="0,4" >
+                <StackPanel Margin="0,4">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
+                    <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                    <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+                    <TextBlock Text="Move A:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
+                    <Button x:Name="btn_EditMRA_Answer_MoveTop" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item to the top of the list">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Answer_MoveUp" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item up one row">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Answer_MoveDown" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item dowm one row">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Answer_MoveBottom" Margin="4,0,0,0"
+                            ToolTip="Move selected answer item to the bottom of the list" >
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Margin="4,0,0,0" Background="#FFFFA7A7"  
+                            ToolTip="Delete the selected answer item (requires confirmation)...">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+                    </Button>
+
+
+                  </StackPanel>
+                  
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                    <TextBox Text="{Binding SelectedAnswer.Score}" 
+                             Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
+
+                    
+                  </StackPanel>
+                  
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
+
+                    <TextBox Text="{Binding SelectedAnswer.AnswerText}"
+                             AcceptsReturn="False"
+                             Height="23" Width="400"
+                             TextWrapping="Wrap"
+                             Margin="4,0,0,0" Padding="2" />
+
+                  </StackPanel>
+
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
+                    <TextBox Text="{Binding SelectedAnswer.EmailComment}" 
+                             Width="400" Height="46" Margin="4,0,0,0" />
+                  </StackPanel>
+
+                </StackPanel>
+
+
+              </GroupBox>
+
+              <Expander IsExpanded="False" Margin="0,8,0,0" x:Name="exp_DebugMRA" 
+                        DataContext="{Binding DataContext, ElementName=tvTemplate}"
+                        Background="LightGray" BorderBrush="Gray" ExpandDirection="Down" >
+                <Expander.Header>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Debug" FontWeight="Bold" VerticalAlignment="Center" Foreground="Gray"/>
+                    <Button x:Name="btn_DumpVM" Content="Export Current MRA Structure to file" 
+                            Margin="50,0,0,0" Padding="4,0"
+                            Visibility="{Binding IsExpanded,
+                                          ElementName=exp_DebugMRA,
+                                          Converter={StaticResource BoolToVis}}"/>
+                    <Button x:Name="btn_EditMRA_CopyDebugLog"
+                            Content="Copy Debug Log to Clipboard"
+                            Margin="20,0,0,0" Width="170"
+                            Visibility="{Binding IsExpanded,
+                                          ElementName=exp_DebugMRA,
+                                          Converter={StaticResource BoolToVis}}"/>
+
+                    <TextBlock Text="{Binding DebugLines.Count, StringFormat=x{0}}"
+                                Foreground="Gray" Margin="8,0,0,0" TextAlignment="Center" Width="30"/>
+                  </StackPanel>
+                  
+                </Expander.Header>
+                
+                <DockPanel>
+                  <ListBox ItemsSource="{Binding DebugLines}"
+                           FontFamily="Consolas"
+                           FontSize="12"
+                           Height="140" Margin="2"
+                           ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Path=.}" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </DockPanel>
+              </Expander>
+
+
+            </StackPanel>
+
+
+            </DockPanel>
+          </Border>
+        </Grid>
+
+      
+    </TabItem>
     
-###################################################################################################################################################
-
-## New MRA Edit Template tab code below ##
-
-class NotifyBase(INotifyPropertyChanged):
-  # This creates add_PropertyChanged/remove_PropertyChanged automatically
-  def __init__(self):
-    # store delegates that WPF adds via add_PropertyChanged
-    self._pc_handlers = []
-
-  # .NET event accessor: WPF calls this when binding subscribes
-  def add_PropertyChanged(self, handler):
-    if handler is None:
-      return
-    self._pc_handlers.append(handler)
-
-  # .NET event accessor: WPF calls this when binding unsubscribes
-  def remove_PropertyChanged(self, handler):
-    if handler is None:
-      return
-    # remove first matching instance
-    for i in range(len(self._pc_handlers) - 1, -1, -1):
-      if self._pc_handlers[i] == handler:
-        del self._pc_handlers[i]
-        break
-
-  
-  def _raise(self, prop_name):
-    if not self._pc_handlers:
-      return
-    args = PropertyChangedEventArgs(prop_name)
-    # iterate over a copy in case handlers mutate subscriptions
-    for h in list(self._pc_handlers):
-      h(self, args)
-
-
-class GroupVM(NotifyBase):
-  def __init__(self, group_name):
-    NotifyBase.__init__(self)
-    self._GroupName = group_name
-    #self.Questions = ObservableCollection[QuestionVM]()  # forward ref ok in IronPython at runtime
-    self.Questions = ObservableCollection[object]()
-
-  @property
-  def GroupName(self): return self._GroupName
-  @GroupName.setter
-  def GroupName(self, v):
-      self._GroupName = v
-      self._raise("GroupName")
-
-
-class QuestionVM(NotifyBase):
-  def __init__(self, question_id, text, question_display_order=0, parent_group=None):
-    NotifyBase.__init__(self)
-    self.QuestionID = question_id
-    self.ParentGroup = parent_group
-    self._QuestionText = text
-    self._QuestionDisplayOrder = question_display_order
-    #self.Answers = ObservableCollection[AnswerVM]()
-    self.Answers = ObservableCollection[object]()
-
-  @property
-  def QuestionText(self): return self._QuestionText
-  @QuestionText.setter
-  def QuestionText(self, v):
-      self._QuestionText = v
-      self._raise("QuestionText")
-
-  @property
-  def QuestionDisplayOrder(self): return self._QuestionDisplayOrder
-  @QuestionDisplayOrder.setter
-  def QuestionDisplayOrder(self, v):
-      self._QuestionDisplayOrder = v
-      self._raise("QuestionDisplayOrder")
-
-
-class AnswerVM(NotifyBase):
-  def __init__(self, answer_id, text, score, email_comment='', answer_display_order=0, parent_question=None):
-    NotifyBase.__init__(self)
-    self.AnswerID = answer_id
-    self.ParentQuestion = parent_question
-    self._AnswerText = text
-    self._Score = score
-    self._EmailComment = email_comment
-    self._AnswerDisplayOrder = answer_display_order
-
-  @property
-  def AnswerText(self): return self._AnswerText
-  @AnswerText.setter
-  def AnswerText(self, v):
-      self._AnswerText = v
-      self._raise("AnswerText")
-
-  @property
-  def Score(self): return self._Score
-  @Score.setter
-  def Score(self, v):
-      self._Score = v
-      self._raise("Score")
-
-  @property
-  def EmailComment(self): return self._EmailComment
-  @EmailComment.setter
-  def EmailComment(self, v):
-      self._EmailComment = v
-      self._raise("EmailComment")
-
-  @property
-  def AnswerDisplayOrder(self): return self._AnswerDisplayOrder
-  @AnswerDisplayOrder.setter
-  def AnswerDisplayOrder(self, v):
-      self._AnswerDisplayOrder = v
-      self._raise("AnswerDisplayOrder")
-
-
-class TemplateEditorVM(NotifyBase):
-  def __init__(self, template_id):
-    NotifyBase.__init__(self)
-    self.TemplateID = template_id
-    #self.Groups = ObservableCollection[GroupVM]()
-    self.Groups = ObservableCollection[object]()
-
-    self._SelectedItem = None
-    self._SelectedGroup = None
-    self._SelectedQuestion = None
-    self._SelectedAnswer = None
-
-  @property
-  def SelectedItem(self): return self._SelectedItem
-  
-  @SelectedItem.setter
-  def SelectedItem(self, v):
-      self._SelectedItem = v
-
-      # Reset
-      self._SelectedGroup = None
-      self._SelectedQuestion = None
-      self._SelectedAnswer = None
-
-      if v is None:
-        pass
-      elif isinstance(v, GroupVM):
-        self._SelectedGroup = v
-        # optionally auto-select first question/answer?
-        if v.Questions.Count > 0:
-          self._SelectedQuestion = v.Questions[0]
-          if self._SelectedQuestion.Answers.Count > 0:
-            self._SelectedAnswer = self._SelectedQuestion.Answers[0]
-
-      elif isinstance(v, QuestionVM):
-        self._SelectedQuestion = v
-        self._SelectedGroup = v.ParentGroup
-        if v.Answers.Count > 0:
-          self._SelectedAnswer = v.Answers[0]
-
-      elif isinstance(v, AnswerVM):
-        self._SelectedAnswer = v
-        self._SelectedQuestion = v.ParentQuestion
-        if self._SelectedQuestion is not None:
-          self._SelectedGroup = self._SelectedQuestion.ParentGroup
-
-      self._raise("SelectedItem")
-      self._raise("SelectedGroup")
-      self._raise("SelectedQuestion")
-      self._raise("SelectedAnswer")
-
-  @property
-  def SelectedGroup(self): return self._SelectedGroup
-
-  @property
-  def SelectedQuestion(self): return self._SelectedQuestion
-  
-  @property
-  def SelectedAnswer(self): return self._SelectedAnswer
-
-## above mostly supplied from ChatGPT with minor modifications (adding additional fields recently added to XAML) ##
-
-def tvTemplate_SelectedItemChanged(sender, e):
-  # This function will handle when the selected item in the Template TreeView changes
-
-  _tikitSender.DataContext.SelectedItem = e.NewValue
-
-  #MessageBox.Show("Template TreeView selected item changed", "DEBUG - Template TreeView Selected Item Changed...")
-  return
-
-
-def load_template_structure_from_reader(vm, dr):
-# This function will load the template structure from a data reader into the provided ViewModel (vm)
-
-  group_map = {}  # group_name -> GroupVM
-  q_map = {}      # (group_name, question_id) -> QuestionVM
-
-  # Optional: if you want stable ordering
-  group_names_in_order = []
-  question_keys_in_order = []  # track first-seen order
-
-  while dr.Read():
-    group_name = "" if dr.IsDBNull(0) else dr.GetString(0)            # QuestionGroup
-    q_order    = 0  if dr.IsDBNull(1) else int(dr.GetValue(1))        # QuestionOrder
-    q_id       = 0  if dr.IsDBNull(2) else int(dr.GetValue(2))        # QuestionID
-    q_text     = "" if dr.IsDBNull(3) else dr.GetString(3)            # QuestionText
-
-    a_order    = 0  if dr.IsDBNull(4) else int(dr.GetValue(4))        # AnswerOrder
-    a_id       = 0  if dr.IsDBNull(5) else int(dr.GetValue(5))        # AnswerID
-    a_text     = "" if dr.IsDBNull(6) else dr.GetString(6)            # AnswerText
-    email_c    = "" if dr.IsDBNull(7) else dr.GetString(7)            # EmailComment
-    score      = 0  if dr.IsDBNull(8) else int(dr.GetValue(8))        # Score
-
-    # Group
-    g = group_map.get(group_name)
-    if g is None:
-      g = GroupVM(group_name)
-      group_map[group_name] = g
-      group_names_in_order.append(group_name)
-
-    # Question
-    q_key = (group_name, q_id)
-    q = q_map.get(q_key)
-    if q is None:
-      q = QuestionVM(q_id, q_text, question_display_order=q_order, parent_group=g)
-      q_map[q_key] = q
-      g.Questions.Add(q)
-      question_keys_in_order.append(q_key)
-    else:
-      # keep updated values (optional)
-      q.QuestionText = q_text
-      q.QuestionDisplayOrder = q_order
-
-    # Answer (guard for LEFT JOIN nulls)
-    if a_id != 0:
-      a = AnswerVM(a_id, a_text, score, email_comment=email_c,
-                    answer_display_order=a_order, parent_question=q)
-      q.Answers.Add(a)
-
-  # Now sort within each group/question if you want strict ordering
-  # (ObservableCollection has no Sort, so rebuild in place)
-  for group_name in group_names_in_order:
-    g = group_map[group_name]
-
-    # sort questions by display order
-    qs = list(g.Questions)
-    qs.sort(key=lambda qq: (qq.QuestionDisplayOrder, qq.QuestionText))
-    g.Questions.Clear()
-    for q in qs:
-      # sort answers by answer display order
-      ans = list(q.Answers)
-      ans.sort(key=lambda aa: (aa.AnswerDisplayOrder, aa.AnswerText))
-      q.Answers.Clear()
-      for a in ans:
-        q.Answers.Add(a)
-      g.Questions.Add(q)
-
-  # Load into vm
-  vm.Groups.Clear()
-  for group_name in sorted(group_map.keys()):  # or group_names_in_order for first-seen order
-    vm.Groups.Add(group_map[group_name])
-
-  # Set initial selection
-  if vm.Groups.Count > 0:
-    vm.SelectedItem = vm.Groups[0]
-
-
-def EditMRA_loadTreeViewStructure(selectedTemplateID):
-
-  if selectedTemplateID is None or selectedTemplateID == 0:
-    return
-
-  # form sql to get template structure
-  sql = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText, 
-                  MRAT.AnswerOrder, MRAT.AnswerID, MRAA.AnswerText, MRAA.EmailComment, MRAT.Score
-          FROM Usr_MRAv2_Templates MRAT
-            JOIN Usr_MRAv2_TemplateDetails TD ON MRAT.TemplateID = TD.TemplateID
-            LEFT OUTER JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
-            LEFT OUTER JOIN Usr_MRAv2_Answer MRAA ON MRAT.AnswerID = MRAA.AnswerID
-          WHERE MRAT.TemplateID = {0}
-          ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.AnswerOrder""".format(selectedTemplateID)
-
-  vm = TemplateEditorVM(selectedTemplateID)
-  _tikitSender.DataContext = vm
-
-  _tikitDbAccess.Open(sql)
-  dr = _tikitDbAccess._dr
-  if dr is not None and dr.HasRows:
-    load_template_structure_from_reader(vm, dr)
-    dr.Close()
-  _tikitDbAccess.Close()
-  return
-
-
-def next_question_order(group_vm):
-  if group_vm is None or group_vm.Questions.Count == 0:
-    return 1
-  return max([q.QuestionDisplayOrder for q in group_vm.Questions]) + 1
-
-def next_answer_order(question_vm):
-  if question_vm is None or question_vm.Answers.Count == 0:
-    return 1
-  return max([a.AnswerDisplayOrder for a in question_vm.Answers]) + 1
-
-
-# --- module-level temp negative ID generator for new items ---
-def _next_temp_id():
-  global _temp_id
-  _temp_id -= 1
-  return _temp_id
-
-def _renumber_questions(group_vm):
-  # Set QuestionDisplayOrder based on current list order (1..n).
-  if group_vm is None: return
-  i = 1
-  for q in group_vm.Questions:
-    q.QuestionDisplayOrder = i
-    i += 1
-  return
-
-def _renumber_answers(question_vm):
-  # Set AnswerDisplayOrder based on current list order (1..n).
-  if question_vm is None: return
-  i = 1
-  for a in question_vm.Answers:
-    a.AnswerDisplayOrder = i
-    i += 1
-  return
-
-def _move_item_to_index(collection, item, new_index):
-  # Moves item to new_index within an ObservableCollection.
-  if collection is None or item is None:
-    return False
-
-  old_index = collection.IndexOf(item)
-  if old_index < 0:
-    return False
-
-  # clamp
-  if new_index < 0:
-    new_index = 0
-  if new_index > collection.Count - 1:
-    new_index = collection.Count - 1
-
-  if new_index == old_index:
-    return False
-
-  # ObservableCollection has Move(oldIndex,newIndex) in WPF
-  collection.Move(old_index, new_index)
-  return True
-
-def _ensure_selected_context(vm):
-  """
-  If a user selects a Group but no SelectedQuestion/Answer set yet,
-  populate sensible defaults. Your SelectedItem setter already does most of this,
-  but this can help after programmatic inserts.
-  """
-  if vm is None: return
-  if vm.SelectedGroup is None and vm.Groups.Count > 0:
-    vm.SelectedItem = vm.Groups[0]
-
-
-def btn_EditMRA_Question_Add_Click(sender, e):
-  vm = _tikitSender.DataContext
-  if vm is None:
-    return
-
-  # Determine target group
-  g = vm.SelectedGroup
-  if g is None:
-    # Create a default group if nothing selected
-    g = GroupVM("New Group")
-    vm.Groups.Add(g)
-    vm.SelectedItem = g
-
-  # Create new question
-  new_qid = _next_temp_id()
-  q = QuestionVM(new_qid, "New question...", question_display_order=0, parent_group=g)
-  g.Questions.Add(q)
-
-  # Optional: create a starter answer so UI always has 3 levels populated
-  new_aid = _next_temp_id()
-  a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
-  q.Answers.Add(a)
-
-  # Renumber display orders based on current list position
-  _renumber_questions(g)
-  _renumber_answers(q)
-
-  # Select new question (or the answer if you prefer)
-  vm.SelectedItem = q
-  return
-
-def btn_EditMRA_Answer_Add_Click(sender, e):
-  
-  vm = _tikitSender.DataContext
-  if vm is None:
-    return
-
-  # Determine target question
-  q = vm.SelectedQuestion
-  if q is None and vm.SelectedAnswer is not None:
-    q = vm.SelectedAnswer.ParentQuestion
-
-  if q is None:
-    # Nothing to attach answer to
-    return
-
-  new_aid = _next_temp_id()
-  a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
-  q.Answers.Add(a)
-
-  _renumber_answers(q)
-
-  vm.SelectedItem = a
-  return
-
-
-def btn_EditMRA_Question_MoveTop_Click(sender, e):
-  vm = _tikitSender.DataContext
-  q = vm.SelectedQuestion
-  g = vm.SelectedGroup
-  if g is None or q is None:
-    return
-
-  if _move_item_to_index(g.Questions, q, 0):
-    _renumber_questions(g)
-    vm.SelectedItem = q  # keep selection stable
-  return
-
-def btn_EditMRA_Question_MoveUp_Click(sender, e):
-  vm = _tikitSender.DataContext
-  q = vm.SelectedQuestion
-  g = vm.SelectedGroup
-  if g is None or q is None:
-    return
-
-  idx = g.Questions.IndexOf(q)
-  if idx <= 0:
-    return
-
-  if _move_item_to_index(g.Questions, q, idx - 1):
-    _renumber_questions(g)
-    vm.SelectedItem = q
-  return
-
-def btn_EditMRA_Question_MoveDown_Click(sender, e):
-  vm = _tikitSender.DataContext
-  q = vm.SelectedQuestion
-  g = vm.SelectedGroup
-  if g is None or q is None:
-    return
-
-  idx = g.Questions.IndexOf(q)
-  if idx < 0 or idx >= g.Questions.Count - 1:
-    return
-
-  if _move_item_to_index(g.Questions, q, idx + 1):
-    _renumber_questions(g)
-    vm.SelectedItem = q
-  return
-
-def btn_EditMRA_Question_MoveBottom_Click(sender, e):
-  vm = _tikitSender.DataContext
-  q = vm.SelectedQuestion
-  g = vm.SelectedGroup
-  if g is None or q is None:
-    return
-
-  if _move_item_to_index(g.Questions, q, g.Questions.Count - 1):
-    _renumber_questions(g)
-    vm.SelectedItem = q
-  return
-
-
-def btn_EditMRA_Question_DeleteSelected_Click(sender, e):
-  vm = _tikitSender.DataContext
-  q = vm.SelectedQuestion
-  g = vm.SelectedGroup
-  if g is None or q is None:
-    return
-
-  # Confirm deletion
-  res = MessageBox.Show("Are you sure you want to delete the selected question and all its answers?", "Confirm Delete Question", MessageBoxButton.YesNo, MessageBoxImage.Warning)
-  if res != MessageBoxResult.Yes:
-    return
-
-  g.Questions.Remove(q)
-  _renumber_questions(g)
-
-  _ensure_selected_context(vm)
-  return
-
-
-def btn_EditMRA_Answer_MoveTop_Click(sender, e):
-  vm = _tikitSender.DataContext
-  a = vm.SelectedAnswer
-  q = vm.SelectedQuestion
-  if q is None or a is None:
-    return
-
-  if _move_item_to_index(q.Answers, a, 0):
-    _renumber_answers(q)
-    vm.SelectedItem = a
-
-def btn_EditMRA_Answer_MoveUp_Click(sender, e):
-  vm = _tikitSender.DataContext
-  a = vm.SelectedAnswer
-  q = vm.SelectedQuestion
-  if q is None or a is None:
-    return
-
-  idx = q.Answers.IndexOf(a)
-  if idx <= 0:
-    return
-
-  if _move_item_to_index(q.Answers, a, idx - 1):
-    _renumber_answers(q)
-    vm.SelectedItem = a
-
-def btn_EditMRA_Answer_MoveDown_Click(sender, e):
-  vm = _tikitSender.DataContext
-  a = vm.SelectedAnswer
-  q = vm.SelectedQuestion
-  if q is None or a is None:
-    return
-
-  idx = q.Answers.IndexOf(a)
-  if idx < 0 or idx >= q.Answers.Count - 1:
-    return
-
-  if _move_item_to_index(q.Answers, a, idx + 1):
-    _renumber_answers(q)
-    vm.SelectedItem = a
-
-def btn_EditMRA_Answer_MoveBottom_Click(sender, e):
-  vm = _tikitSender.DataContext
-  a = vm.SelectedAnswer
-  q = vm.SelectedQuestion
-  if q is None or a is None:
-    return
-
-  if _move_item_to_index(q.Answers, a, q.Answers.Count - 1):
-    _renumber_answers(q)
-    vm.SelectedItem = a
-
-def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
-  vm = _tikitSender.DataContext
-  a = vm.SelectedAnswer
-  q = vm.SelectedQuestion
-  if q is None or a is None:
-    return
-
-  # Confirm deletion
-  res = MessageBox.Show("Are you sure you want to delete the selected answer?", "Confirm Delete Answer", MessageBoxButton.YesNo, MessageBoxImage.Warning)
-  if res != MessageBoxResult.Yes:
-    return
-
-  q.Answers.Remove(a)
-  _renumber_answers(q)
-
-  _ensure_selected_context(vm)
-  return
-
-######################################################################################################################
-
-
-]]>
-    </Init>
-    <Loaded>
-      <![CDATA[
-#Define controls that will be used in all of the code
-#TC_Main = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'TC_Main')
-ti_MRA_Overview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA_Overview')
-ti_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA_Questions')
-ti_MRA_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA_Preview')
-
-
-## C O N F I G U R E   M A T T E R   R I S K   A S S E S S M E N T    - TAB ##
-dg_MRA_Templates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Templates')
-dg_MRA_Templates.SelectionChanged += dg_MRA_Template_SelectionChanged
-
-#! Edit MRA Template Details
-tb_MRA_NoneSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoneSelected')            # TextBlock shown when no MRA template selected
-stk_ST_SelectedMRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_ST_SelectedMRA')              # Edit Area StackPanel shown when MRA template selected
-tb_MRATemplate_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_Name')            # TextBox for editing the name of the selected NMRA template 
-lbl_MRATemplate_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRATemplate_ID')              # Label to store ID of selected NMRA template
-tb_MRATemplate_ExpiresInXdays = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_ExpiresInXdays')
-
-tb_ScoreLowTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreLowTo')
-tb_ScoreMedFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedFrom')
-tb_ScoreMedTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedTo')
-tb_ScoreHighFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreHighFrom')
-
-#! Buttons for MRA Template management
-btn_MRATemplate_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_AddNew')
-btn_MRATemplate_AddNew.Click += btn_MRATemplate_AddNew_Click
-
-btn_MRATemplate_SaveHeaderDetails = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_SaveHeaderDetails')
-btn_MRATemplate_SaveHeaderDetails.Click += btn_MRATemplate_SaveHeaderDetails_Click
-
-# still to do below
-btn_MRATemplate_CopySelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_CopySelected')
-btn_MRATemplate_CopySelected.Click += btn_MRATemplate_CopySelected_Click
-btn_MRATemplate_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_Preview')
-btn_MRATemplate_Preview.Click += btn_MRATemplate_Preview_Click
-btn_MRATemplate_Edit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_Edit')
-btn_MRATemplate_Edit.Click += btn_MRATemplate_Edit_Click
-btn_MRATemplate_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_DeleteSelected')
-btn_MRATemplate_DeleteSelected.Click += btn_MRATemplate_DeleteSelected_Click
-
-# MRA Template to Case Type Linking Area
-dg_MRATemplate_CaseTypes = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRATemplate_CaseTypes')
-btn_CaseTypeLinkToTemplate_add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CaseTypeLinkToTemplate_add')
-btn_CaseTypeLinkToTemplate_add.Click += btn_CaseTypeLinkToTemplate_add_Click
-btn_CaseTypeLinkToTemplate_remove = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CaseTypeLinkToTemplate_remove')
-btn_CaseTypeLinkToTemplate_remove.Click += btn_CaseTypeLinkToTemplate_remove_Click
-cbo_MRATemplate_CaseType = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRATemplate_CaseType')
-
-#########################################################################################
-
-
-# Edit Questions Area
-#lbl_EditRiskAssessment_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_EditRiskAssessment_Name')
-#lbl_EditRiskAssessment_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_EditRiskAssessment_ID')
-
-tb_ThisMRAid = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ThisMRAid')
-tb_ThisMRAname = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ThisMRAname')
-
-btn_BackToOverview_FromEditQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_BackToOverview_FromEditQs')
-btn_BackToOverview_FromEditQs.Click += btn_BackToOverview_FromEditQs_Click
-
-## clipboard area for copying questions/answers between MRAs  ##
-grp_MRA_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grp_MRA_Clipboard')
-tb_MRA_CopiedWhat = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_CopiedWhat')    # either: Question|One-Answer|All-Answers
-tb_MRA_SourceTemplateID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceTemplateID')
-tb_MRA_SourceQuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceQuestionID')
-tb_MRA_SourceAnswerID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SourceAnswerID')
-
-## Toolbar Buttons for Editing Questions ##
-btn_Questions_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_AddNew')
-btn_Questions_AddNew.Click += btn_Questions_AddNew_Click
-btn_Questions_Clipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_Clipboard')
-btn_Questions_Clipboard.Click += btn_Questions_Clipboard_Click
-QuestionsClipboard_Popup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'QuestionsClipboard_Popup')
-QuestionsClipboard_Popup.Closed += QuestionsClipboard_Popup_Closed
-mi_Question_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_CopyToClipboard')
-mi_Question_CopyToClipboard.Click += mi_Question_CopyToClipboard_Click
-mi_Question_PasteFromClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'mi_Question_PasteFromClipboard')
-mi_Question_PasteFromClipboard.Click += mi_Question_PasteFromClipboard_Click
-
-#btn_Questions_CopyToClipboard = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Questions_CopyToClipboard')
-#btn_Questions_CopyToClipboard.Click += Duplicate_MRA_Question
-
-
-tb_MRA_NoQuestionsText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_NoQuestionsText')
-dg_MRA_Questions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA_Questions')
-dg_MRA_Questions.SelectionChanged += dg_MRA_Questions_SelectionChanged
-
-## Editing Questions Area ##
-tb_ESQ_QuestionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ESQ_QuestionID')
-txt_ESQ_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionText')
-txt_ESQ_QuestionGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_ESQ_QuestionGroup')
-btn_ESQ_SaveQuestion = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_ESQ_SaveQuestion')
-btn_ESQ_SaveQuestion.Click += btn_ESQ_SaveQuestion_Click
-
-#########################################################################
-
-# New Editable Answer List (as each Q is now having its own dedicated answer... no longer using 'groups' now we've added 'Email Comment' (which is specific to Question!)
-dg_EditMRA_AnswersPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_EditMRA_AnswersPreview')
-#dg_EditMRA_AnswersPreview.SelectionChanged += dg_EditMRA_AnswersPreview_SelectionChanged
-#dg_EditMRA_AnswersPreview.CellEditEnding += dg_EditMRA_AnswersPreview_CellEditEnding
-lbl_MRA_Answer_Text = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_Text')
-lbl_MRA_Answer_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_Score')
-lbl_MRA_Answer_EmailComment = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Answer_EmailComment')
-
-btn_AddNewListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewListItem1')
-#btn_AddNewListItem1.Click += dg_EditMRA_AnswersPreview_addNew
-btn_CopySelectedListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedListItem1')
-#btn_CopySelectedListItem1.Click += dg_EditMRA_AnswersPreview_duplicate
-btn_A_MoveTop1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveTop1')
-#btn_A_MoveTop1.Click += dg_EditMRA_AnswersPreview_moveToTop
-btn_A_MoveUp1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveUp1')
-#btn_A_MoveUp1.Click += dg_EditMRA_AnswersPreview_moveUp
-btn_A_MoveDown1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveDown1')
-#btn_A_MoveDown1.Click += dg_EditMRA_AnswersPreview_moveDown
-btn_A_MoveBottom1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveBottom1')
-#btn_A_MoveBottom1.Click += dg_EditMRA_AnswersPreview_moveToBottom
-btn_DeleteSelectedListItem1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedListItem1')
-#btn_DeleteSelectedListItem1.Click += dg_EditMRA_AnswersPreview_deleteSelected
-lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
-
-# separators on Editing Questions of MRA (in Answers List)
-MRA_A_Sep1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep1')
-MRA_A_Sep2 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep2')
-MRA_A_Sep3 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep3')
-MRA_A_Sep4 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep4')
-MRA_A_Sep5 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep5')
-MRA_A_Sep6 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'MRA_A_Sep6')
-
-
-## P R E V I E W   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
-btn_MRAPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_BackToOverview')
-#btn_MRAPreview_BackToOverview.Click += PreviewMRA_BackToOverview
-lbl_MRA_Preview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_ID')
-lbl_MRA_Preview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_Name')
-lbl_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Score')
-lbl_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategory')
-lbl_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategoryID')
-
-
-tb_NoMRA_PreviewQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_PreviewQs')
-dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
-#dg_MRAPreview.SelectionChanged += MRA_Preview_SelectionChanged
-dg_GroupItems_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems_Preview')
-#dg_GroupItems_Preview.SelectionChanged += GroupItems_Preview_SelectionChanged
-grid_Preview_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_Preview_MRA')
-lbl_MRAPreview_DGID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_DGID')
-lbl_MRAPreview_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_CurrVal')
-chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
-
-tb_previewMRA_QestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_previewMRA_QestionText')
-cbo_preview_MRA_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_preview_MRA_SelectedComboAnswer')
-#cbo_preview_MRA_SelectedComboAnswer.SelectionChanged += update_EmailComment
-tb_preview_MRA_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_preview_MRA_SelectedTextAnswer')
-#tb_preview_MRA_SelectedTextAnswer.TextChanged += update_EmailComment
-btn_preview_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_preview_MRA_SaveAnswer')
-#btn_preview_MRA_SaveAnswer.Click += preview_MRA_SaveAnswer
-tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
-
-
-## New MRA Template Editor ViewModel ##
-#templateEditorVM = None
-tvTemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tvTemplate')      # tree view listing Question Group > Question > Answers
-tvTemplate.SelectedItemChanged += tvTemplate_SelectedItemChanged
-btn_EditMRA_Question_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_Add')
-btn_EditMRA_Question_Add.Click += btn_EditMRA_Question_Add_Click
-btn_EditMRA_Answer_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_Add')
-btn_EditMRA_Answer_Add.Click += btn_EditMRA_Answer_Add_Click
-
-btn_EditMRA_Question_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveTop')
-btn_EditMRA_Question_MoveTop.Click += btn_EditMRA_Question_MoveTop_Click
-btn_EditMRA_Question_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveUp')
-btn_EditMRA_Question_MoveUp.Click += btn_EditMRA_Question_MoveUp_Click
-btn_EditMRA_Question_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveDown')
-btn_EditMRA_Question_MoveDown.Click += btn_EditMRA_Question_MoveDown_Click
-btn_EditMRA_Question_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveBottom')
-btn_EditMRA_Question_MoveBottom.Click += btn_EditMRA_Question_MoveBottom_Click
-btn_EditMRA_Question_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_DeleteSelected')
-btn_EditMRA_Question_DeleteSelected.Click += btn_EditMRA_Question_DeleteSelected_Click
-
-btn_EditMRA_Answer_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveTop')
-btn_EditMRA_Answer_MoveTop.Click += btn_EditMRA_Answer_MoveTop_Click
-btn_EditMRA_Answer_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveUp')
-btn_EditMRA_Answer_MoveUp.Click += btn_EditMRA_Answer_MoveUp_Click
-btn_EditMRA_Answer_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveDown')
-btn_EditMRA_Answer_MoveDown.Click += btn_EditMRA_Answer_MoveDown_Click
-btn_EditMRA_Answer_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_MoveBottom')
-btn_EditMRA_Answer_MoveBottom.Click += btn_EditMRA_Answer_MoveBottom_Click
-btn_EditMRA_Answer_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_DeleteSelected')
-btn_EditMRA_Answer_DeleteSelected.Click += btn_EditMRA_Answer_DeleteSelected_Click
-
-# Define Actions and on load events
-myOnLoadEvent(_tikitSender, 'onLoad')
-
-]]>
-    </Loaded>
-  </RiskPracticeV2>
-
-</tfb>
+    <!-- E N D   O F   A N S W E R S   S E C T I O N --> 
+
+    
+    
+    <TabItem Header="Preview" x:Name="ti_MRA_Preview" >
+      <Canvas Background="#FFF3EFB3">
+        <Label Content="PREVIEWING: " Foreground="Red" Canvas.Left="10" Canvas.Top="10" />
+
+        <Label x:Name="lbl_MRA_Preview_ID" Content="ID" Canvas.Left="99" Canvas.Top="35"/>
+        <Label x:Name="lbl_MRA_Preview_Name" Content="NAME" Canvas.Left="94" Canvas.Top="10" Width="236" />
+        <TextBlock x:Name="tb_NoMRA_PreviewQs" Text="There aren't any questions for this Matter Risk Assessment!" Foreground="Red" FontWeight="Bold" FontSize="20" Canvas.Left="225" Canvas.Top="85" />
+
+        <Grid x:Name="grid_Preview_MRA" Height="554" Width="1128" Canvas.Left="10" Canvas.Top="67">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="350"/>
+            <RowDefinition/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition MinWidth="100" MaxWidth="800" Width="300" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <DataGrid x:Name="dg_GroupItems_Preview" Grid.Row="1" Grid.Column="0" Grid.RowSpan="2"
+                          AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,4,0"
+                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+            <DataGrid.Resources>
+              <Style TargetType="{x:Type DataGridRow}">
+                <Style.Resources>
+                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+                </Style.Resources>
+              </Style>
+            </DataGrid.Resources>
+
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding gDO}" />
+              <DataGridTextColumn Header="Description" IsReadOnly="True" Width="Auto"
+                                                  Binding="{Binding gDesc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding gID}" Visibility="Hidden"/>
+              <DataGridTextColumn Header="Total Qs" IsReadOnly="True" Width="56" Binding="{Binding gTotalQs}" />
+              <DataGridTextColumn Header="# Remaining" IsReadOnly="True" Width="60" Binding="{Binding gRemainingQs}" Visibility="Hidden" />
+            </DataGrid.Columns>
+          </DataGrid>
+
+          <GridSplitter HorizontalAlignment="Center"   
+                                        VerticalAlignment="Stretch"   
+                                        Grid.Column="1"   
+                                        Grid.RowSpan="4"
+                                        Width="6" Background="Silver">
+            <GridSplitter.Template>
+              <ControlTemplate TargetType="{x:Type GridSplitter}">
+                <Grid>
+                  <Button Content="⁞" FontWeight="Bold"/>
+                  <!-- Use vertical ellipsis character as the arrow -->
+                  <Rectangle Fill="#00FFFFFF" />
+                  <!-- Transparent background to allow resizing -->
+                </Grid>
+              </ControlTemplate>
+            </GridSplitter.Template>
+          </GridSplitter>
+
+          <DataGrid x:Name="dg_MRAPreview" Grid.Row="1" Grid.Column="2"
+                                AlternatingRowBackground="#FFAEDEB9" 
+                                SelectionMode="Single" 
+                                AutoGenerateColumns="False" 
+                                IsTextSearchEnabled="True" Margin="4,0,0,0" 
+                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+            <DataGrid.Resources>
+              <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
+                                  In VBA, this is done with a setting property 'HideSelection' to false but
+                                  no equivilent in WPF/XAML -->
+              <Style TargetType="{x:Type DataGridRow}">
+                <Style.Resources>
+                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+                </Style.Resources>
+              </Style>
+
+              <!-- Grouping Style (for when 'View All' selected) -->
+              <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                <Setter Property="Margin" Value="0,2,0,4"/>
+                <!--<Setter Property="Padding" Value="0,2,0,0" />-->
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type GroupItem}" >
+                      <Expander x:Name="exp" IsExpanded="True"
+                            Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
+                            Foreground="Black" Padding="0,2,0,0">
+                        <Expander.Header>
+                          <DockPanel>
+                            <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                            <TextBlock Text=" (" FontWeight="Bold" />
+                            <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                            <TextBlock Text=")" FontWeight="Bold" />
+                          </DockPanel>
+                        </Expander.Header>
+                        <ItemsPresenter />
+                      </Expander>
+
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+
+              </Style>
+
+              <Style x:Key="RightAligned" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+              </Style>
+              <Style x:Key="Center" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+              </Style>
+              <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                <Setter Property="BorderBrush" Value="Black"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+              </Style>
+              <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+              </Style>
+            </DataGrid.Resources>
+
+            <!-- Setting the 'Group Style' to use -->
+            <DataGrid.GroupStyle>
+              <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                <GroupStyle.Panel>
+                  <ItemsPanelTemplate >
+                    <DataGridRowsPresenter />
+                  </ItemsPanelTemplate>
+                </GroupStyle.Panel>
+              </GroupStyle>
+            </DataGrid.GroupStyle>
+
+            <DataGrid.Columns>
+
+              <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40"
+                              Binding="{Binding RowID}" Visibility="Hidden" />
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding DOrder}" />
+              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="500" HeaderStyle="{StaticResource CenterCol}">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" TextAlignment="Left" TextWrapping="Wrap" Height="Auto"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <DataGridTextColumn Header="AnswerGroupName" IsReadOnly="True" Width="100"
+                              Binding="{Binding AnswerGroupName}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="QGroupID" IsReadOnly="True" Width="100"
+                              Binding="{Binding QGroupID}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100"
+                              Binding="{Binding QGroupName}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
+                              Binding="{Binding QuestionID}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="AnswerID" IsReadOnly="True" Width="100"
+                              Binding="{Binding LUP_AnswerID}" Visibility="Collapsed"/>
+
+              <DataGridTemplateColumn Header="Your Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LUP_AnswerText, Mode=TwoWay}" TextAlignment="Left" 
+                           VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" Binding="{Binding LUP_Score}"
+                              HeaderStyle="{StaticResource TotalColumn}"/>
+
+              <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LUP_EmailComment, Mode=TwoWay}" TextAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+
+          </DataGrid>
+
+          <GroupBox Header="Selected Question:" Foreground="Navy" BorderBrush="#FF7E98EE" Grid.Row="2" Grid.Column="2" Margin="6,0,0,0">
+            <StackPanel Orientation="Vertical" >
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <Label Content="Question:" Foreground="Navy" Margin="17,0,0,0" />
+                <TextBlock x:Name="tb_previewMRA_QestionText" MaxWidth="726" Text="-NO QUESTION SELECTED - PLEASE SELECT FROM THE LIST ABOVE-" VerticalAlignment="Center" Foreground="Navy" TextWrapping="Wrap" Margin="4,0,0,0" Padding="0,0,2,0" FontSize="22" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0" >
+                <Label Content="Your Answer:" Foreground="Navy" />
+                <ComboBox x:Name="cbo_preview_MRA_SelectedComboAnswer" Foreground="Navy" MinWidth="60" MaxWidth="300" Visibility="Visible" >
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding AText, Mode=TwoWay}" Width="Auto" />
+                        <TextBlock Text="{Binding AScore, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                        <TextBlock Text="{Binding AEmailComment, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                        <TextBlock Text="{Binding AID, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBox x:Name="tb_preview_MRA_SelectedTextAnswer" Foreground="Navy" MaxWidth="726" MinWidth="300" MaxHeight="70" TextWrapping="Wrap" VerticalContentAlignment="Center" Margin="0,0,4,0"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" >
+                <Button x:Name="btn_preview_MRA_SaveAnswer" HorizontalAlignment="Left" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
+                <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" Foreground="Navy" VerticalAlignment="Center" IsChecked="True" FlowDirection="RightToLeft" Margin="20,4,0,0">
+                  <CheckBox.Resources>
+                    <Style TargetType="{x:Type Path}">
+                      <Setter Property="FlowDirection" Value="LeftToRight" />
+                    </Style>
+                  </CheckBox.Resources>
+                </CheckBox>
+              </StackPanel>
+              <Label Height="6" />
+              <StackPanel Orientation="Horizontal">
+                <Label Content="Email Comment:" Foreground="Navy"/>
+                <TextBlock x:Name="tb_MRAPreview_EC" Foreground="Navy" MaxWidth="700" VerticalAlignment="Center" Text=" " TextWrapping="Wrap" Height="Auto"/>
+              </StackPanel>
+            </StackPanel>
+          </GroupBox>
+
+          <Label Content="Group" Foreground="Gray" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
+          <Label Content="Question" Foreground="Gray" Grid.Row="0" Grid.Column="2"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
+
+        </Grid>
+
+        <StackPanel Orientation="Vertical" Canvas.Left="335" Canvas.Top="10">
+          <StackPanel Orientation="Horizontal">
+            <Label Content="Current Score: " Foreground="Navy"  />
+            <Label x:Name="lbl_MRAPreview_Score" Content="-1" Foreground="Navy"  />
+
+          </StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <Label Content="Risk Category: " Foreground="Navy"  />
+            <Label x:Name="lbl_MRAPreview_RiskCategory" Content="Low/Med/High" Foreground="Navy"  />
+            <Label x:Name="lbl_MRAPreview_RiskCategoryID" Content="1/2/3" Foreground="Navy"  />
+          </StackPanel>
+        </StackPanel>
+
+
+        <Button x:Name="btn_MRAPreview_BackToOverview" Content="Back to Overview" Canvas.Left="556" Canvas.Top="17" Height="32" Width="121" />
+
+        <StackPanel Orientation="Vertical" Canvas.Left="872" Canvas.Top="471" Visibility="Hidden">
+          <Label x:Name="lbl_MRAPreview_DGID" Content="Selected DG ID" />
+          <Label x:Name="lbl_MRAPreview_CurrVal" Content="Selected DG Value" />
+        </StackPanel>
+      </Canvas>
+    </TabItem>
+  </TabControl>
+
+</Canvas>
