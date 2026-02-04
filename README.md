@@ -144,3 +144,23 @@ Changes to do:
     - needs to be updated to point to 'IsPublished' instead
 - would it be worth adding 'grouping' into MRA, so easier to see 'versions'
     - perhaps, but only when 'show hidden' is ticked (although, we want to get rid of this... as no real need to 'hide' a template, because if not 'published', then safe to delete... else just create a new verison and publish that new one)
+
+
+---------------------------------------------------
+03/02/2026
+- revamped 'Edit MRA' entirely, to use MVVM approach and a Treeview to display
+- added 'copy' and 'paste' functionality that works within an Edit MRA, or when switching to another MRA
+- got code from ChatGPT to 'flatten' our ViewModel (vm) down to SQL rows
+    - one thing it's not doing is adding new 'QuestionID' / 'AnswerID' on inserts, so we'll need to add that in (either COUNT() + 1 or MAX() + 1)
+    - also, we don't want 30 message boxes appearing when 'saving' if a lot of changes were made, so may want to consider:
+        - 'summary of changes' pop-up, with global options to 'overwrite all' or 'append as new'
+        - or just rely on out 'audit' to log changes (though still need to ask when a change is made...)
+    - also, it appears ChatGPT code is executing one insert at a time, which doesn't seem efficient... is there no better way?
+- need to add 'debug' print lines whenever:
+    - new group / question / answer
+    - copy / paste operation
+    - move operation (up/down/top/bottom)
+    - delete operation
+- need to add 'move' buttons for 'Group' too
+- Consider moving the 'move' buttons into the 'GroupBox.Header' area
+    - might want to move delete move 'away' from other buttons?

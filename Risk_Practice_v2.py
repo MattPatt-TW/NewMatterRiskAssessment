@@ -1327,6 +1327,8 @@ def btn_EditMRA_Group_Add_Click(sender, e):
   vm.Groups.Add(new_group)
   vm.SelectedItem = new_group
 
+  vm.Debug("Added new group '{0}' with default question/answer".format(new_group.GroupName))
+  log_line("Added new group '{0}' with default question/answer".format(new_group.GroupName))
   # we ought to add dummy question/answer too so UI has 3 levels populated
   EditMRA_Question_AddNew(vm)
   return
@@ -1366,6 +1368,8 @@ def EditMRA_Question_AddNew(vm):
 
   # Select new question (or the answer if you prefer)
   vm.SelectedItem = q
+  vm.Debug("Added new question '{0}' to group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Added new question '{0}' to group '{1}'".format(q.QuestionText, g.GroupName))
   return
 
 
@@ -1391,6 +1395,83 @@ def btn_EditMRA_Answer_Add_Click(sender, e):
   _renumber_answers(q)
 
   vm.SelectedItem = a
+  vm.Debug("Added new answer '{0}' to question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Added new answer '{0}' to question '{1}'".format(a.AnswerText, q.QuestionText))
+  return
+
+
+def btn_EditMRA_Group_MoveTop_Click(sender, e):
+  vm = _tikitSender.DataContext
+  g = vm.SelectedGroup
+  if g is None:
+    return
+
+  if _move_item_to_index(vm.Groups, g, 0):
+    vm.SelectedItem = g  # keep selection stable
+  vm.Debug("Moved group '{0}' to top".format(g.GroupName))
+  log_line("Moved group '{0}' to top".format(g.GroupName))
+  return
+
+def btn_EditMRA_Group_MoveUp_Click(sender, e):
+  vm = _tikitSender.DataContext
+  g = vm.SelectedGroup
+  if g is None:
+    return
+
+  idx = vm.Groups.IndexOf(g)
+  if idx <= 0:
+    return
+
+  if _move_item_to_index(vm.Groups, g, idx - 1):
+    vm.SelectedItem = g
+  vm.Debug("Moved group '{0}' up".format(g.GroupName))
+  log_line("Moved group '{0}' up".format(g.GroupName))
+  return
+
+def btn_EditMRA_Group_MoveDown_Click(sender, e):
+  vm = _tikitSender.DataContext
+  g = vm.SelectedGroup
+  if g is None:
+    return
+
+  idx = vm.Groups.IndexOf(g)
+  if idx < 0 or idx >= vm.Groups.Count - 1:
+    return
+
+  if _move_item_to_index(vm.Groups, g, idx + 1):
+    vm.SelectedItem = g
+  vm.Debug("Moved group '{0}' down".format(g.GroupName))
+  log_line("Moved group '{0}' down".format(g.GroupName))
+  return
+
+def btn_EditMRA_Group_MoveBottom_Click(sender, e):
+  vm = _tikitSender.DataContext
+  g = vm.SelectedGroup
+  if g is None:
+    return
+
+  if _move_item_to_index(vm.Groups, g, vm.Groups.Count - 1):
+    vm.SelectedItem = g
+  vm.Debug("Moved group '{0}' to bottom".format(g.GroupName))
+  log_line("Moved group '{0}' to bottom".format(g.GroupName))
+  return
+
+def btn_EditMRA_Group_DeleteSelected_Click(sender, e):
+  vm = _tikitSender.DataContext
+  g = vm.SelectedGroup
+  if g is None:
+    return
+
+  # Confirm deletion
+  res = MessageBox.Show("Are you sure you want to delete the selected group and all its questions and answers?", "Confirm Delete Group", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+  if res != DialogResult.Yes:
+    return
+
+  vm.Groups.Remove(g)
+  _ensure_selected_context(vm)
+
+  vm.Debug("Deleted group '{0}'".format(g.GroupName))
+  log_line("Deleted group '{0}'".format(g.GroupName))
   return
 
 
@@ -1404,6 +1485,9 @@ def btn_EditMRA_Question_MoveTop_Click(sender, e):
   if _move_item_to_index(g.Questions, q, 0):
     _renumber_questions(g)
     vm.SelectedItem = q  # keep selection stable
+  
+  vm.Debug("Moved question '{0}' to top of group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Moved question '{0}' to top of group '{1}'".format(q.QuestionText, g.GroupName))  
   return
 
 def btn_EditMRA_Question_MoveUp_Click(sender, e):
@@ -1420,6 +1504,8 @@ def btn_EditMRA_Question_MoveUp_Click(sender, e):
   if _move_item_to_index(g.Questions, q, idx - 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+  vm.Debug("Moved question '{0}' up in group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Moved question '{0}' up in group '{1}'".format(q.QuestionText, g.GroupName))
   return
 
 def btn_EditMRA_Question_MoveDown_Click(sender, e):
@@ -1436,6 +1522,8 @@ def btn_EditMRA_Question_MoveDown_Click(sender, e):
   if _move_item_to_index(g.Questions, q, idx + 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+  vm.Debug("Moved question '{0}' down in group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Moved question '{0}' down in group '{1}'".format(q.QuestionText, g.GroupName))
   return
 
 def btn_EditMRA_Question_MoveBottom_Click(sender, e):
@@ -1448,6 +1536,8 @@ def btn_EditMRA_Question_MoveBottom_Click(sender, e):
   if _move_item_to_index(g.Questions, q, g.Questions.Count - 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+  vm.Debug("Moved question '{0}' to bottom of group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Moved question '{0}' to bottom of group '{1}'".format(q.QuestionText, g.GroupName))
   return
 
 
@@ -1465,8 +1555,10 @@ def btn_EditMRA_Question_DeleteSelected_Click(sender, e):
 
   g.Questions.Remove(q)
   _renumber_questions(g)
-
   _ensure_selected_context(vm)
+
+  vm.Debug("Deleted question '{0}' from group '{1}'".format(q.QuestionText, g.GroupName))
+  log_line("Deleted question '{0}' from group '{1}'".format(q.QuestionText, g.GroupName))
   return
 
 
@@ -1480,6 +1572,10 @@ def btn_EditMRA_Answer_MoveTop_Click(sender, e):
   if _move_item_to_index(q.Answers, a, 0):
     _renumber_answers(q)
     vm.SelectedItem = a
+
+  vm.Debug("Moved answer '{0}' to top of question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Moved answer '{0}' to top of question '{1}'".format(a.AnswerText, q.QuestionText))
+  return
 
 def btn_EditMRA_Answer_MoveUp_Click(sender, e):
   vm = _tikitSender.DataContext
@@ -1496,6 +1592,11 @@ def btn_EditMRA_Answer_MoveUp_Click(sender, e):
     _renumber_answers(q)
     vm.SelectedItem = a
 
+  vm.Debug("Moved answer '{0}' up in question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Moved answer '{0}' up in question '{1}'".format(a.AnswerText, q.QuestionText))
+  return
+
+
 def btn_EditMRA_Answer_MoveDown_Click(sender, e):
   vm = _tikitSender.DataContext
   a = vm.SelectedAnswer
@@ -1511,6 +1612,10 @@ def btn_EditMRA_Answer_MoveDown_Click(sender, e):
     _renumber_answers(q)
     vm.SelectedItem = a
 
+  vm.Debug("Moved answer '{0}' down in question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Moved answer '{0}' down in question '{1}'".format(a.AnswerText, q.QuestionText))
+  return
+
 def btn_EditMRA_Answer_MoveBottom_Click(sender, e):
   vm = _tikitSender.DataContext
   a = vm.SelectedAnswer
@@ -1521,6 +1626,11 @@ def btn_EditMRA_Answer_MoveBottom_Click(sender, e):
   if _move_item_to_index(q.Answers, a, q.Answers.Count - 1):
     _renumber_answers(q)
     vm.SelectedItem = a
+
+  vm.Debug("Moved answer '{0}' to bottom of question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Moved answer '{0}' to bottom of question '{1}'".format(a.AnswerText, q.QuestionText))
+  return
+
 
 def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
   vm = _tikitSender.DataContext
@@ -1536,8 +1646,10 @@ def btn_EditMRA_Answer_DeleteSelected_Click(sender, e):
 
   q.Answers.Remove(a)
   _renumber_answers(q)
-
   _ensure_selected_context(vm)
+  
+  vm.Debug("Deleted answer '{0}' from question '{1}'".format(a.AnswerText, q.QuestionText))
+  log_line("Deleted answer '{0}' from question '{1}'".format(a.AnswerText, q.QuestionText))  
   return
 
 # --- Logging and VM Dumping Utilities ---
@@ -1800,6 +1912,17 @@ btn_EditMRA_Question_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_
 btn_EditMRA_Question_Add.Click += btn_EditMRA_Question_Add_Click
 btn_EditMRA_Answer_Add = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_Add')
 btn_EditMRA_Answer_Add.Click += btn_EditMRA_Answer_Add_Click
+
+btn_EditMRA_Group_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_MoveTop')
+btn_EditMRA_Group_MoveTop.Click += btn_EditMRA_Group_MoveTop_Click
+btn_EditMRA_Group_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_MoveUp')
+btn_EditMRA_Group_MoveUp.Click += btn_EditMRA_Group_MoveUp_Click
+btn_EditMRA_Group_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_MoveDown')
+btn_EditMRA_Group_MoveDown.Click += btn_EditMRA_Group_MoveDown_Click
+btn_EditMRA_Group_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_MoveBottom')
+btn_EditMRA_Group_MoveBottom.Click += btn_EditMRA_Group_MoveBottom_Click
+btn_EditMRA_Group_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Group_DeleteSelected')
+btn_EditMRA_Group_DeleteSelected.Click += btn_EditMRA_Group_DeleteSelected_Click
 
 btn_EditMRA_Question_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Question_MoveTop')
 btn_EditMRA_Question_MoveTop.Click += btn_EditMRA_Question_MoveTop_Click

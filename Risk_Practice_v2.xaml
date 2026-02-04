@@ -558,13 +558,60 @@
                 <GroupBox.Header>
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Question Group Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
-                    <Border Width="254" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Group_Add" Content="Add New Group" Padding="6,2"/>
+                    <Border Width="0" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4" Visibility="Collapsed"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray" />
+                      <Button x:Name="btn_EditMRA_Group_MoveTop" Margin="4,0,0,0" 
+                              ToolTip="Move the currently selected Question to the top of the list">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_EditMRA_Group_MoveUp" Margin="4,0,0,0" 
+                              ToolTip="Move the currently selected Question up one row">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_EditMRA_Group_MoveDown" Margin="4,0,0,0"
+                              ToolTip="Move the currently selected Question down one row">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_EditMRA_Group_MoveBottom" Margin="4,0,0,0"
+                              ToolTip="Move the currently selected Question to the bottom of the list">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
+
+                    </StackPanel>
+
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Group_Add" Content="Add New Group"  Width="114" Padding="6,2"/>
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Group_DeleteSelected" 
+                            Background="#FFFFA7A7" BorderBrush="DarkRed"
+                            ToolTip="Deletes the currently selected Group (requires confirmation)">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
                   </StackPanel>
 
                 </GroupBox.Header>
 
-                <StackPanel Orientation="Horizontal" Margin="0,4" >
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0" >
                   <TextBlock Text="Question Group" VerticalAlignment="Center"/>
                   <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}" Padding="2"
                            Width="400" Height="23" Margin="4,0,0,0"/>
@@ -577,55 +624,49 @@
                 <GroupBox.Header>
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Question Details..." VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
-                    <Border Width="284" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Padding="6,2"/>
+                    <Border Width="40" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
 
-                  </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray" />
+                      <Button x:Name="btn_EditMRA_Question_MoveTop" Margin="4,0,0,0" 
+                              ToolTip="Move the currently selected Question to the top of the list">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                </GroupBox.Header>
+                      <Button x:Name="btn_EditMRA_Question_MoveUp" Margin="4,0,0,0" 
+                              ToolTip="Move the currently selected Question up one row">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                <StackPanel Margin="0,4">
+                      <Button x:Name="btn_EditMRA_Question_MoveDown" Margin="4,0,0,0"
+                              ToolTip="Move the currently selected Question down one row">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
-                    <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
-                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+                      <Button x:Name="btn_EditMRA_Question_MoveBottom" Margin="4,0,0,0"
+                              ToolTip="Move the currently selected Question to the bottom of the list">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
+                    </StackPanel>
+                    
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Width="114" Padding="6,2"/>
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
 
-                    <TextBlock Text="Move Q:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
-                    <Button x:Name="btn_EditMRA_Question_MoveTop" Margin="4,0,0,0" 
-                            ToolTip="Move the currently selected Question to the top of the list">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Question_MoveUp" Margin="4,0,0,0" 
-                            ToolTip="Move the currently selected Question up one row">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Question_MoveDown" Margin="4,0,0,0"
-                            ToolTip="Move the currently selected Question down one row">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Question_MoveBottom" Margin="4,0,0,0"
-                            ToolTip="Move the currently selected Question to the bottom of the list">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Question_DeleteSelected" Margin="4,0,0,0"
+                    <Button x:Name="btn_EditMRA_Question_DeleteSelected" 
                             Background="#FFFFA7A7" BorderBrush="DarkRed"
                             ToolTip="Deletes the currently selected Question (requires confirmation)">
                       <StackPanel Orientation="Horizontal">
@@ -636,8 +677,19 @@
 
                   </StackPanel>
 
+                </GroupBox.Header>
+
+                <StackPanel Margin="0,4,0,0">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Right">
+                    <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
+                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+                  </StackPanel>
+
                   <TextBlock Text="Question Text:" />
-                  <TextBox Text="{Binding SelectedQuestion.QuestionText}"
+                  <TextBox Text="{Binding SelectedQuestion.QuestionText, UpdateSourceTrigger=PropertyChanged}"
                            AcceptsReturn="True"
                            Height="80"
                            TextWrapping="Wrap"/>
@@ -651,65 +703,71 @@
                 <GroupBox.Header>
                   <StackPanel Orientation="Horizontal" >
                     <TextBlock Text="Answer Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
-                    <Border Width="304" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer" Padding="6,2"/>
-                  </StackPanel>
-                </GroupBox.Header>
+                  
+                    <Border Width="50" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray"/>
+                      <Button x:Name="btn_EditMRA_Answer_MoveTop" Margin="4,0,0,0"
+                              ToolTip="Move selected answer item to the top of the list">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                <StackPanel Margin="0,4">
+                      <Button x:Name="btn_EditMRA_Answer_MoveUp" Margin="4,0,0,0"
+                              ToolTip="Move selected answer item up one row">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
-                    <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                    <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
-                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+                      <Button x:Name="btn_EditMRA_Answer_MoveDown" Margin="4,0,0,0"
+                              ToolTip="Move selected answer item dowm one row">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                    <TextBlock Text="Move A:" VerticalAlignment="Center" Foreground="Gray" Margin="20,0,0,0"/>
-                    <Button x:Name="btn_EditMRA_Answer_MoveTop" Margin="4,0,0,0"
-                            ToolTip="Move selected answer item to the top of the list">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
+                      <Button x:Name="btn_EditMRA_Answer_MoveBottom" Margin="4,0,0,0"
+                              ToolTip="Move selected answer item to the bottom of the list" >
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
+                      </Button>
 
-                    <Button x:Name="btn_EditMRA_Answer_MoveUp" Margin="4,0,0,0"
-                            ToolTip="Move selected answer item up one row">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
+                    </StackPanel>
+                    
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
+                    <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer"  Width="114" Padding="6,2"/>
+                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
 
-                    <Button x:Name="btn_EditMRA_Answer_MoveDown" Margin="4,0,0,0"
-                            ToolTip="Move selected answer item dowm one row">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Answer_MoveBottom" Margin="4,0,0,0"
-                            ToolTip="Move selected answer item to the bottom of the list" >
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Margin="4,0,0,0" Background="#FFFFA7A7"  
+                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Background="#FFFFA7A7"  
                             ToolTip="Delete the selected answer item (requires confirmation)...">
                       <StackPanel Orientation="Vertical">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                         <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
                       </StackPanel>
                     </Button>
+                    
+                  </StackPanel>
+                </GroupBox.Header>
 
+                <StackPanel Margin="0,4,0,0">
+
+                  <StackPanel Orientation="Horizontal" Margin="0,2,0,0" HorizontalAlignment="Right">
+                    <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                    <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
 
                   </StackPanel>
 
-                  <StackPanel Orientation="Horizontal" Margin="0,4">
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                    <TextBox Text="{Binding SelectedAnswer.Score}" 
+                    <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=PropertyChanged}" 
                              Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
 
 
@@ -718,7 +776,7 @@
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
 
-                    <TextBox Text="{Binding SelectedAnswer.AnswerText}"
+                    <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=PropertyChanged}"
                              AcceptsReturn="False"
                              Height="23" Width="400"
                              TextWrapping="Wrap"
@@ -729,7 +787,7 @@
 
                   <StackPanel Orientation="Horizontal" Margin="0,4">
                     <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedAnswer.EmailComment}" 
+                    <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=PropertyChanged}" 
                              Width="400" Height="46" Margin="4,0,0,0" />
                   </StackPanel>
 
@@ -766,7 +824,7 @@
                   <ListBox ItemsSource="{Binding DebugLines}"
                            FontFamily="Consolas"
                            FontSize="12"
-                           Height="117" Margin="2"
+                           Height="130" Margin="2"
                            ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListBox.ItemTemplate>
                       <DataTemplate>
