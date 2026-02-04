@@ -613,7 +613,7 @@
 
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0" >
                   <TextBlock Text="Question Group" VerticalAlignment="Center"/>
-                  <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=PropertyChanged}" Padding="2"
+                  <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=LostFocus}" Padding="2"
                            Width="400" Height="23" Margin="4,0,0,0"/>
                 </StackPanel>
 
@@ -689,7 +689,7 @@
                   </StackPanel>
 
                   <TextBlock Text="Question Text:" />
-                  <TextBox Text="{Binding SelectedQuestion.QuestionText, UpdateSourceTrigger=PropertyChanged}"
+                  <TextBox Text="{Binding SelectedQuestion.QuestionText, UpdateSourceTrigger=LostFocus}"
                            AcceptsReturn="True"
                            Height="80"
                            TextWrapping="Wrap"/>
@@ -767,7 +767,7 @@
 
                   <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                    <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=PropertyChanged}" 
+                    <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=LostFocus}" 
                              Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
 
 
@@ -776,7 +776,7 @@
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
 
-                    <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=LostFocus}"
                              AcceptsReturn="False"
                              Height="23" Width="400"
                              TextWrapping="Wrap"
@@ -787,7 +787,7 @@
 
                   <StackPanel Orientation="Horizontal" Margin="0,4">
                     <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=PropertyChanged}" 
+                    <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=LostFocus}" 
                              Width="400" Height="46" Margin="4,0,0,0" />
                   </StackPanel>
 

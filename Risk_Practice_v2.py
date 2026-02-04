@@ -961,6 +961,15 @@ class NotifyBase(INotifyPropertyChanged):
   def __init__(self):
     # store delegates that WPF adds via add_PropertyChanged
     self._pc_handlers = []
+    self._log = None  # function(str)
+
+  def SetLogger(self, log_func):
+    self._log = log_func
+
+  def _log_change(self, msg):
+    if callable(self._log):
+      self._log(msg)
+
 
   # .NET event accessor: WPF calls this when binding subscribes
   def add_PropertyChanged(self, handler):
@@ -999,8 +1008,13 @@ class GroupVM(NotifyBase):
   def GroupName(self): return self._GroupName
   @GroupName.setter
   def GroupName(self, v):
-      self._GroupName = v
+      newV = "" if v is None else str(v)
+      oldV = "" if self._GroupName is None else str(self._GroupName)
+      if newV == oldV:
+        return
+      self._GroupName = newV
       self._raise("GroupName")
+      self._log_change("GroupName changed: '{0}' -> '{1}'".format(oldV, newV))
 
 
 class QuestionVM(NotifyBase):
@@ -1008,7 +1022,7 @@ class QuestionVM(NotifyBase):
     NotifyBase.__init__(self)
     self.QuestionID = question_id
     self.ParentGroup = parent_group
-    self._QuestionText = text
+    self._QuestionText = text or ""
     self._QuestionDisplayOrder = question_display_order
     #self.Answers = ObservableCollection[AnswerVM]()
     self.Answers = ObservableCollection[object]()
@@ -1017,15 +1031,25 @@ class QuestionVM(NotifyBase):
   def QuestionText(self): return self._QuestionText
   @QuestionText.setter
   def QuestionText(self, v):
-      self._QuestionText = v
+      newV = "" if v is None else str(v)
+      oldV = "" if self._QuestionText is None else str(self._QuestionText)
+      if newV == oldV:
+        return
+      self._QuestionText = newV
       self._raise("QuestionText")
+      self._log_change("QuestionText changed - QID={0}: '{1}' -> '{2}'".format(self.QuestionID, oldV, newV))
 
   @property
   def QuestionDisplayOrder(self): return self._QuestionDisplayOrder
   @QuestionDisplayOrder.setter
   def QuestionDisplayOrder(self, v):
-      self._QuestionDisplayOrder = v
+      newV = 0 if v is None else int(v)
+      oldV = 0 if self._QuestionDisplayOrder is None else int(self._QuestionDisplayOrder)
+      if newV == oldV:
+        return
+      self._QuestionDisplayOrder = newV
       self._raise("QuestionDisplayOrder")
+      self._log_change("QuestionDisplayOrder changed - QID={0}: {1} -> {2}".format(self.QuestionID, oldV, newV))
 
 
 class AnswerVM(NotifyBase):
@@ -1042,29 +1066,49 @@ class AnswerVM(NotifyBase):
   def AnswerText(self): return self._AnswerText
   @AnswerText.setter
   def AnswerText(self, v):
-      self._AnswerText = v
+      newV = "" if v is None else str(v)
+      oldV = "" if self._AnswerText is None else str(self._AnswerText)
+      if newV == oldV:
+        return
+      self._AnswerText = newV
       self._raise("AnswerText")
+      self._log_change("AnswerText changed - AID={0}: '{1}' -> '{2}'".format(self.AnswerID, oldV, newV))
 
   @property
   def Score(self): return self._Score
   @Score.setter
   def Score(self, v):
-      self._Score = v
+      newV = 0 if v is None else int(v)
+      oldV = 0 if self._Score is None else int(self._Score)
+      if newV == oldV:
+        return
+      self._Score = newV
       self._raise("Score")
+      self._log_change("Score changed - AID={0}: {1} -> {2}".format(self.AnswerID, oldV, newV))
 
   @property
   def EmailComment(self): return self._EmailComment
   @EmailComment.setter
   def EmailComment(self, v):
-      self._EmailComment = v
+      newV = "" if v is None else str(v)
+      oldV = "" if self._EmailComment is None else str(self._EmailComment)
+      if newV == oldV:
+        return
+      self._EmailComment = newV
       self._raise("EmailComment")
+      self._log_change("EmailComment changed - AID={0}: '{1}' -> '{2}'".format(self.AnswerID, oldV, newV))
 
   @property
   def AnswerDisplayOrder(self): return self._AnswerDisplayOrder
   @AnswerDisplayOrder.setter
   def AnswerDisplayOrder(self, v):
-      self._AnswerDisplayOrder = v
+      newV = 0 if v is None else int(v)
+      oldV = 0 if self._AnswerDisplayOrder is None else int(self._AnswerDisplayOrder)
+      if newV == oldV:
+        return
+      self._AnswerDisplayOrder = newV
       self._raise("AnswerDisplayOrder")
+      self._log_change("AnswerDisplayOrder changed - AID={0}: {1} -> {2}".format(self.AnswerID, oldV, newV))
 
 
 class TemplateEditorVM(NotifyBase):
@@ -1136,6 +1180,33 @@ class TemplateEditorVM(NotifyBase):
   
   @property
   def SelectedAnswer(self): return self._SelectedAnswer
+
+def attach_logger(vm):
+  # Create one logger function for this VM/session
+  def vm_logger(msg):
+    # update daily log file
+    log_line(msg, vm.TemplateID)
+    # 2) also push to on-screen debug (so we can confirm setters fire)
+    try:
+      vm.Debug("LOG: " + str(msg))
+    except:
+      pass
+
+  # Store it on the vm so you can reuse it for newly-created objects
+  vm.SetLogger(vm_logger)
+
+  # Also useful: keep a reference explicitly (clearer than accessing vm._log)
+  vm.Logger = vm_logger
+
+  # Push logger into existing nodes
+  for g in vm.Groups:
+    g.SetLogger(vm_logger)
+    for q in g.Questions:
+      q.SetLogger(vm_logger)
+      for a in q.Answers:
+        a.SetLogger(vm_logger)
+
+  return
 
 ## above mostly supplied from ChatGPT with minor modifications (adding additional fields recently added to XAML) ##
 
@@ -1223,6 +1294,9 @@ def load_template_structure_from_reader(vm, dr):
   if vm.Groups.Count > 0:
     vm.SelectedItem = vm.Groups[0]
 
+  attach_logger(vm)
+  return
+
 
 def EditMRA_loadTreeViewStructure(selectedTemplateID):
 
@@ -1248,6 +1322,10 @@ def EditMRA_loadTreeViewStructure(selectedTemplateID):
     load_template_structure_from_reader(vm, dr)
     dr.Close()
   _tikitDbAccess.Close()
+
+  def vm_logger(msg):
+    log_line(msg, selectedTemplateID)
+  vm.SetLogger(vm_logger)
   return
 
 
@@ -1324,6 +1402,10 @@ def btn_EditMRA_Group_Add_Click(sender, e):
     return
 
   new_group = GroupVM("New Group")
+  # inherit logger
+  if callable(getattr(vm, 'Logger', None)):
+    new_group.SetLogger(vm.Logger)
+
   vm.Groups.Add(new_group)
   vm.SelectedItem = new_group
 
@@ -1349,17 +1431,26 @@ def EditMRA_Question_AddNew(vm):
   if g is None:
     # Create a default group if nothing selected
     g = GroupVM("New Group")
+    if callable(getattr(vm, '_log', None)):
+      g.SetLogger(vm._log)
+
     vm.Groups.Add(g)
     vm.SelectedItem = g
 
   # Create new question
   new_qid = _next_temp_id()
   q = QuestionVM(new_qid, "New question...", question_display_order=0, parent_group=g)
+  if callable(getattr(vm, '_log', None)):
+    q.SetLogger(vm._log)
+  
   g.Questions.Add(q)
 
   # Optional: create a starter answer so UI always has 3 levels populated
   new_aid = _next_temp_id()
   a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
+  if callable(getattr(vm, '_log', None)):
+    a.SetLogger(vm._log)
+
   q.Answers.Add(a)
 
   # Renumber display orders based on current list position
@@ -1390,6 +1481,9 @@ def btn_EditMRA_Answer_Add_Click(sender, e):
 
   new_aid = _next_temp_id()
   a = AnswerVM(new_aid, "New answer...", 0, email_comment="", answer_display_order=0, parent_question=q)
+  if callable(getattr(vm, '_log', None)):
+    a.SetLogger(vm._log)
+
   q.Answers.Add(a)
 
   _renumber_answers(q)
