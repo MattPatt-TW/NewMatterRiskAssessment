@@ -416,38 +416,19 @@
             </StackPanel>
           </Button>
 
-          <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." VerticalAlignment="Center"
-                    Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="90,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Copied what:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_CopiedWhat" 
-                         Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
-              <TextBlock Text="TID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceTemplateID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="QID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceQuestionID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="AID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceAnswerID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
 
-            </StackPanel>
-          </GroupBox>
-          
-
-          <ToggleButton x:Name="btn_Clipboard_Copy" ClickMode="Press" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4,0">
+          <ToggleButton x:Name="btn_Clipboard_Copy" ClickMode="Press" VerticalAlignment="Center" Margin="90,0,0,0" Padding="4,0">
             <StackPanel Orientation="Horizontal">
               <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\clipboard1.png" />
               <TextBlock Text="Clipboard - Copy..." Margin="3,4,0,4" TextAlignment="Left"/>
             </StackPanel>
           </ToggleButton>
           <Popup x:Name="Clipboard_Popup_Copy" 
-                 PlacementTarget="{Binding ElementName=btn_Clipboard_Copy}"
-                 Placement="Bottom"
-                 StaysOpen="False"
-                 AllowsTransparency="True"
-                 PopupAnimation="Slide">
+                  PlacementTarget="{Binding ElementName=btn_Clipboard_Copy}"
+                  Placement="Bottom"
+                  StaysOpen="False"
+                  AllowsTransparency="True"
+                  PopupAnimation="Slide">
 
             <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="2">
               <StackPanel>
@@ -485,14 +466,43 @@
                         BorderThickness="0"
                         Background="Transparent"/>
 
+                <Separator />
+
+                <Button x:Name="btn_CopyToClipboard_Clear" 
+                       Content="(Clear Clipboard)"
+                       Padding="8,4"
+                       HorizontalContentAlignment="Left"
+                       BorderThickness="0"
+                       Background="Transparent"/>
               </StackPanel>
 
             </Border>
 
           </Popup>
+            
+          <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." VerticalAlignment="Center"
+                    Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="10,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Copied what:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_CopiedWhat" 
+                         Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
+              <TextBlock Text="TID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceTemplateID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock Text="QID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceQuestionID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock Text="AID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
+              <TextBlock x:Name="tb_MRA_SourceAnswerID" 
+                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
 
-          <Button x:Name="btn_Clipboard_Paste" Content="Clipboard Paste" VerticalAlignment="Center" Margin="8,0,0,0" Padding="4"/>
+              <Button x:Name="btn_Clipboard_Paste" Content="Paste" VerticalAlignment="Center" Margin="8,0,0,0" Padding="6,0"/>
 
+            </StackPanel>
+          </GroupBox>
+
+          <Button x:Name="btn_EditMRA_SaveToDB" Content="Commit Changes" 
+                  Background="LightGreen" Padding="4" VerticalAlignment="Center" Margin="74,0,0,0"/>
         </StackPanel>
 
 
@@ -756,44 +766,75 @@
                   </StackPanel>
                 </GroupBox.Header>
 
-                <StackPanel Margin="0,4,0,0">
+                <StackPanel Margin="0,4,0,0" >
 
-                  <StackPanel Orientation="Horizontal" Margin="0,2,0,0" HorizontalAlignment="Right">
-                    <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                    <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
-                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+                  <!-- Label shows only when no selection -->
+                  <TextBlock Text="No Answers exist for this Question - click 'Add New Answer' or copy/paste from another Question"
+                              Foreground="Red" FontWeight="Bold" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding SelectedAnswer}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+
+                  <StackPanel Margin="0,4,0,0">
+                    <StackPanel.Style>
+                      <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding SelectedAnswer}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                          </DataTrigger>
+
+                        </Style.Triggers>
+                      </Style>
+                    </StackPanel.Style>
+
+                    <!-- Put your dependent controls here -->
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" HorizontalAlignment="Right">
+                      <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                      <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                               Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                      <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
+                      <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=LostFocus}" 
+                               Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
+
+
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
+
+                      <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=LostFocus}"
+                               AcceptsReturn="False"
+                               Height="23" Width="400"
+                               TextWrapping="Wrap"
+                               Margin="4,0,0,0" Padding="2" />
+
+                    </StackPanel>
+
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                      <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
+                      <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=LostFocus}" 
+                                Width="400" Height="46" Margin="4,0,0,0" />
+                    </StackPanel>
 
                   </StackPanel>
 
-                  <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                    <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                    <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=LostFocus}" 
-                             Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
-
-
-                  </StackPanel>
-
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
-
-                    <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=LostFocus}"
-                             AcceptsReturn="False"
-                             Height="23" Width="400"
-                             TextWrapping="Wrap"
-                             Margin="4,0,0,0" Padding="2" />
-
-                  </StackPanel>
-
-
-                  <StackPanel Orientation="Horizontal" Margin="0,4">
-                    <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=LostFocus}" 
-                             Width="400" Height="46" Margin="4,0,0,0" />
-                  </StackPanel>
 
                 </StackPanel>
-
-
+                
               </GroupBox>
 
               <Expander IsExpanded="False" Margin="0,8,0,0" x:Name="exp_DebugMRA" 

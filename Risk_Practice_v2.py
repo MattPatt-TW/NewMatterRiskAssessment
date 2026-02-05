@@ -36,7 +36,6 @@ preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
 
 ## GLOBAL CONSTANTS##
-LOG_ROOT = r"\\tw-p4wapp01\PartnerDev\Managing Partner\Forms\NMRA and FileReviews\MRA_Log"
 UNSELECTED = -1
 
 # ---------- Module-level clipboard ----------
@@ -61,6 +60,7 @@ def myOnLoadEvent(s, event):
   # hide 'Edit Questions' and 'Preview' tabs
   ti_MRA_Questions.Visibility = Visibility.Collapsed
   ti_MRA_Preview.Visibility = Visibility.Collapsed
+  grp_MRA_Clipboard.Visibility = Visibility.Collapsed
   
   # hide other controls not needed until something is selected...
   #tb_ST_NoMRA_Selected.Visibility = Visibility.Visible
@@ -348,6 +348,8 @@ def btn_MRATemplate_Edit_Click(s, event):
   else:
     vm.Debug("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
     log_line("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
+    # also output a 'before' dump of view model to file for audit purposes
+    dump_vm_to_file(vm, prefix="AUTO_BEFORE")
 
   # show 'Questions' tab and hide 'Overview' tab
   ti_MRA_Overview.Visibility = Visibility.Collapsed
@@ -390,6 +392,8 @@ def _set_clipboard_indicators(mode, tid, qid, aid):
   if tb_tid is not None:    tb_tid.Text = str(tid if tid is not None else -1)
   if tb_qid is not None:    tb_qid.Text = str(qid if qid is not None else -1)
   if tb_aid is not None:    tb_aid.Text = str(aid if aid is not None else -1)
+  # show area
+  grp_MRA_Clipboard.Visibility = Visibility.Visible
   return
 
 def _add_answers_to_question(vm, q, answer_dicts):
@@ -499,13 +503,28 @@ def btn_CopyToClipboard_AnswerOnly_Click(s, event):
   return
 
 
+def btn_CopyToClipboard_Clear_Click(s, event):
+  # This function will clear the clipboard and hide the indicators
+
+  MRA_CLIPBOARD["Mode"] = None
+  MRA_CLIPBOARD["SourceTemplateID"] = None
+  MRA_CLIPBOARD["SourceQuestionID"] = None
+  MRA_CLIPBOARD["SourceAnswerID"] = None
+  MRA_CLIPBOARD["QuestionText"] = ""
+  MRA_CLIPBOARD["Answers"] = []
+
+  # hide area
+  _set_clipboard_indicators("", None, None, None)
+  grp_MRA_Clipboard.Visibility = Visibility.Collapsed
+  MessageBox.Show("Clipboard has been emptied", "Cleared Clipboard...")
+  return
+
 def btn_Clipboard_Paste_Click(s, event):
   # This function will paste the contents of the clipboard into the selected question/answer area
   vm = _tikitSender.DataContext
   clipboard_paste(vm)
   
   return
-
 
 def clipboard_paste(vm):
   mode = MRA_CLIPBOARD.get("Mode")
@@ -1838,6 +1857,26 @@ def _safe_machine():
   except:
     return "unknown_machine"
 
+def get_Database_Name():
+  # returns current database name (Live = 'Partner', Dev = 'PartnerDev' and Training = 'PartnerTraining')
+  activeDB = runSQL(codeToRun="SELECT DB_NAME()", returnType="String")
+  return activeDB
+
+def _get_Snapshot_dir():
+  # structure: \\ParnerUNC\MRA_Snapshots\YYYY-MM-DD\
+  ts = DateTime.Now.ToString("yyyy-MM-dd")
+  SNAPSHOT_ROOT = r"\\tw-p4wapp01\{0}\Managing Partner\Forms\NMRA and FileReviews\MRA_Snapshots".format(get_Database_Name())
+  snap_dir = Path.Combine(SNAPSHOT_ROOT, ts)
+
+  try:
+    _ensure_dir(snap_dir)
+    return snap_dir
+  except:
+    # network share down / permissions issue -> fallback local
+    fb = Path.Combine(_local_fallback_root(), "Snapshots", ts)
+    _ensure_dir(fb)
+    return fb
+
 def _local_fallback_root():
   # e.g. C:\Users\you\AppData\Local\Temp\MRA_Log
   return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "MRA_Log")
@@ -1845,6 +1884,7 @@ def _local_fallback_root():
 def _get_log_dir():
   # structure: \\ParnerUNC\MRA_Log\YYYY-MM-DD\
   today = DateTime.Now.ToString("yyyy-MM-dd")
+  LOG_ROOT = r"\\tw-p4wapp01\{0}\Managing Partner\Forms\NMRA and FileReviews\MRA_Log".format(get_Database_Name())
   net_dir = Path.Combine(LOG_ROOT, today)
 
   try:
@@ -1926,13 +1966,14 @@ def dump_template_vm_text(vm):
   return "\r\n".join(lines)
 
 
-def dump_vm_to_file(vm, prefix="MRA_VM_DUMP"):
-  log_dir = _get_log_dir()
+def dump_vm_to_file(vm, prefix="USER_TRIGGERED"):
+  # for UI button we'll prefix 'USER_TRIGGERED' to distinguish from automated dumps in logs (which will prefix with 'AUTO_BEFORE' or 'AUTO_AFTER')
+  log_dir = _get_Snapshot_dir()
   ts = DateTime.Now.ToString("yyyyMMdd_HHmmssfff")
   user = _safe_username()
   machine = _safe_machine()
 
-  fname = "{0}_{1}_{2}_TID{3}.txt".format(prefix, user, machine, vm.TemplateID)
+  fname = "TID{0}_{1}_{2}_{3}.txt".format(vm.TemplateID, prefix, user, machine)
   # Add timestamp to avoid overwrites
   fname = "{0}_{1}.txt".format(fname.replace(".txt", ""), ts)
 
@@ -1943,6 +1984,80 @@ def dump_vm_to_file(vm, prefix="MRA_VM_DUMP"):
 
   log_line("VM dump written: {0}".format(path), vm.TemplateID)
   return path
+
+
+def btn_EditMRA_SaveToDB_Click(sender, e):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  # Confirm save action
+  res = MessageBox.Show("Are you sure you want to save the current template structure to the database? This will overwrite existing questions and answers for this template.", "Confirm Save to Database", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+  if res != DialogResult.Yes:
+    return
+
+  # first output the VM structure as the 'AFTER' snapshot in logs, so we have a record of exactly what was attempted to be saved
+  dump_vm_to_file(vm, prefix="AUTO_AFTER")
+
+  # Save to DB
+  try:
+    #save_template_structure_to_db(vm)
+    # ^ this is CodeGPT auto-code - see function below. 
+    # However, it doesn't appear to be adding to '_Question' and '_Answer' tables (if new item/updates needed) 
+    # So we'll want to x-ref against what ChatGPT advised as I did ask it to re-think because of amount of separate SQL calls needed, and consider a more efficient approach
+    #  (e.g. DataTable + stored procedure, or at least batching inserts).
+    MessageBox.Show("PRETEND - Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
+    log_line("Template saved to database successfully.", vm.TemplateID)
+  except Exception as ex:
+    MessageBox.Show("An error occurred while saving the template:\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    log_line("Error saving template to database: {0}".format(str(ex)), vm.TemplateID)
+
+
+def save_template_structure_to_db(vm):
+  # This function will save the template structure from the ViewModel back to the database.
+  # For simplicity, this example will delete existing questions/answers for the template and re-insert based on current VM state.
+  # In a production scenario, you might want a more sophisticated diff-and-update approach.
+  #! MP: CodeGPT's initial suggestion was to loop through and do individual INSERT/UPDATE statements, but that would be inefficient with many questions/answers. A more efficient approach would be to use a DataTable and a stored procedure to batch the updates, or at least build a single SQL command with multiple inserts. For now, we'll implement the straightforward approach and can optimize later if needed.
+  #! MP: Also, we need to ensure that any new questions/answers that don't have IDs yet get inserted into their respective tables and get assigned IDs before we can insert into the Template table. This adds complexity because of the dependencies. A transaction is essential here to maintain data integrity.
+  #! eg: can we instead build a table in code and use as a 'WITH xxx ()...' type INSERT etc to do in fewer calls?
+
+  if vm is None:
+    return
+
+  template_id = vm.TemplateID
+  if template_id is None or template_id == 0:
+    raise ValueError("Invalid TemplateID for saving.")
+
+  # Begin transaction
+  _tikitDbAccess.Open()
+  try:
+    # Delete existing structure for this template
+    delete_sql = "DELETE MRAT FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = {0}".format(template_id)
+    _tikitDbAccess.ExecuteNonQuery(delete_sql)
+
+    # Insert new structure based on VM
+    for g in vm.Groups:
+      for q in g.Questions:
+        for a in q.Answers:
+          insert_sql = """INSERT INTO Usr_MRAv2_Templates (TemplateID, QuestionGroup, QuestionOrder, QuestionID, AnswerOrder, AnswerID, Score, EmailComment)
+                          VALUES ({0}, '{1}', {2}, {3}, {4}, {5}, {6}, '{7}')""".format(
+                            template_id,
+                            g.GroupName.replace("'", "''"),  # escape single quotes
+                            q.QuestionDisplayOrder,
+                            q.QuestionID if q.QuestionID > 0 else "NULL",
+                            a.AnswerDisplayOrder,
+                            a.AnswerID if a.AnswerID > 0 else "NULL",
+                            a.Score,
+                            a.EmailComment.replace("'", "''")  # escape single quotes
+                          )
+          _tikitDbAccess.ExecuteNonQuery(insert_sql)
+
+    _tikitDbAccess.Commit()
+  except Exception as ex:
+    _tikitDbAccess.Rollback()
+    raise ex
+  finally:
+    _tikitDbAccess.Close()
 
 ######################################################################################################################
 
@@ -2033,6 +2148,8 @@ btn_CopyToClipboard_AnswersAll = LogicalTreeHelper.FindLogicalNode(_tikitSender,
 btn_CopyToClipboard_AnswersAll.Click += btn_CopyToClipboard_AnswersAll_Click
 btn_CopyToClipboard_AnswerOnly = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_AnswerOnly')
 btn_CopyToClipboard_AnswerOnly.Click += btn_CopyToClipboard_AnswerOnly_Click
+btn_CopyToClipboard_Clear = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopyToClipboard_Clear')
+btn_CopyToClipboard_Clear.Click += btn_CopyToClipboard_Clear_Click
 
 btn_Clipboard_Paste = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Clipboard_Paste')
 btn_Clipboard_Paste.Click += btn_Clipboard_Paste_Click
@@ -2119,6 +2236,8 @@ btn_EditMRA_CopyDebugLog = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_
 btn_EditMRA_CopyDebugLog.Click += btn_EditMRA_CopyDebugLog_Click
 btn_DumpVM = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DumpVM')
 btn_DumpVM.Click += btn_DumpVM_Click
+btn_EditMRA_SaveToDB = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_SaveToDB')
+btn_EditMRA_SaveToDB.Click += btn_EditMRA_SaveToDB_Click
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')
