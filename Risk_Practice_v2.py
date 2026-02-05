@@ -1000,9 +1000,9 @@ class NotifyBase(INotifyPropertyChanged):
 class GroupVM(NotifyBase):
   def __init__(self, group_name):
     NotifyBase.__init__(self)
+    self.NodeKind = "Group"
     self._GroupName = group_name
-    #self.Questions = ObservableCollection[QuestionVM]()  # forward ref ok in IronPython at runtime
-    self.Questions = ObservableCollection[object]()
+    self.Questions = ObservableCollection[object]()  # ideally 'QuestionVM' instead of 'object', but forward ref isn't liked in IronPython in this context, so using 'object' to avoid IDE errors (will still be 'QuestionVM' at runtime)
 
   @property
   def GroupName(self): return self._GroupName
@@ -1020,12 +1020,12 @@ class GroupVM(NotifyBase):
 class QuestionVM(NotifyBase):
   def __init__(self, question_id, text, question_display_order=0, parent_group=None):
     NotifyBase.__init__(self)
+    self.NodeKind = "Question"
     self.QuestionID = question_id
     self.ParentGroup = parent_group
     self._QuestionText = text or ""
     self._QuestionDisplayOrder = question_display_order
-    #self.Answers = ObservableCollection[AnswerVM]()
-    self.Answers = ObservableCollection[object]()
+    self.Answers = ObservableCollection[object]()   # ideally 'AnswerVM' instead of 'object', but forward ref isn't liked in IronPython in this context, so using 'object' to avoid IDE errors (will still be 'QuestionVM' at runtime)
 
   @property
   def QuestionText(self): return self._QuestionText
@@ -1055,6 +1055,7 @@ class QuestionVM(NotifyBase):
 class AnswerVM(NotifyBase):
   def __init__(self, answer_id, text, score, email_comment='', answer_display_order=0, parent_question=None):
     NotifyBase.__init__(self)
+    self.NodeKind = "Answer"
     self.AnswerID = answer_id
     self.ParentQuestion = parent_question
     self._AnswerText = text
@@ -1145,27 +1146,98 @@ class TemplateEditorVM(NotifyBase):
       self._SelectedQuestion = None
       self._SelectedAnswer = None
 
+      # Helpers: safely detect by attribute presence (works with proxy wrappers)
+      def has(obj, name):
+          try:
+              getattr(obj, name)
+              return True
+          except:
+              return False
+
+      kind = None
+      try:
+          kind = v.NodeKind
+      except:
+          kind = None
+
       if v is None:
-        pass
-      elif isinstance(v, GroupVM):
-        self._SelectedGroup = v
-        # optionally auto-select first question/answer?
-        if v.Questions.Count > 0:
-          self._SelectedQuestion = v.Questions[0]
-          if self._SelectedQuestion.Answers.Count > 0:
-            self._SelectedAnswer = self._SelectedQuestion.Answers[0]
+          pass
 
-      elif isinstance(v, QuestionVM):
-        self._SelectedQuestion = v
-        self._SelectedGroup = v.ParentGroup
-        if v.Answers.Count > 0:
-          self._SelectedAnswer = v.Answers[0]
+      elif kind == "Group":
+          self._SelectedGroup = v
+          try:
+              if v.Questions is not None and v.Questions.Count > 0:
+                  self._SelectedQuestion = v.Questions[0]
+                  if self._SelectedQuestion.Answers is not None and self._SelectedQuestion.Answers.Count > 0:
+                      self._SelectedAnswer = self._SelectedQuestion.Answers[0]
+          except:
+              pass
 
-      elif isinstance(v, AnswerVM):
-        self._SelectedAnswer = v
-        self._SelectedQuestion = v.ParentQuestion
-        if self._SelectedQuestion is not None:
-          self._SelectedGroup = self._SelectedQuestion.ParentGroup
+      elif kind == "Question":
+          self._SelectedQuestion = v
+          try:
+              self._SelectedGroup = v.ParentGroup
+          except:
+              self._SelectedGroup = None
+          try:
+              if v.Answers is not None and v.Answers.Count > 0:
+                  self._SelectedAnswer = v.Answers[0]
+          except:
+              pass
+
+      elif kind == "Answer":
+          self._SelectedAnswer = v
+          try:
+              self._SelectedQuestion = v.ParentQuestion
+          except:
+              self._SelectedQuestion = None
+          try:
+              if self._SelectedQuestion is not None:
+                  self._SelectedGroup = self._SelectedQuestion.ParentGroup
+          except:
+              self._SelectedGroup = None
+
+      else:
+          # Unknown projection object: fall back to attribute checks (optional but useful)
+          # This makes it resilient if something ever comes through without NodeKind.
+
+          # Answer-like: has AnswerID and ParentQuestion
+          if has(v, "AnswerID") and has(v, "ParentQuestion"):
+              self._SelectedAnswer = v
+              try:
+                  self._SelectedQuestion = v.ParentQuestion
+              except:
+                  self._SelectedQuestion = None
+              if self._SelectedQuestion is not None:
+                  try:
+                      self._SelectedGroup = self._SelectedQuestion.ParentGroup
+                  except:
+                      self._SelectedGroup = None
+
+          # Question-like: has QuestionID and Answers and ParentGroup
+          elif has(v, "QuestionID") and has(v, "Answers") and has(v, "ParentGroup"):
+              self._SelectedQuestion = v
+              try:
+                  self._SelectedGroup = v.ParentGroup
+              except:
+                  self._SelectedGroup = None
+              try:
+                  if v.Answers is not None and v.Answers.Count > 0:
+                      self._SelectedAnswer = v.Answers[0]
+              except:
+                  pass
+
+          # Group-like: has GroupName and Questions
+          elif has(v, "GroupName") and has(v, "Questions"):
+              self._SelectedGroup = v
+              try:
+                  if v.Questions is not None and v.Questions.Count > 0:
+                      self._SelectedQuestion = v.Questions[0]
+                      if self._SelectedQuestion.Answers is not None and self._SelectedQuestion.Answers.Count > 0:
+                          self._SelectedAnswer = self._SelectedQuestion.Answers[0]
+              except:
+                  pass
+
 
       self._raise("SelectedItem")
       self._raise("SelectedGroup")
@@ -1213,7 +1285,10 @@ def attach_logger(vm):
 def tvTemplate_SelectedItemChanged(sender, e):
   # This function will handle when the selected item in the Template TreeView changes
 
-  _tikitSender.DataContext.SelectedItem = e.NewValue
+  vm = _tikitSender.DataContext
+  if vm is None:
+      return
+  vm.SelectedItem = e.NewValue
 
   #MessageBox.Show("Template TreeView selected item changed", "DEBUG - Template TreeView Selected Item Changed...")
   return
