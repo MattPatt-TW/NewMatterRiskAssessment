@@ -105,7 +105,9 @@ def refresh_MRA_Templates():
   # SQL to populate datagrid
   getTableSQL = """SELECT TD.TemplateID, TD.ID, TD.Name, TD.DaysUntil_IncompleteLock, 
                           TD.ScoreMediumTrigger, TD.ScoreHighTrigger, 
-                          'Q Count' = (SELECT COUNT(QuestionID) FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = TD.TemplateID)
+                          'Q Count' = (SELECT COUNT(*) FROM (
+                                          SELECT QuestionID FROM Usr_MRAv2_Templates MRAT 
+                                          WHERE MRAT.TemplateID = TD.TemplateID GROUP BY MRAT.QuestionID) as tmpT)
                    FROM Usr_MRAv2_TemplateDetails TD ORDER BY TD.TemplateID"""
   
   tmpItem = []
@@ -264,12 +266,13 @@ def btn_MRATemplate_AddNew_Click(s, event):
   # This function will add a new row to the 'MRAv2_TemplateDetails' table
   
   #! Added 29/07/2025: Get next new TypeID so we can add it directly in the INSERT statement
-  nextTypeID = runSQL(codeToRun="SELECT ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails", returnType='Int')
-  insertSQL = """[SQL: INSERT INTO Usr_MRAv2_TemplateDetails (Name, DaysUntil_IncompleteLock, ScoreMediumTrigger, ScoreHighTrigger, TemplateID)
-                 VALUES ('NMRA - new', 29, 0, 0, {0})]""".format(nextTypeID)
+  #nextTypeID = runSQL(codeToRun="SELECT ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails", returnType='Int')
+  insertSQL = """INSERT INTO Usr_MRAv2_TemplateDetails (Name, DaysUntil_IncompleteLock, ScoreMediumTrigger, ScoreHighTrigger, TemplateID)
+                 OUTPUT INSERTED.TemplateID
+                 SELECT 'NMRA - new', 29, 0, 0, ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails"""
   
   try:
-    _tikitResolver.Resolve(insertSQL)
+    nextTypeID = _tikitResolver.Resolve("[SQL: {0}]".format(insertSQL))
   except:
     MessageBox.Show("There was an error trying to create a new Matter Risk Assessment, using SQL:\n" + str(insertSQL), "Error: Adding new Matter Risk Assessment...")
     return
@@ -536,7 +539,6 @@ def btn_Clipboard_Paste_Click(s, event):
   # This function will paste the contents of the clipboard into the selected question/answer area
   vm = _tikitSender.DataContext
   clipboard_paste(vm)
-  
   return
 
 def clipboard_paste(vm):
@@ -1305,7 +1307,7 @@ def attach_logger(vm):
     log_line(msg, vm.TemplateID)
     # 2) also push to on-screen debug (so we can confirm setters fire)
     try:
-      vm.Debug("LOG: " + str(msg))
+      vm.Debug(str(msg))
     except:
       pass
 
@@ -2017,111 +2019,95 @@ def btn_EditMRA_SaveToDB_Click(sender, e):
   if vm is None:
     return
 
+  # Validate VM first (no DB changes yet)
+  ok, msg = validate_unique_question_text(vm)
+  if not ok:
+    MessageBox.Show(msg, "Cannot Save Template", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+    vm.Debug("SAVE BLOCKED: " + msg)
+    log_line("SAVE BLOCKED: " + msg, to_int(vm.TemplateID))
+    return
+
   # Confirm save action
-  res = MessageBox.Show("Are you sure you want to save the current template structure to the database? This will overwrite existing questions and answers for this template.", "Confirm Save to Database", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+  res = MessageBox.Show(
+      "Are you sure you want to save the current template structure to the database?\n\n"
+      "This will overwrite the existing structure for this template.",
+      "Confirm Save to Database",
+      MessageBoxButtons.YesNo,
+      MessageBoxIcon.Question
+  )
   if res != DialogResult.Yes:
     return
 
-  # first output the VM structure as the 'AFTER' snapshot in logs, so we have a record of exactly what was attempted to be saved
+  # Snapshot "after" (attempted state)
   dump_vm_to_file(vm, prefix="AUTO_AFTER")
 
-  # Save to DB
   try:
-    save_template_to_db(vm)
+    save_template_to_db(vm)  # <-- no UI inside, just raises on error
     MessageBox.Show("Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
-    vm.Debug("TemplateID: {0} saved to database successfully.".format(vm.TemplateID))
-    log_line("TemplateID: {0} saved to database successfully.".format(vm.TemplateID))
+    vm.Debug("TemplateID {0} saved to database successfully.".format(to_int(vm.TemplateID)))
+    log_line("TemplateID {0} saved to database successfully.".format(to_int(vm.TemplateID)), to_int(vm.TemplateID))
   except Exception as ex:
-    MessageBox.Show("An error occurred while saving the template:\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    vm.Debug("Error saving TemplateID: {0} to database: {1}".format(vm.TemplateID, str(ex)))
-    log_line("Error saving TemplateID: {0} to database: {1}".format(vm.TemplateID, str(ex)))
+    MessageBox.Show("An error occurred while saving the template:\n\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    vm.Debug("Error saving TemplateID {0}: {1}".format(to_int(vm.TemplateID), str(ex)))
+    log_line("Error saving TemplateID {0}: {1}".format(to_int(vm.TemplateID), str(ex)), to_int(vm.TemplateID))
+
   return
 
 
 def save_template_to_db(vm):
   # This function will save the template structure from the ViewModel (vm) back to the database.
-  # Because we want this atomic, we ideally wrap it in a SQL transaction. If _tikitDbAccess doesn’t support transactions directly,
-  # you can still do a 'best-effort' with ordered operations; but transactions are strongly recommended.
-  # If your db layer accepts multi-statement SQL, simplest is:
-  # 1) BEGIN TRAN
-  # 2) resolve updates/inserts
-  # 3) delete templates
-  # 4) insert templates
-  # 5) COMMIT
-  # 6) ROLLBACK on exception
-  #
-  # After testing and a little more theory, we can't use transactions as we end up closing and reopening connections in our db layer, which causes issues. So we have to rely on the fact that each individual SQL command is atomic and just ensure we execute them in the right order. We can still log the intent to start/commit/rollback transactions for clarity in logs, even if they aren't real transactions.
-
   if vm is None:
     return
 
   tid = to_int(vm.TemplateID)
  
-  #db_nonquery("BEGIN TRAN;")
-  #vm.Debug("Started database transaction for saving TemplateID: {0}".format(tid))
-  #log_line("Started database transaction for saving TemplateID: {0}".format(tid))
-  #! Can't use 'TRANSACTION' statements as we end up closing and reopening connections in our db layer, which causes issues.
-  #! So we have to rely on the fact that each individual SQL command is atomic and just ensure we execute them in the right order.
+  # 1a) Resolve Questions/Answers (add any new ones, update text of existing ones if changed, handle duplicates as needed)
+  # Note: this logs results to Debug window AND the log_file
+  for g in vm.Groups:
+    for q in g.Questions:
+      #resolve_question_id(vm, q)
+      get_or_create_question_id(vm, q)
+      for a in q.Answers:
+        #resolve_answer_id(vm, a)
+        get_or_create_answer_id(vm, a)
 
-  try:
-    # 1a) Resolve Questions/Answers (add any new ones, update text of existing ones if changed, handle duplicates as needed)
-    # Note: this logs results to Debug window AND the log_file
-    for g in vm.Groups:
-      for q in g.Questions:
-        #resolve_question_id(vm, q)
-        get_or_create_question_id(vm, q)
-        for a in q.Answers:
-          #resolve_answer_id(vm, a)
-          get_or_create_answer_id(vm, a)
-
-    # 1b) Flatten rows (output list of dicts with TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, 
-    # AnswerOrder for each answer (or question if no answers)) - NB: outputs status to log/debug
-    rows = flatten_template_rows(vm)
+  # 1b) Flatten rows (output list of dicts with TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, 
+  # AnswerOrder for each answer (or question if no answers)) - NB: outputs status to log/debug
+  rows = flatten_template_rows(vm)
 
     # 2) Build 'apply' statements for the 'write' phase
-    sql_batch = []
-    sql_batch.append("DELETE FROM Usr_MRAv2_Templates WHERE TemplateID = {0};".format(tid))
+  sql_batch = []
+  sql_batch.append("DELETE FROM Usr_MRAv2_Templates WHERE TemplateID = {0};".format(tid))
 
-    if rows:
-      values_sql = []
-      for r in rows:
-        values_sql.append(
-              "({TemplateID}, {QuestionID}, {AnswerID}, {Score}, '{QuestionGroup}', {QuestionOrder}, {AnswerOrder})".format(
-                  TemplateID=to_int(r["TemplateID"]),
-                  QuestionID=to_int(r["QuestionID"]),
-                  AnswerID=to_int(r["AnswerID"]),
-                  Score=to_int(r["Score"]),
-                  QuestionGroup=sql_escape(r["QuestionGroup"]),
-                  QuestionOrder=to_int(r["QuestionOrder"]),
-                  AnswerOrder=to_int(r["AnswerOrder"]),
-              )
+  if rows:
+    values_sql = []
+    for r in rows:
+      values_sql.append(
+        "({TemplateID}, {QuestionID}, {AnswerID}, {Score}, '{QuestionGroup}', {QuestionOrder}, {AnswerOrder})".format(
+            TemplateID=to_int(r["TemplateID"]),
+            QuestionID=to_int(r["QuestionID"]),
+            AnswerID=to_int(r["AnswerID"]),
+            Score=to_int(r["Score"]),
+            QuestionGroup=sql_escape(r["QuestionGroup"]),
+            QuestionOrder=to_int(r["QuestionOrder"]),
+            AnswerOrder=to_int(r["AnswerOrder"]),
           )
+        )
 
-      sql_batch.append(
-          "INSERT INTO Usr_MRAv2_Templates "
-          "(TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder) "
-          "VALUES {0};".format(", ".join(values_sql))
-      )
-      vm.Debug("Executing SQL to insert template structure with {0} rows: {1}".format(len(rows), sql_batch[-1]))
-      log_line("Executing SQL to insert template structure with {0} rows: {1}.".format(len(rows), sql_batch[-1]))
+    sql_batch.append(
+        "INSERT INTO Usr_MRAv2_Templates "
+        "(TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder) "
+        "VALUES {0};".format(", ".join(values_sql))
+    )
+    vm.Debug("Prepared INSERT for {0} rows".format(len(rows)))
+    log_line("Prepared INSERT for {0} rows.".format(len(rows)))
       
-    run_apply_phase(vm, sql_batch)
+  run_apply_phase(vm, sql_batch)
 
-    vm.Debug("Database transaction committed successfully for TemplateID: {0}".format(tid))
-    log_line("Database transaction committed successfully for TemplateID: {0}".format(tid))
-
-    MessageBox.Show("Template saved successfully.", "Save", MessageBoxButtons.OK, MessageBoxIcon.Information)
-
-  except Exception as ex:
-    try:
-      vm.Debug("Database transaction rolled back due to error for TemplateID: {0}".format(tid))
-      log_line("Database transaction rolled back due to error for TemplateID: {0}".format(tid))
-    except:
-      pass
-
-    MessageBox.Show("Save failed.\n\n{0}".format(ex), "Save", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    raise
+  vm.Debug("SAVE Complete for TemplateID: {0}".format(tid))
+  log_line("SAVE Complete for TemplateID: {0}".format(tid))
   return
+
 
 def run_apply_phase(vm, sql_batch):
   tid = to_int(vm.TemplateID)
@@ -2201,8 +2187,6 @@ def norm_text(s):
   return s
 
 def get_or_create_question_id(vm, q):
-  #! NEED TO CHECK THIS as we're currently getting the 'Question text cannot be blank' error - could be our fudged template from prior
-  #! testing, so perhaps, delete those orphaned Questions and re-test  
 
   txt = norm_text(q.QuestionText)
   if txt == "":
@@ -2273,24 +2257,7 @@ def resolve_question_id(vm, q):
   vm.Debug("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
   log_line("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
 
-  # New question
-  #! MP: Here ChatGPT assumes that because a new Question was added in UI, it must not exist in DB and can be inserted directly.
-  # This is generally true, but if user added a question and then changed its text to match an existing question, we could end up with duplicates. 
-  # .:. To handle this, we simply omit this initial check and proceed as usual (check if text already exitsts, only add if 'new' and user confirms etc)
-  #if qid < 0:
-  #    insert_sql = (
-  #        "INSERT INTO Usr_MRAv2_Question (QuestionText) "
-  #        "OUTPUT INSERTED.QuestionID "
-  #        "VALUES ('{0}');"
-  #    ).format(sql_escape(new_text))
-  #    new_id = db_scalar(insert_sql)
-  #    q.QuestionID = int(new_id)
-  #
-  #    vm.Debug("Inserted new question '{0}' with QuestionID={1}".format(new_text, new_id))
-  #    log_line("Inserted new question '{0}' with QuestionID={1}".format(new_text, new_id))
-  #    return int(new_id)
-
-  # Existing: compare current DB text if we already have ID to see if text was changed
+  # compare current DB text if we already have ID to see if text was changed
   if qid > 0:
     db_text = db_scalar(
         "SELECT QuestionText FROM Usr_MRAv2_Question WHERE QuestionID = {0};".format(qid)
@@ -2522,6 +2489,41 @@ def to_str(x, default=""):
     return str(x)
   except:
     return default
+
+
+def validate_unique_question_text(vm):
+  # Returns (ok, message)
+  # Rule: within a template, QuestionText must be unique (case/trim normalised)
+  seen = {}   # norm_text -> first QuestionVM
+  dups = []   # list of tuples: (text, first_q, dup_q)
+
+  for g in vm.Groups:
+    for q in g.Questions:
+      t = norm_text(q.QuestionText)
+      if t == "":
+        return (False, "One or more questions have blank text. Please complete or delete blank questions before saving.")
+      if t in seen:
+        dups.append((t, seen[t], q))
+      else:
+        seen[t] = q
+
+  if not dups:
+    return (True, "")
+
+  # Build a helpful error message
+  # Include group + display order to help user find them
+  lines = []
+  lines.append("Duplicate QuestionText found in this template. Question text must be unique before saving.\n")
+  for (t, q1, q2) in dups[:20]:
+    g1 = q1.ParentGroup.GroupName if getattr(q1, "ParentGroup", None) is not None else "?"
+    g2 = q2.ParentGroup.GroupName if getattr(q2, "ParentGroup", None) is not None else "?"
+    lines.append("• '{0}'".format(t))
+    lines.append("    - First:  Group='{0}', Order={1}, QID={2}".format(g1, to_int(q1.QuestionDisplayOrder), to_int(q1.QuestionID)))
+    lines.append("    - Again:  Group='{0}', Order={1}, QID={2}".format(g2, to_int(q2.QuestionDisplayOrder), to_int(q2.QuestionID)))
+  if len(dups) > 20:
+    lines.append("\n(Showing first 20 duplicates; there are {0} total.)".format(len(dups)))
+
+  return (False, "\n".join(lines))
 
 ######################################################################################################################
 
