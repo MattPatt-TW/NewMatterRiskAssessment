@@ -15,7 +15,7 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime, Environment, String
+from System import DateTime, Environment, String, Convert, DBNull
 from System.IO import Path, File, Directory
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
@@ -343,11 +343,11 @@ def btn_MRATemplate_Edit_Click(s, event):
   vm = _tikitSender.DataContext
   # note: vm.Debug to populate our on-screen debug text box, and 'log_line' to write to users daily log file
   if vm is None:
-    vm.Debug("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))  
-    log_line("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))
+    vm.Debug("ERROR: Unable to load MRA TemplateID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))  
+    log_line("ERROR: Unable to load MRA TemplateID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))
   else:
-    vm.Debug("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
-    log_line("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
+    vm.Debug("Loaded MRA TemplateID {0} into TreeView structure for editing".format(vm.TemplateID))
+    log_line("Loaded MRA TemplateID {0} into TreeView structure for editing".format(vm.TemplateID))
     # also output a 'before' dump of view model to file for audit purposes
     dump_vm_to_file(vm, prefix="AUTO_BEFORE")
 
@@ -435,7 +435,10 @@ def btn_CopyToClipboard_QuestionOnly_Click(s, event):
   _set_clipboard_indicators("Question only", vm.TemplateID, q.QuestionID, None)
 
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Question Only to Clipboard", "Copied Question Only to Clipboard...")
+  #MessageBox.Show("Copied Question Only to Clipboard", "Copied Question Only to Clipboard...")
+  # logging instead of messagebox for this one as it's more likely to be used when copying multiple questions, and we don't want to bombard user with message boxes in that scenario
+  vm.Debug("Copied question (ID={0}) to clipboard".format(q.QuestionID))
+  log_line("Copied question (ID={0}) to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_QuestionAndAnswers_Click(s, event):
@@ -456,7 +459,9 @@ def btn_CopyToClipboard_QuestionAndAnswers_Click(s, event):
   _set_clipboard_indicators("Question + all answers", vm.TemplateID, q.QuestionID, None)
   
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Question and Answers to Clipboard", "Copied Question and Answers to Clipboard...")
+  #MessageBox.Show("Copied Question and Answers to Clipboard", "Copied Question and Answers to Clipboard...")
+  vm.Debug("Copied question (ID={0}) and all answers to clipboard".format(q.QuestionID))
+  log_line("Copied question (ID={0}) and all answers to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_AnswersAll_Click(s, event):
@@ -477,7 +482,9 @@ def btn_CopyToClipboard_AnswersAll_Click(s, event):
   _set_clipboard_indicators("All answers", vm.TemplateID, q.QuestionID, None)
 
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied All Answers to Clipboard", "Copied All Answers to Clipboard...")
+  #MessageBox.Show("Copied All Answers to Clipboard", "Copied All Answers to Clipboard...")
+  vm.Debug("Copied all answers for question (ID={0}) to clipboard".format(q.QuestionID))
+  log_line("Copied all answers for question (ID={0}) to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_AnswerOnly_Click(s, event):
@@ -499,7 +506,9 @@ def btn_CopyToClipboard_AnswerOnly_Click(s, event):
   _set_clipboard_indicators("Single answer", vm.TemplateID, q.QuestionID, a.AnswerID)  
   
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Answer Only to Clipboard", "Copied Answer Only to Clipboard...")
+  #MessageBox.Show("Copied Answer Only to Clipboard", "Copied Answer Only to Clipboard...")
+  vm.Debug("Copied answer (ID={0}) to clipboard".format(a.AnswerID))
+  log_line("Copied answer (ID={0}) to clipboard".format(a.AnswerID))
   return
 
 
@@ -513,10 +522,14 @@ def btn_CopyToClipboard_Clear_Click(s, event):
   MRA_CLIPBOARD["QuestionText"] = ""
   MRA_CLIPBOARD["Answers"] = []
 
+  vm = _tikitSender.DataContext
+
   # hide area
   _set_clipboard_indicators("", None, None, None)
   grp_MRA_Clipboard.Visibility = Visibility.Collapsed
-  MessageBox.Show("Clipboard has been emptied", "Cleared Clipboard...")
+  #MessageBox.Show("Clipboard has been emptied", "Cleared Clipboard...")
+  vm.Debug("Clipboard cleared")
+  log_line("Clipboard cleared")
   return
 
 def btn_Clipboard_Paste_Click(s, event):
@@ -599,6 +612,19 @@ def clipboard_paste(vm):
 
   # Select something sensible after paste
   vm.SelectedItem = target_q
+  # output paste operation to debug and log
+  vm.Debug("Pasted {0} from TemplateID={1}, QuestionID={2}, AnswerID={3}".format(
+      mode,
+      MRA_CLIPBOARD.get("SourceTemplateID"),
+      MRA_CLIPBOARD.get("SourceQuestionID"),
+      MRA_CLIPBOARD.get("SourceAnswerID")
+  ))
+  log_line("Pasted {0} from TemplateID={1}, QuestionID={2}, AnswerID={3}".format(
+      mode,
+      MRA_CLIPBOARD.get("SourceTemplateID"),
+      MRA_CLIPBOARD.get("SourceQuestionID"),
+      MRA_CLIPBOARD.get("SourceAnswerID")
+  ))
   return
 
  
@@ -2001,63 +2027,501 @@ def btn_EditMRA_SaveToDB_Click(sender, e):
 
   # Save to DB
   try:
-    #save_template_structure_to_db(vm)
-    # ^ this is CodeGPT auto-code - see function below. 
-    # However, it doesn't appear to be adding to '_Question' and '_Answer' tables (if new item/updates needed) 
-    # So we'll want to x-ref against what ChatGPT advised as I did ask it to re-think because of amount of separate SQL calls needed, and consider a more efficient approach
-    #  (e.g. DataTable + stored procedure, or at least batching inserts).
-    MessageBox.Show("PRETEND - Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
-    log_line("Template saved to database successfully.", vm.TemplateID)
+    save_template_to_db(vm)
+    MessageBox.Show("Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
+    vm.Debug("TemplateID: {0} saved to database successfully.".format(vm.TemplateID))
+    log_line("TemplateID: {0} saved to database successfully.".format(vm.TemplateID))
   except Exception as ex:
     MessageBox.Show("An error occurred while saving the template:\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    log_line("Error saving template to database: {0}".format(str(ex)), vm.TemplateID)
+    vm.Debug("Error saving TemplateID: {0} to database: {1}".format(vm.TemplateID, str(ex)))
+    log_line("Error saving TemplateID: {0} to database: {1}".format(vm.TemplateID, str(ex)))
+  return
 
 
-def save_template_structure_to_db(vm):
-  # This function will save the template structure from the ViewModel back to the database.
-  # For simplicity, this example will delete existing questions/answers for the template and re-insert based on current VM state.
-  # In a production scenario, you might want a more sophisticated diff-and-update approach.
-  #! MP: CodeGPT's initial suggestion was to loop through and do individual INSERT/UPDATE statements, but that would be inefficient with many questions/answers. A more efficient approach would be to use a DataTable and a stored procedure to batch the updates, or at least build a single SQL command with multiple inserts. For now, we'll implement the straightforward approach and can optimize later if needed.
-  #! MP: Also, we need to ensure that any new questions/answers that don't have IDs yet get inserted into their respective tables and get assigned IDs before we can insert into the Template table. This adds complexity because of the dependencies. A transaction is essential here to maintain data integrity.
-  #! eg: can we instead build a table in code and use as a 'WITH xxx ()...' type INSERT etc to do in fewer calls?
+def save_template_to_db(vm):
+  # This function will save the template structure from the ViewModel (vm) back to the database.
+  # Because we want this atomic, we ideally wrap it in a SQL transaction. If _tikitDbAccess doesn’t support transactions directly,
+  # you can still do a 'best-effort' with ordered operations; but transactions are strongly recommended.
+  # If your db layer accepts multi-statement SQL, simplest is:
+  # 1) BEGIN TRAN
+  # 2) resolve updates/inserts
+  # 3) delete templates
+  # 4) insert templates
+  # 5) COMMIT
+  # 6) ROLLBACK on exception
+  #
+  # After testing and a little more theory, we can't use transactions as we end up closing and reopening connections in our db layer, which causes issues. So we have to rely on the fact that each individual SQL command is atomic and just ensure we execute them in the right order. We can still log the intent to start/commit/rollback transactions for clarity in logs, even if they aren't real transactions.
 
   if vm is None:
     return
 
-  template_id = vm.TemplateID
-  if template_id is None or template_id == 0:
-    raise ValueError("Invalid TemplateID for saving.")
+  tid = to_int(vm.TemplateID)
+ 
+  #db_nonquery("BEGIN TRAN;")
+  #vm.Debug("Started database transaction for saving TemplateID: {0}".format(tid))
+  #log_line("Started database transaction for saving TemplateID: {0}".format(tid))
+  #! Can't use 'TRANSACTION' statements as we end up closing and reopening connections in our db layer, which causes issues.
+  #! So we have to rely on the fact that each individual SQL command is atomic and just ensure we execute them in the right order.
 
-  # Begin transaction
-  _tikitDbAccess.Open()
   try:
-    # Delete existing structure for this template
-    delete_sql = "DELETE MRAT FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = {0}".format(template_id)
-    _tikitDbAccess.ExecuteNonQuery(delete_sql)
-
-    # Insert new structure based on VM
+    # 1a) Resolve Questions/Answers (add any new ones, update text of existing ones if changed, handle duplicates as needed)
+    # Note: this logs results to Debug window AND the log_file
     for g in vm.Groups:
       for q in g.Questions:
+        #resolve_question_id(vm, q)
+        get_or_create_question_id(vm, q)
         for a in q.Answers:
-          insert_sql = """INSERT INTO Usr_MRAv2_Templates (TemplateID, QuestionGroup, QuestionOrder, QuestionID, AnswerOrder, AnswerID, Score, EmailComment)
-                          VALUES ({0}, '{1}', {2}, {3}, {4}, {5}, {6}, '{7}')""".format(
-                            template_id,
-                            g.GroupName.replace("'", "''"),  # escape single quotes
-                            q.QuestionDisplayOrder,
-                            q.QuestionID if q.QuestionID > 0 else "NULL",
-                            a.AnswerDisplayOrder,
-                            a.AnswerID if a.AnswerID > 0 else "NULL",
-                            a.Score,
-                            a.EmailComment.replace("'", "''")  # escape single quotes
-                          )
-          _tikitDbAccess.ExecuteNonQuery(insert_sql)
+          #resolve_answer_id(vm, a)
+          get_or_create_answer_id(vm, a)
 
-    _tikitDbAccess.Commit()
+    # 1b) Flatten rows (output list of dicts with TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, 
+    # AnswerOrder for each answer (or question if no answers)) - NB: outputs status to log/debug
+    rows = flatten_template_rows(vm)
+
+    # 2) Build 'apply' statements for the 'write' phase
+    sql_batch = []
+    sql_batch.append("DELETE FROM Usr_MRAv2_Templates WHERE TemplateID = {0};".format(tid))
+
+    if rows:
+      values_sql = []
+      for r in rows:
+        values_sql.append(
+              "({TemplateID}, {QuestionID}, {AnswerID}, {Score}, '{QuestionGroup}', {QuestionOrder}, {AnswerOrder})".format(
+                  TemplateID=to_int(r["TemplateID"]),
+                  QuestionID=to_int(r["QuestionID"]),
+                  AnswerID=to_int(r["AnswerID"]),
+                  Score=to_int(r["Score"]),
+                  QuestionGroup=sql_escape(r["QuestionGroup"]),
+                  QuestionOrder=to_int(r["QuestionOrder"]),
+                  AnswerOrder=to_int(r["AnswerOrder"]),
+              )
+          )
+
+      sql_batch.append(
+          "INSERT INTO Usr_MRAv2_Templates "
+          "(TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder) "
+          "VALUES {0};".format(", ".join(values_sql))
+      )
+      vm.Debug("Executing SQL to insert template structure with {0} rows: {1}".format(len(rows), sql_batch[-1]))
+      log_line("Executing SQL to insert template structure with {0} rows: {1}.".format(len(rows), sql_batch[-1]))
+      
+    run_apply_phase(vm, sql_batch)
+
+    vm.Debug("Database transaction committed successfully for TemplateID: {0}".format(tid))
+    log_line("Database transaction committed successfully for TemplateID: {0}".format(tid))
+
+    MessageBox.Show("Template saved successfully.", "Save", MessageBoxButtons.OK, MessageBoxIcon.Information)
+
   except Exception as ex:
-    _tikitDbAccess.Rollback()
-    raise ex
-  finally:
-    _tikitDbAccess.Close()
+    try:
+      vm.Debug("Database transaction rolled back due to error for TemplateID: {0}".format(tid))
+      log_line("Database transaction rolled back due to error for TemplateID: {0}".format(tid))
+    except:
+      pass
+
+    MessageBox.Show("Save failed.\n\n{0}".format(ex), "Save", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    raise
+  return
+
+def run_apply_phase(vm, sql_batch):
+  tid = to_int(vm.TemplateID)
+  if not sql_batch:
+    return
+
+  # Preferred: execute as ONE batch, so it is at least same session *if* your provider keeps it
+  # (still not a real transaction, but reduces partial apply risk)
+  batch_sql = ";\r\n".join(sql_batch) + ";"
+
+  vm.Debug("APPLY batch for TID={0}:\n{1}".format(tid, batch_sql))
+  log_line("APPLY batch for TID={0}".format(tid), tid)
+
+  try:
+    # Try resolver first (often better at multi-statement batches)
+    runSQL(batch_sql, useAltResolver=False, returnType="String")
+    vm.Debug("APPLY batch executed successfully for TID={0}".format(tid))
+    log_line("APPLY batch executed successfully for TID={0}".format(tid), tid)
+    return
+  except Exception as ex:
+    vm.Debug("APPLY batch failed, falling back to per-statement. Error: " + str(ex))
+    log_line("APPLY batch failed, falling back to per-statement. Error: " + str(ex), tid)
+
+  # Fallback: execute each statement separately
+  for i, stmt in enumerate(sql_batch):
+    vm.Debug("APPLY stmt {0}/{1}: {2}".format(i+1, len(sql_batch), stmt))
+    runSQL(stmt, useAltResolver=False, returnType="String")
+  return
+
+
+def flatten_template_rows(vm):
+  """
+  Returns a list of dicts for use with 'INSERT INTO Usr_MRAv2_Templates (...) VALUES ...' with one dict per answer (or question if no answers), 
+  containing all necessary info to reconstruct the template structure in the database, including display orders:
+    {TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder}
+  """
+  rows = []
+  tid = to_int(vm.TemplateID)
+
+  for g in vm.Groups:
+    group_name = g.GroupName or ""
+
+    q_order = 1
+    for q in g.Questions:
+      if to_int(q.QuestionDisplayOrder) != q_order:
+        q.QuestionDisplayOrder = q_order
+
+      a_order = 1
+      for a in q.Answers:
+        if to_int(a.AnswerDisplayOrder) != a_order:
+          a.AnswerDisplayOrder = a_order
+
+        rows.append({
+          "TemplateID": tid,
+          "QuestionID": to_int(q.QuestionID),
+          "AnswerID": to_int(a.AnswerID),
+          "Score": to_int(a.Score, 0),
+          "QuestionGroup": group_name,
+          "QuestionOrder": to_int(q.QuestionDisplayOrder),
+          "AnswerOrder": to_int(a.AnswerDisplayOrder),
+        })
+        a_order += 1
+
+      q_order += 1
+
+  vm.Debug("Flattened template structure into {0} rows for database insertion.".format(len(rows)))
+  log_line("Flattened template structure into {0} rows for database insertion.".format(len(rows)), tid)
+  return rows
+
+
+def norm_text(s):
+  # basic normalisation; keep it conservative
+  s = "" if s is None else str(s)
+  s = s.strip()
+  # optional: collapse internal whitespace
+  # s = " ".join(s.split())
+  return s
+
+def get_or_create_question_id(vm, q):
+  #! NEED TO CHECK THIS as we're currently getting the 'Question text cannot be blank' error - could be our fudged template from prior
+  #! testing, so perhaps, delete those orphaned Questions and re-test  
+
+  txt = norm_text(q.QuestionText)
+  if txt == "":
+    raise Exception("Question text cannot be blank.")
+
+  # 1) lookup by text
+  existing = db_scalar(
+    "SELECT TOP 1 QuestionID FROM Usr_MRAv2_Question WHERE QuestionText = '{0}'".format(sql_escape(txt))
+  )
+  eid = to_int(existing, 0)
+  if eid > 0:
+    q.QuestionID = eid
+    return eid
+
+  # 2) insert
+  new_id = db_scalar(
+    "INSERT INTO Usr_MRAv2_Question (QuestionText, QuestionID) OUTPUT INSERTED.QuestionID SELECT '{0}', MAX(QuestionID) + 1 FROM Usr_MRAv2_Question".format(sql_escape(txt))
+  )
+  new_id = to_int(new_id, 0)
+  if new_id <= 0:
+    raise Exception("Failed to insert Question.")
+  q.QuestionID = new_id
+  return new_id
+
+def get_or_create_answer_id(vm, a):
+  txt = norm_text(a.AnswerText)
+  email = norm_text(a.EmailComment)
+
+  if txt == "":
+    raise Exception("Answer text cannot be blank.")
+
+  # 1) lookup by text+email (because you store EmailComment in the Answer table)
+  existing = db_scalar(
+    "SELECT TOP 1 AnswerID FROM Usr_MRAv2_Answer "
+    "WHERE AnswerText = '{0}' AND ISNULL(EmailComment,'') = '{1}'".format(
+      sql_escape(txt),
+      sql_escape(email)
+    )
+  )
+  eid = to_int(existing, 0)
+  if eid > 0:
+    a.AnswerID = eid
+    return eid
+
+  # 2) insert
+  new_id = db_scalar(
+    "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) OUTPUT INSERTED.AnswerID SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer".format(sql_escape(txt), sql_escape(email))
+  )
+  new_id = to_int(new_id, 0)
+  if new_id <= 0:
+    raise Exception("Failed to insert Answer.")
+  a.AnswerID = new_id
+  return new_id
+
+
+def resolve_question_id(vm, q):
+  """
+  Ensures q.QuestionID is correct for saving:
+    - If new (negative): insert, set new ID
+    - If existing and text differs:
+        * if used elsewhere -> prompt update globally vs clone
+        * else update directly
+  Returns final QuestionID.
+  """
+  qid = to_int(q.QuestionID)
+  new_text = q.QuestionText or ""
+
+  vm.Debug("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
+  log_line("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
+
+  # New question
+  #! MP: Here ChatGPT assumes that because a new Question was added in UI, it must not exist in DB and can be inserted directly.
+  # This is generally true, but if user added a question and then changed its text to match an existing question, we could end up with duplicates. 
+  # .:. To handle this, we simply omit this initial check and proceed as usual (check if text already exitsts, only add if 'new' and user confirms etc)
+  #if qid < 0:
+  #    insert_sql = (
+  #        "INSERT INTO Usr_MRAv2_Question (QuestionText) "
+  #        "OUTPUT INSERTED.QuestionID "
+  #        "VALUES ('{0}');"
+  #    ).format(sql_escape(new_text))
+  #    new_id = db_scalar(insert_sql)
+  #    q.QuestionID = int(new_id)
+  #
+  #    vm.Debug("Inserted new question '{0}' with QuestionID={1}".format(new_text, new_id))
+  #    log_line("Inserted new question '{0}' with QuestionID={1}".format(new_text, new_id))
+  #    return int(new_id)
+
+  # Existing: compare current DB text if we already have ID to see if text was changed
+  if qid > 0:
+    db_text = db_scalar(
+        "SELECT QuestionText FROM Usr_MRAv2_Question WHERE QuestionID = {0};".format(qid)
+    )
+    db_text = "" if db_text is None else str(db_text)
+
+    if db_text == new_text:
+      return qid  # no change
+
+    # Check usage in other templates (excluding current template)
+    used_elsewhere = db_scalar(
+        "SELECT COUNT(*) FROM Usr_MRAv2_Templates "
+        "WHERE QuestionID = {0} AND TemplateID <> {1};".format(qid, to_int(vm.TemplateID))
+    )
+    used_elsewhere = 0 if used_elsewhere is None else to_int(used_elsewhere)
+
+    if used_elsewhere <= 0:
+      # safe: update in place
+      db_nonquery(
+          "UPDATE Usr_MRAv2_Question SET QuestionText = '{0}' WHERE QuestionID = {1};".format(
+              sql_escape(new_text), qid
+          )
+      )
+      vm.Debug("Updated question text for QuestionID={0} since not used in other templates.".format(qid))
+      log_line("Updated question text for QuestionID={0} since not used in other templates.".format(qid))
+      return qid
+
+    # Used elsewhere: prompt
+    res = MessageBox.Show(
+        "Question text has been changed, and this QuestionID is used in {0} other template(s).\n\n"
+        "YES  = Update ALL templates (update Usr_MRAv2_Question)\n"
+        "NO   = Create a NEW question (only this template will use it)\n"
+        "CANCEL = Abort save".format(used_elsewhere),
+        "Question text changed",
+        MessageBoxButtons.YesNoCancel,
+        MessageBoxIcon.Warning
+    )
+
+    if res == DialogResult.Cancel:
+        vm.Debug("Save cancelled by user due to question text change for QuestionID={0}".format(qid))
+        log_line("Save cancelled by user due to question text change for QuestionID={0}".format(qid))
+        raise Exception("Save cancelled by user (question change).")
+
+    if res == DialogResult.Yes:
+        db_nonquery(
+            "UPDATE Usr_MRAv2_Question SET QuestionText = '{0}' WHERE QuestionID = {1};".format(
+                sql_escape(new_text), qid
+            )
+        )
+        vm.Debug("Updated question text for QuestionID={0}. User requested update 'all' other occurrences.".format(qid))
+        log_line("Updated question text for QuestionID={0}. User requested update 'all' other occurrences.".format(qid))
+        return qid
+
+  # Not previously used / user answered 'no' to 'updating' existing question text, so clone:
+  insert_sql = (
+      "INSERT INTO Usr_MRAv2_Question (QuestionText, QuestionID) "
+      "OUTPUT INSERTED.QuestionID "
+      "SELECT '{0}', MAX(QuestionID) + 1 FROM Usr_MRAv2_Question;"
+  ).format(sql_escape(new_text))
+  new_id = db_scalar(insert_sql)
+  q.QuestionID = to_int(new_id)
+  vm.Debug("Inserted new question '{0}' with QuestionID={1} since user requested to clone due to text change.".format(new_text, new_id))
+  log_line("Inserted new question '{0}' with QuestionID={1} since user requested to clone due to text change.".format(new_text, new_id))
+  return to_int(new_id)
+
+
+def resolve_answer_id(vm, a):
+  """
+  Ensures a.AnswerID is correct for saving:
+    - If new (negative): insert, set new ID
+    - If existing and text/email differs:
+        * if used elsewhere -> prompt update globally vs clone
+        * else update directly
+  Returns final AnswerID.
+  """
+  aid = to_int(a.AnswerID)
+  new_text = a.AnswerText or ""
+  new_email = a.EmailComment or ""
+
+  vm.Debug("Resolving AnswerID for answer '{0}' (current ID: {1})".format(new_text, aid))
+  log_line("Resolving AnswerID for answer '{0}' (current ID: {1})".format(new_text, aid))
+
+  # compare current DB text/email
+  db_row = None
+  _tikitDbAccess.Open(
+      "SELECT AnswerText, EmailComment FROM Usr_MRAv2_Answer WHERE AnswerID = {0};".format(aid)
+  )
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows and dr.Read():
+    t = "" if dr.IsDBNull(0) else dr.GetString(0)
+    e = "" if dr.IsDBNull(1) else dr.GetString(1)
+    db_row = (t, e)
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  if db_row is None:
+    # If somehow missing in DB, treat like new
+    insert_sql = (
+        "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) "
+        "OUTPUT INSERTED.AnswerID "
+        "SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer;"
+    ).format(sql_escape(new_text), sql_escape(new_email))
+    new_id = db_scalar(insert_sql)
+    a.AnswerID = to_int(new_id)
+    vm.Debug("Inserted new answer '{0}' with AnswerID={1}. No match to existing in DB.".format(new_text, new_id))
+    log_line("Inserted new answer '{0}' with AnswerID={1}. No match to existing in DB.".format(new_text, new_id))   
+    return to_int(new_id)
+
+
+  db_text, db_email = db_row
+  if db_text == new_text and (db_email or "") == (new_email or ""):
+    vm.Debug("No change to answer '{0}' with AnswerID={1}. Matches existing in DB.".format(new_text, aid))
+    log_line("No change to answer '{0}' with AnswerID={1}. Matches existing in DB.".format(new_text, aid))   
+    return aid  # no change
+
+  used_elsewhere = db_scalar(
+      "SELECT COUNT(*) FROM Usr_MRAv2_Templates "
+      "WHERE AnswerID = {0} AND TemplateID <> {1};".format(aid, vm.TemplateID)
+  )
+  used_elsewhere = 0 if used_elsewhere is None else to_int(used_elsewhere)
+
+  if used_elsewhere <= 0:
+    # not used elsewhere: safe to update in place
+    db_nonquery(
+        "UPDATE Usr_MRAv2_Answer SET AnswerText = '{0}', EmailComment = '{1}' WHERE AnswerID = {2};".format(
+            sql_escape(new_text), sql_escape(new_email), aid
+        )
+    )
+    vm.Debug("Updated answer text/email for AnswerID={0} since not used in other templates.".format(aid))
+    log_line("Updated answer text/email for AnswerID={0} since not used in other templates.".format(aid))
+    return aid
+
+  # used elsewhere prompt:
+  res = MessageBox.Show(
+      "Answer text/comment has been changed, and this AnswerID is used in {0} other template(s).\n\n"
+      "YES  = Update ALL templates (update Usr_MRAv2_Answer)\n"
+      "NO   = Create a NEW answer (only this template will use it)\n"
+      "CANCEL = Abort save".format(used_elsewhere),
+      "Answer changed",
+      MessageBoxButtons.YesNoCancel,
+      MessageBoxIcon.Warning
+  )
+
+  if res == DialogResult.Cancel:
+    vm.Debug("Save cancelled by user due to answer text/email change for AnswerID={0}".format(aid))
+    log_line("Save cancelled by user due to answer text/email change for AnswerID={0}".format(aid))
+    raise Exception("Save cancelled by user (answer change).")
+
+  if res == DialogResult.Yes:
+    db_nonquery(
+        "UPDATE Usr_MRAv2_Answer SET AnswerText = '{0}', EmailComment = '{1}' WHERE AnswerID = {2};".format(
+            sql_escape(new_text), sql_escape(new_email), aid
+        )
+    )
+    vm.Debug("Updated answer text/email for AnswerID={0}. User requested update 'all' other occurrences.".format(aid))
+    log_line("Updated answer text/email for AnswerID={0}. User requested update 'all' other occurrences.".format(aid))
+    return aid
+
+  # NO: clone
+  insert_sql = (
+      "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) "
+      "OUTPUT INSERTED.AnswerID "
+      "SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer;"
+    ).format(sql_escape(new_text), sql_escape(new_email))
+  new_id = db_scalar(insert_sql)
+  a.AnswerID = to_int(new_id)
+  vm.Debug("Inserted new answer '{0}' with AnswerID={1} since user requested to clone due to text/email change.".format(new_text, new_id))
+  log_line("Inserted new answer '{0}' with AnswerID={1} since user requested to clone due to text/email change.".format(new_text, new_id))
+  return to_int(new_id)
+
+
+## Helper function for SQL
+def db_scalar(sql):
+  # Returns first column of first row or None.
+  # In theory, we could just use TikitResolver for this, but to keep it consistent with our db access patterns and ensure proper opening/closing, we'll do it manually here.
+  val = None
+  _tikitDbAccess.Open(sql)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    if dr.Read():
+      if not dr.IsDBNull(0):
+        val = dr.GetValue(0)
+    dr.Close()
+  _tikitDbAccess.Close()
+  return val
+
+def db_nonquery(sql):
+  # Executes non-query SQL.
+  _tikitDbAccess.Open(sql)
+  # Partner/Tikit often executes on Open for non-select; if you have a dedicated method use that instead.
+  #! We do have 'runSQL'
+  # Ensure reader closed if any
+  dr = _tikitDbAccess._dr
+  if dr is not None:
+    try:
+      dr.Close()
+    except:
+      pass
+  _tikitDbAccess.Close()
+
+
+def sql_escape(s):
+  # Very basic single-quote escaping for building SQL strings.
+  if s is None:
+    return ""
+  return str(s).replace("'", "''")
+
+def is_dbnull(x):
+  try:
+    return x is None or x == DBNull.Value
+  except:
+    return x is None
+
+def to_int(x, default=0):
+  if is_dbnull(x):
+    return default
+  try:
+    return Convert.ToInt32(x)
+  except:
+    try:
+      return Convert.ToInt32(str(x))
+    except:
+      return default
+
+def to_str(x, default=""):
+  if is_dbnull(x):
+    return default
+  try:
+    return str(x)
+  except:
+    return default
 
 ######################################################################################################################
 
