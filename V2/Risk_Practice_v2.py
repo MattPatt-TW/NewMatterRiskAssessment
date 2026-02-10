@@ -34,6 +34,23 @@ import re
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
+MRA_PREVIEW_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
+MRA_PREVIEW_QUESTION_ROW = {
+  "QuestionGroup": "",
+  "QuestionOrder": 0,
+  "QuestionID": None,
+  "QuestionText": "",
+  "SelectedAnswerID": None,
+  "AnswerIDs": []   # list of dicts: {"AnswerText":..., "Score":..., "EmailComment":...}
+}
+MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
+MRA_PREVIEW_ANSWER_ROW = {
+  "AnswerID": None,
+  "QuestionID": None,
+  "AnswerText": "",
+  "Score": 0,
+  "EmailComment": ""
+}
 
 ## GLOBAL CONSTANTS##
 UNSELECTED = -1
@@ -316,13 +333,6 @@ def btn_MRATemplate_DeleteSelected_Click(s, event):
   # This function will delete the selected Matter Risk Assessment template (and any questions associated to it)
 
   MessageBox.Show("Delete selected MRA button click", "Delete Matter Risk Assessment...")
-  return
-  
-  
-def btn_MRATemplate_Preview_Click(s, event):
-  # This function will load the 'Preview' tab (made to look like 'matter-level' XAML) for the selected item
-
-  MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
   return
   
   
@@ -2527,6 +2537,229 @@ def validate_unique_question_text(vm):
 
 ######################################################################################################################
 
+## P R E V I E W   M R A   T E M P L A T E   ##
+
+def btn_MRATemplate_Preview_Click(s, event):
+  # This function will load the 'Preview' tab (made to look like 'matter-level' XAML) for the selected item
+
+  # if nothing selected, alert user and quit
+  if lbl_MRATemplate_ID.Content == '0' or dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    MessageBox.Show("Nothing selected to Preview!", "Error: Preview selected Matter Risk Assessment...")
+    return
+  
+  # put details into header area of 'Preview' tab
+  lbl_MRAPreview_ID.Content = str(lbl_MRATemplate_ID.Content)
+  lbl_MRAPreview_Name.Content = str(tb_MRATemplate_Name.Text)
+  lbl_MRAPreview_Score.Content = '0'          #str(tb_ScoreLowTo.Text)
+  lbl_MRAPreview_RiskCategory.Content = '-'   # "Low Risk" if int(tb_ScoreLowTo.Text) == 0 else "Medium Risk" if int(tb_ScoreMedFrom.Text) > 0 and int(tb_ScoreMedFrom.Text) <= int(tb_ScoreHighFrom.Text) else "High Risk"
+  lbl_MRAPreview_RiskCategoryID.Content = "1" if lbl_MRAPreview_RiskCategory.Content == "Low Risk" else "2" if lbl_MRAPreview_RiskCategory.Content == "Medium Risk" else "3"
+
+  # get AnswerList in memory for this template
+  MRAPreview_load_Answers_toMemory()
+
+  # load DataGrid with Questions
+  MRAPreview_load_Questions_DataGrid()
+
+  # finally, show this Preview tab and hide 'Overview' tab
+  ti_MRA_Overview.Visibility = Visibility.Collapsed
+  ti_MRA_Preview.Visibility = Visibility.Visible
+
+  #MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
+  return
+  
+
+def btn_MRAPreview_BackToOverview_Click(sender, e):
+  # Just switch back to overview tab; VM is already updated since we're binding directly to the edit fields
+  
+  ti_MRA_Preview.Visibility = Visibility.Collapsed
+  ti_MRA_Overview.Visibility = Visibility.Visible
+  ti_MRA_Overview.IsSelected = True
+  return
+
+# Concept with Preview MRA is to load MRA Template into memory only - and we get answer data from DataGrid data
+# difference from v1 is that we have different columns in the datagrid, and got rid of redundant ones.
+
+class QuestionItem(NotifyBase):
+  def __init__(self, group_name, order_no, qid, qtext, answers):
+    NotifyBase.__init__(self)
+    self.QuestionGroup = group_name or ""
+    self.QuestionOrder = int(order_no) if order_no is not None else 0
+    self.QuestionID = int(qid) if qid is not None else None
+    self.QuestionText = qtext or ""
+
+    # list[AnswerItem] for this question
+    self.AvailableAnswers = answers or []
+
+    self._selectedAnswerID = None
+
+  @property
+  def SelectedAnswerID(self):
+    return self._selectedAnswerID
+
+  @SelectedAnswerID.setter
+  def SelectedAnswerID(self, value):
+    v = None if value in ("", None) else int(value)
+    if v == self._selectedAnswerID:
+      return
+    self._selectedAnswerID = v
+
+    # notify anything bound to these fields
+    self._raise("SelectedAnswerID")
+    self._raise("SelectedAnswerText")
+    self._raise("LUP_Score")
+    self._raise("LUP_EmailComment")
+    self._raise("SelectedAnswerEmailComment")
+
+  def _get_selected_answer(self):
+    sid = self._selectedAnswerID
+    if sid is None:
+      return None
+    for a in self.AvailableAnswers:
+      if a.AnswerID == sid:
+        return a
+    return None
+
+  @property
+  def SelectedAnswerText(self):
+    a = self._get_selected_answer()
+    return "" if a is None else a.AnswerText
+
+  @property
+  def LUP_Score(self):
+    a = self._get_selected_answer()
+    return 0 if a is None else a.Score
+
+  @property
+  def LUP_EmailComment(self):
+    a = self._get_selected_answer()
+    return "" if a is None else a.EmailComment
+
+  @property
+  def SelectedAnswerEmailComment(self):
+    # for the right panel Email Comment block
+    return self.LUP_EmailComment
+
+
+class AnswerItem(object):
+  def __init__(self, answer_id, text, email_comment="", score=0):
+    self.AnswerID = int(answer_id) if answer_id is not None else None
+    self.AnswerText = text or ""
+    self.EmailComment = email_comment or ""
+    self.Score = int(score) if score is not None else 0
+
+  def __repr__(self):
+    return self.AnswerText
+
+
+def MRAPreview_load_Answers_toMemory():
+  global MRA_PREVIEW_ANSWERS_BY_QID
+  MRA_PREVIEW_ANSWERS_BY_QID = {}
+
+  mySQL = """SELECT T.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.Score
+             FROM Usr_MRAv2_Templates T
+                JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
+             WHERE T.TemplateID = {0}
+             ORDER BY T.QuestionID, T.AnswerOrder;""".format(lbl_MRAPreview_ID.Content)
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      qid = to_int(dr.GetValue(0))
+      aid = to_int(dr.GetValue(1))
+      text = "" if dr.IsDBNull(2) else dr.GetString(2)
+      ec = "" if dr.IsDBNull(3) else dr.GetString(3)
+      score = 0 if dr.IsDBNull(4) else to_int(dr.GetValue(4))
+
+      item = AnswerItem(aid, text, ec, score)
+      MRA_PREVIEW_ANSWERS_BY_QID.setdefault(qid, []).append(item)
+
+    dr.Close()
+  _tikitDbAccess.Close()
+  return
+
+def MRAPreview_load_Questions_DataGrid():
+  # This function will populate the Matter Risk Assessment Preview datagrid
+  #MessageBox.Show("Start - getting group ID", "Refreshing list (datagrid of questions)")
+
+  global MRA_PREVIEW_QUESTIONS_LIST
+  # firstly, wipe list in case we're reloading
+  MRA_PREVIEW_QUESTIONS_LIST = []
+
+  #MessageBox.Show("Genating SQL...", "Refreshing list (datagrid of questions)")
+  mySQL = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             FROM Usr_MRAv2_Templates MRAT
+                LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
+             WHERE MRAT.TemplateID = {0}
+             GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(lbl_MRAPreview_ID.Content)
+  
+  #MessageBox.Show("SQL: " + str(mySQL) + "\n\nRefreshing list (datagrid of questions)", "Debug: Populating List of Questions (Preview MRA)")
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      group_name = "" if dr.IsDBNull(0) else dr.GetValue(0)
+      order_no = to_int(dr.GetValue(1))
+      qid = to_int(dr.GetValue(2))
+      qtext = "" if dr.IsDBNull(3) else dr.GetString(3)
+
+      answers = MRA_PREVIEW_ANSWERS_BY_QID.get(qid, [])
+      q = QuestionItem(group_name, order_no, qid, qtext, answers)
+
+      MRA_PREVIEW_QUESTIONS_LIST.append(q)
+
+    dr.Close()
+  _tikitDbAccess.Close()
+  
+  # and now we have a list of question items in memory for this template, with their available answers;
+  # we can bind this to the datagrid and it should show the questions grouped by 'QuestionGroup' with a
+  # combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the
+  # QuestionItem, which will allow us to easily get the selected answer and its score/email comment (when
+  # user selects an answer in the preview)
+  view = ListCollectionView(MRA_PREVIEW_QUESTIONS_LIST)
+  view.GroupDescriptions.Add(PropertyGroupDescription("QuestionGroup"))
+  dg_MRAPreview.ItemsSource = view
+
+  tb_NoMRA_PreviewQs.Visibility = Visibility.Visible if len(MRA_PREVIEW_QUESTIONS_LIST) == 0 else Visibility.Collapsed
+  grid_Preview_MRA.Visibility = Visibility.Collapsed if len(MRA_PREVIEW_QUESTIONS_LIST) == 0 else Visibility.Visible
+  return
+
+
+def MRA_Preview_AutoAdvance(currentDGindex, s, event):
+  
+  #MessageBox.Show("Test - do we get here?")    # debug
+  currPlusOne = currentDGindex + 1
+  totalDGitems = dg_MRAPreview.Items.Count
+  #MessageBox.Show("Current Index: " + str(currentDGindex) + "\nPlusOne: " + str(currPlusOne) + "\nTotalDGitems: " + str(totalDGitems), "Auto-Advance to next question...")
+  
+  # if we're at the end of current list...
+  if currentDGindex == totalDGitems:
+    # go to beginning of list (index 0)
+    dg_MRAPreview.SelectedIndex = 0
+  else:
+    # go to next question (current index + 1)
+    dg_MRAPreview.SelectedIndex = currPlusOne
+    dg_MRAPreview.ScrollIntoView(dg_MRAPreview.Items[currPlusOne])
+  return
+  
+
+def MRA_Preview_UpdateTotalScore(s, event):
+  # This function will update the overall total score
+  pass    
+
+
+  
+
+# SELECT Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.QuestionID
+# FROM Usr_MRAv2_Answer Ans 
+#   LEFT OUTER JOIN Usr_MRAv2_Templates T ON Ans.AnswerID = T.AnswerID
+# WHERE T.TemplateID = 1
+
+
+
+##########################################################################
 
 ]]>
     </Init>
@@ -2626,32 +2859,33 @@ lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
 
 ## P R E V I E W   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
 btn_MRAPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_BackToOverview')
-#btn_MRAPreview_BackToOverview.Click += PreviewMRA_BackToOverview
-lbl_MRA_Preview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_ID')
-lbl_MRA_Preview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_Name')
+btn_MRAPreview_BackToOverview.Click += btn_MRAPreview_BackToOverview_Click
+
+lbl_MRAPreview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_ID')
+lbl_MRAPreview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Name')
 lbl_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Score')
 lbl_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategory')
 lbl_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategoryID')
 
-
 tb_NoMRA_PreviewQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_PreviewQs')
-dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
-#dg_MRAPreview.SelectionChanged += MRA_Preview_SelectionChanged
-dg_GroupItems_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems_Preview')
-#dg_GroupItems_Preview.SelectionChanged += GroupItems_Preview_SelectionChanged
 grid_Preview_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_Preview_MRA')
+
+dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
+#dg_MRAPreview.SelectionChanged += dg_MRAPreview_SelectionChanged
+
+tb_MRAPreview_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_QuestionText')
+cbo_MRAPreview_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRAPreview_SelectedComboAnswer')
+#cbo_MRAPreview_SelectedComboAnswer.SelectionChanged += update_EmailComment
+tb_MRAPreview_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_SelectedTextAnswer')
+#tb_MRAPreview_SelectedTextAnswer.TextChanged += update_EmailComment
+btn_MRAPreview_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_SaveAnswer')
+#btn_MRAPreview_SaveAnswer.Click += btn_MRAPreview_SaveAnswer_Click
+chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
+tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
+
 lbl_MRAPreview_DGID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_DGID')
 lbl_MRAPreview_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_CurrVal')
-chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
 
-tb_previewMRA_QestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_previewMRA_QestionText')
-cbo_preview_MRA_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_preview_MRA_SelectedComboAnswer')
-#cbo_preview_MRA_SelectedComboAnswer.SelectionChanged += update_EmailComment
-tb_preview_MRA_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_preview_MRA_SelectedTextAnswer')
-#tb_preview_MRA_SelectedTextAnswer.TextChanged += update_EmailComment
-btn_preview_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_preview_MRA_SaveAnswer')
-#btn_preview_MRA_SaveAnswer.Click += preview_MRA_SaveAnswer
-tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
 
 
 ## New MRA Template Editor ViewModel ##

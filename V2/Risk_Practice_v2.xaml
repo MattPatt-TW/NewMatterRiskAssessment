@@ -892,55 +892,58 @@
 
 
     <TabItem Header="Preview" x:Name="ti_MRA_Preview" >
-      <Canvas Background="#FFF3EFB3">
-        <Label Content="PREVIEWING: " Foreground="Red" Canvas.Left="10" Canvas.Top="10" />
+      <StackPanel Background="LightGray">
 
-        <Label x:Name="lbl_MRA_Preview_ID" Content="ID" Canvas.Left="99" Canvas.Top="35"/>
-        <Label x:Name="lbl_MRA_Preview_Name" Content="NAME" Canvas.Left="94" Canvas.Top="10" Width="236" />
-        <TextBlock x:Name="tb_NoMRA_PreviewQs" Text="There aren't any questions for this Matter Risk Assessment!" Foreground="Red" FontWeight="Bold" FontSize="20" Canvas.Left="225" Canvas.Top="85" />
+        <StackPanel Orientation="Horizontal">
+          <Label Content="PREVIEW: " Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" />
+
+          <StackPanel Orientation="Vertical">
+
+            <Label x:Name="lbl_MRAPreview_ID" Content="ID" />
+            <Label x:Name="lbl_MRAPreview_Name" Content="NAME"  Width="236" />
+
+          </StackPanel>
+
+
+          <StackPanel Orientation="Vertical" Margin="80,0,0,0">
+            <StackPanel Orientation="Horizontal">
+              <Label Content="Current Score: "  />
+              <Label x:Name="lbl_MRAPreview_Score" Content="-1"  />
+
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Label Content="Risk Category: "   />
+              <Label x:Name="lbl_MRAPreview_RiskCategory" Content="Low/Med/High"  />
+              <Label x:Name="lbl_MRAPreview_RiskCategoryID" Content="1/2/3"  />
+            </StackPanel>
+          </StackPanel>
+
+          <Button x:Name="btn_MRAPreview_BackToOverview" Content="Back to Overview" 
+                  Padding="6" VerticalAlignment="Center"  Margin="80,0,0,0" />
+
+        </StackPanel>
+
+        <TextBlock x:Name="tb_NoMRA_PreviewQs" HorizontalAlignment="Center" Visibility="Collapsed"
+                    Text="There aren't any questions for this Matter Risk Assessment!" 
+                    Foreground="Red" FontWeight="Bold" FontSize="20" />
+
 
         <Grid x:Name="grid_Preview_MRA" Height="554" Width="1128" Canvas.Left="10" Canvas.Top="67">
           <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
-            <RowDefinition Height="350"/>
             <RowDefinition/>
           </Grid.RowDefinitions>
           <Grid.ColumnDefinitions>
-            <ColumnDefinition MinWidth="100" MaxWidth="800" Width="300" />
+            <ColumnDefinition MinWidth="300" MaxWidth="900" Width="800" />
             <ColumnDefinition Width="6" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
 
-          <DataGrid x:Name="dg_GroupItems_Preview" Grid.Row="1" Grid.Column="0" Grid.RowSpan="2"
-                          AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,4,0"
-                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
-
-            <DataGrid.Resources>
-              <Style TargetType="{x:Type DataGridRow}">
-                <Style.Resources>
-                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
-                </Style.Resources>
-              </Style>
-            </DataGrid.Resources>
-
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding gDO}" />
-              <DataGridTextColumn Header="Description" IsReadOnly="True" Width="Auto"
-                                                  Binding="{Binding gDesc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding gID}" Visibility="Hidden"/>
-              <DataGridTextColumn Header="Total Qs" IsReadOnly="True" Width="56" Binding="{Binding gTotalQs}" />
-              <DataGridTextColumn Header="# Remaining" IsReadOnly="True" Width="60" Binding="{Binding gRemainingQs}" Visibility="Hidden" />
-            </DataGrid.Columns>
-          </DataGrid>
-
           <GridSplitter HorizontalAlignment="Center"   
-                                        VerticalAlignment="Stretch"   
-                                        Grid.Column="1"   
-                                        Grid.RowSpan="4"
-                                        Width="6" Background="Silver">
+                        VerticalAlignment="Stretch"   
+                        Grid.Column="1"   
+                        Grid.RowSpan="2"
+                        Width="6" Background="Silver">
             <GridSplitter.Template>
               <ControlTemplate TargetType="{x:Type GridSplitter}">
                 <Grid>
@@ -953,12 +956,13 @@
             </GridSplitter.Template>
           </GridSplitter>
 
-          <DataGrid x:Name="dg_MRAPreview" Grid.Row="1" Grid.Column="2"
-                                AlternatingRowBackground="#FFAEDEB9" 
-                                SelectionMode="Single" 
-                                AutoGenerateColumns="False" 
-                                IsTextSearchEnabled="True" Margin="4,0,0,0" 
-                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+          
+          <DataGrid x:Name="dg_MRAPreview" Grid.Row="1" Grid.Column="0" 
+                    AlternatingRowBackground="#FFAEDEB9" 
+                    SelectionMode="Single" 
+                    AutoGenerateColumns="False" 
+                    IsTextSearchEnabled="True" Margin="0,0,6,2" 
+                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
 
             <DataGrid.Resources>
               <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
@@ -1031,44 +1035,47 @@
 
             <DataGrid.Columns>
 
-              <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="40"
-                              Binding="{Binding RowID}" Visibility="Hidden" />
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding DOrder}" />
-              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="500" HeaderStyle="{StaticResource CenterCol}">
+              <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100"
+                                  Binding="{Binding QuestionGroup}" Visibility="Collapsed"/>
+
+
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" 
+                                  Binding="{Binding QuestionOrder}" />
+              
+              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="500" 
+                                      HeaderStyle="{StaticResource CenterCol}">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" TextAlignment="Left" TextWrapping="Wrap" Height="Auto"/>
+                    <TextBlock Text="{Binding QuestionText}" TextAlignment="Left" TextWrapping="Wrap" Height="Auto"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
-              <DataGridTextColumn Header="AnswerGroupName" IsReadOnly="True" Width="100"
-                              Binding="{Binding AnswerGroupName}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="QGroupID" IsReadOnly="True" Width="100"
-                              Binding="{Binding QGroupID}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100"
-                              Binding="{Binding QGroupName}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
-                              Binding="{Binding QuestionID}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="AnswerID" IsReadOnly="True" Width="100"
-                              Binding="{Binding LUP_AnswerID}" Visibility="Collapsed"/>
 
+              <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
+                                  Binding="{Binding QuestionID}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="AnswerIDs" IsReadOnly="True" Width="100"
+                                  Binding="{Binding AnswerIDs}" Visibility="Collapsed"/>
+
+              <DataGridTextColumn Header="AnswerIDs" IsReadOnly="True" Width="100"
+                                  Binding="{Binding SelectedAnswerID}" Visibility="Collapsed"/>
+              
               <DataGridTemplateColumn Header="Your Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding LUP_AnswerText, Mode=TwoWay}" TextAlignment="Left" 
+                    <TextBlock Text="{Binding SelectedAnswerText}" TextAlignment="Left" 
                            VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
               <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" Binding="{Binding LUP_Score}"
-                              HeaderStyle="{StaticResource TotalColumn}"/>
+                                  HeaderStyle="{StaticResource TotalColumn}"/>
 
               <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding LUP_EmailComment, Mode=TwoWay}" TextAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
+                    <TextBlock Text="{Binding LUP_EmailComment}" TextAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -1076,72 +1083,67 @@
 
           </DataGrid>
 
-          <GroupBox Header="Selected Question:" Foreground="Navy" BorderBrush="#FF7E98EE" Grid.Row="2" Grid.Column="2" Margin="6,0,0,0">
-            <StackPanel Orientation="Vertical" >
-              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                <Label Content="Question:" Foreground="Navy" Margin="17,0,0,0" />
-                <TextBlock x:Name="tb_previewMRA_QestionText" MaxWidth="726" Text="-NO QUESTION SELECTED - PLEASE SELECT FROM THE LIST ABOVE-" VerticalAlignment="Center" Foreground="Navy" TextWrapping="Wrap" Margin="4,0,0,0" Padding="0,0,2,0" FontSize="22" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Margin="0,6,0,0" >
-                <Label Content="Your Answer:" Foreground="Navy" />
-                <ComboBox x:Name="cbo_preview_MRA_SelectedComboAnswer" Foreground="Navy" MinWidth="60" MaxWidth="300" Visibility="Visible" >
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                      <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding AText, Mode=TwoWay}" Width="Auto" />
-                        <TextBlock Text="{Binding AScore, Mode=TwoWay}" Width="0" Visibility="Hidden" />
-                        <TextBlock Text="{Binding AEmailComment, Mode=TwoWay}" Width="0" Visibility="Hidden" />
-                        <TextBlock Text="{Binding AID, Mode=TwoWay}" Width="0" Visibility="Hidden" />
-                      </StackPanel>
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-                <TextBox x:Name="tb_preview_MRA_SelectedTextAnswer" Foreground="Navy" MaxWidth="726" MinWidth="300" MaxHeight="70" TextWrapping="Wrap" VerticalContentAlignment="Center" Margin="0,0,4,0"/>
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" >
-                <Button x:Name="btn_preview_MRA_SaveAnswer" HorizontalAlignment="Left" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
-                <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" Foreground="Navy" VerticalAlignment="Center" IsChecked="True" FlowDirection="RightToLeft" Margin="20,4,0,0">
-                  <CheckBox.Resources>
-                    <Style TargetType="{x:Type Path}">
-                      <Setter Property="FlowDirection" Value="LeftToRight" />
-                    </Style>
-                  </CheckBox.Resources>
-                </CheckBox>
-              </StackPanel>
-              <Label Height="6" />
-              <StackPanel Orientation="Horizontal">
-                <Label Content="Email Comment:" Foreground="Navy"/>
-                <TextBlock x:Name="tb_MRAPreview_EC" Foreground="Navy" MaxWidth="700" VerticalAlignment="Center" Text=" " TextWrapping="Wrap" Height="Auto"/>
-              </StackPanel>
-            </StackPanel>
-          </GroupBox>
+          <StackPanel Grid.Row="1" Grid.Column="2" Margin="6,0,4,4">
 
-          <Label Content="Group" Foreground="Gray" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
-          <Label Content="Question" Foreground="Gray" Grid.Row="0" Grid.Column="2"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
+            <GroupBox Header="Selected Question:"  BorderBrush="Gray">
+              <StackPanel Orientation="Vertical" >
+                <TextBlock x:Name="tb_MRAPreview_QuestionText" 
+                           Text="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.QuestionText}"
+                           VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="340" 
+                           Margin="4,0,0,0" FontSize="22" />
+
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Your Answer:" Margin="0,6,0,0" BorderBrush="Gray">
+              <StackPanel>
+
+                <ComboBox x:Name="cbo_MRAPreview_SelectedComboAnswer" 
+                          Height="23" VerticalAlignment="Center" Visibility="Visible" 
+                          ItemsSource="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.AvailableAnswers}"
+                          DisplayMemberPath="AnswerText"
+                          SelectedValuePath="AnswerID"
+                          SelectedValue="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.SelectedAnswerID, Mode=TwoWay}" />
+
+
+                <TextBox x:Name="tb_MRAPreview_SelectedTextAnswer" MinHeight="23" MaxHeight="160" 
+                         TextWrapping="Wrap" VerticalContentAlignment="Center" Margin="0,0,0,0"/>
+
+                <StackPanel Orientation="Horizontal" >
+                  <Button x:Name="btn_MRAPreview_SaveAnswer" HorizontalAlignment="Left" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
+                  <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center" IsChecked="True" FlowDirection="RightToLeft" Margin="20,4,0,0">
+                    <CheckBox.Resources>
+                      <Style TargetType="{x:Type Path}">
+                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                      </Style>
+                    </CheckBox.Resources>
+                  </CheckBox>
+                </StackPanel>
+
+                <Label Content="Email Comment:" />
+                <TextBlock x:Name="tb_MRAPreview_EC" VerticalAlignment="Top" 
+                           Text="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.SelectedAnswerEmailComment}" 
+                           TextWrapping="Wrap" Height="Auto"/>
+
+              </StackPanel>
+              
+            </GroupBox>
+
+
+
+          </StackPanel>
+
+
+          <Label Content="All Questions" Foreground="Gray" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
+          <Label Content="Selected Question" Foreground="Gray" Grid.Row="0" Grid.Column="2"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
 
         </Grid>
-
-        <StackPanel Orientation="Vertical" Canvas.Left="335" Canvas.Top="10">
-          <StackPanel Orientation="Horizontal">
-            <Label Content="Current Score: " Foreground="Navy"  />
-            <Label x:Name="lbl_MRAPreview_Score" Content="-1" Foreground="Navy"  />
-
-          </StackPanel>
-          <StackPanel Orientation="Horizontal">
-            <Label Content="Risk Category: " Foreground="Navy"  />
-            <Label x:Name="lbl_MRAPreview_RiskCategory" Content="Low/Med/High" Foreground="Navy"  />
-            <Label x:Name="lbl_MRAPreview_RiskCategoryID" Content="1/2/3" Foreground="Navy"  />
-          </StackPanel>
-        </StackPanel>
-
-
-        <Button x:Name="btn_MRAPreview_BackToOverview" Content="Back to Overview" Canvas.Left="556" Canvas.Top="17" Height="32" Width="121" />
 
         <StackPanel Orientation="Vertical" Canvas.Left="872" Canvas.Top="471" Visibility="Hidden">
           <Label x:Name="lbl_MRAPreview_DGID" Content="Selected DG ID" />
           <Label x:Name="lbl_MRAPreview_CurrVal" Content="Selected DG Value" />
         </StackPanel>
-      </Canvas>
+      </StackPanel>
     </TabItem>
   </TabControl>
 
