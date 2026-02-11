@@ -24,16 +24,20 @@ from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventAr
 from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper, Clipboard 
 from System.Windows import Data, UIElement, Visibility, Window
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, Validation
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
 from System.Windows.Input import KeyEventHandler
 from System.Windows.Media import Brush, Brushes
+from System.Windows.Threading import DispatcherPriority
 import re
 
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
+
+MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
+
 MRA_PREVIEW_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
 MRA_PREVIEW_QUESTION_ROW = {
   "QuestionGroup": "",
@@ -43,7 +47,7 @@ MRA_PREVIEW_QUESTION_ROW = {
   "SelectedAnswerID": None,
   "AnswerIDs": []   # list of dicts: {"AnswerText":..., "Score":..., "EmailComment":...}
 }
-MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
+
 MRA_PREVIEW_ANSWER_ROW = {
   "AnswerID": None,
   "QuestionID": None,
@@ -2579,76 +2583,9 @@ def btn_MRAPreview_BackToOverview_Click(sender, e):
 # Concept with Preview MRA is to load MRA Template into memory only - and we get answer data from DataGrid data
 # difference from v1 is that we have different columns in the datagrid, and got rid of redundant ones.
 
-class NotifyBase_MRAPreview(INotifyPropertyChanged):
-  def __init__(self):
-    self._pc = None
-
-  def add_PropertyChanged(self, handler):
-    self._pc = Delegate.Combine(self._pc, handler)
-
-  def remove_PropertyChanged(self, handler):
-    self._pc = Delegate.Remove(self._pc, handler)
-
-  def _raise(self, prop_name):
-    if self._pc is not None:
-      self._pc(self, PropertyChangedEventArgs(prop_name))
-
-class QuestionItem(NotifyBase_MRAPreview):
-  def __init__(self, group_name, order_no, qid, qtext, answers):
-    NotifyBase_MRAPreview.__init__(self)
-    self.QuestionGroup = group_name or ""
-    self.QuestionOrder = int(order_no) if order_no is not None else 0
-    self.QuestionID = int(qid) if qid is not None else None
-    self.QuestionText = qtext or ""
-
-    # list[AnswerItem] for this question
-    self.AvailableAnswers = answers or []
-
-    self._selectedAnswerID = None
-
-  @property
-  def SelectedAnswerID(self):
-    return self._selectedAnswerID
-
-  @SelectedAnswerID.setter
-  def SelectedAnswerID(self, value):
-    MessageBox.Show("Setter fired. value=" + str(value))
-    v = None if value in ("", None) else int(value)
-    if v == self._selectedAnswerID:
-      return
-    self._selectedAnswerID = v
-
-    # notify anything bound to these fields
-    self._raise("SelectedAnswerID")
-    self._raise("SelectedAnswerText")
-    self._raise("SelectedAnswerScore")
-    self._raise("SelectedAnswerEmailComment")
-
-  def _get_selected_answer(self):
-    sid = self._selectedAnswerID
-    if sid is None:
-      return None
-    for a in self.AvailableAnswers:
-      if a.AnswerID == sid:
-        return a
-    return None
-
-  @property
-  def SelectedAnswerText(self):
-    a = self._get_selected_answer()
-    return "" if a is None else a.AnswerText
-
-  @property
-  def SelectedAnswerScore(self):
-    a = self._get_selected_answer()
-    return 0 if a is None else a.Score
-
-  @property
-  def SelectedAnswerEmailComment(self):
-    a = self._get_selected_answer()
-    return "" if a is None else a.EmailComment  # for the right panel Email Comment block
-
-
+# -------------------------
+# Answer model
+# -------------------------
 class AnswerItem(object):
   def __init__(self, answer_id, text, email_comment="", score=0):
     self.AnswerID = int(answer_id) if answer_id is not None else None
@@ -2658,6 +2595,62 @@ class AnswerItem(object):
 
   def __repr__(self):
     return self.AnswerText
+
+# -------------------------
+# Question model (bindable)
+# -------------------------
+class QuestionItem(NotifyBase):
+  def __init__(self, group_name, order_no, qid, qtext, answers):
+    NotifyBase.__init__(self)
+    self.QuestionGroup = group_name or ""
+    self.QuestionOrder = int(order_no) if order_no is not None else 0
+    self.QuestionID = int(qid) if qid is not None else None
+    self.QuestionText = qtext or ""
+    self.AvailableAnswers = answers or []
+
+    self._SelectedAnswer = None  # <-- bind target
+
+  @property
+  def SelectedAnswer(self):
+    return self._SelectedAnswer
+
+  @SelectedAnswer.setter
+  def SelectedAnswer(self, value):
+    # value should be an AnswerItem (or None)
+    if self._SelectedAnswer == value:
+      return
+    self._SelectedAnswer = value
+
+    # Notify all dependents
+    self._raise("SelectedAnswer")
+    self._raise("SelectedAnswerID")
+    self._raise("SelectedAnswerText")
+    self._raise("SelectedAnswerScore")
+    self._raise("SelectedAnswerEmailComment")
+
+  # Computed (read-only) convenience properties
+  @property
+  def SelectedAnswerID(self):
+    return None if self._SelectedAnswer is None else self._SelectedAnswer.AnswerID
+
+  @property
+  def SelectedAnswerText(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.AnswerText
+
+  @property
+  def SelectedAnswerScore(self):
+    return 0 if self._SelectedAnswer is None else self._SelectedAnswer.Score
+
+  @property
+  def SelectedAnswerEmailComment(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.EmailComment
+  
+
+def _get_preview_current_question():
+  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+  if view is None:
+    return None
+  return view.CurrentItem
 
 
 def MRAPreview_load_Answers_toMemory():
@@ -2715,9 +2708,7 @@ def MRAPreview_load_Questions_DataGrid():
       qtext = "" if dr.IsDBNull(3) else dr.GetString(3)
 
       answers = MRA_PREVIEW_ANSWERS_BY_QID.get(qid, [])
-      q = QuestionItem(group_name, order_no, qid, qtext, answers)
-
-      MRA_PREVIEW_QUESTIONS_LIST.append(q)
+      MRA_PREVIEW_QUESTIONS_LIST.append(QuestionItem(group_name, order_no, qid, qtext, answers))
 
     dr.Close()
   _tikitDbAccess.Close()
@@ -2727,12 +2718,29 @@ def MRAPreview_load_Questions_DataGrid():
   # combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the
   # QuestionItem, which will allow us to easily get the selected answer and its score/email comment (when
   # user selects an answer in the preview)
+  # create observable collection for WPF and bind to datagrid; this should show the questions grouped by 'QuestionGroup' with a combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the QuestionItem, which will allow us to easily get the selected answer and its score/email comment when user selects an answer in the preview)
   view = ListCollectionView(MRA_PREVIEW_QUESTIONS_LIST)
   view.GroupDescriptions.Add(PropertyGroupDescription("QuestionGroup"))
   dg_MRAPreview.ItemsSource = view
 
-  tb_NoMRA_PreviewQs.Visibility = Visibility.Visible if len(MRA_PREVIEW_QUESTIONS_LIST) == 0 else Visibility.Collapsed
-  grid_Preview_MRA.Visibility = Visibility.Collapsed if len(MRA_PREVIEW_QUESTIONS_LIST) == 0 else Visibility.Visible
+  has_items = (len(MRA_PREVIEW_QUESTIONS_LIST) > 0)
+  grid_Preview_MRA.Visibility = Visibility.Visible if has_items else Visibility.Collapsed
+  tb_NoMRA_PreviewQs.Visibility = Visibility.Collapsed if has_items else Visibility.Visible
+
+  if has_items:
+    first = MRA_PREVIEW_QUESTIONS_LIST[0]   # <-- this is the first QUESTION row
+    dg_MRAPreview.SelectedItem = first      # <-- avoids group header selection
+    view.MoveCurrentTo(first)               # <-- keeps CurrentItem in sync with SelectedItem
+    dg_MRAPreview.ScrollIntoView(first)
+
+  # also sync the combo to first row (defer so layout/bindings finish)
+  try:
+    dg_MRAPreview.Dispatcher.BeginInvoke(
+      DispatcherPriority.Background,
+      lambda: _sync_combo_to_current_row()
+    )
+  except:
+    _sync_combo_to_current_row()    
   return
 
 
@@ -2759,24 +2767,99 @@ def MRA_Preview_UpdateTotalScore(s, event):
   pass    
 
 def dg_MRAPreview_SelectionChanged(s, event):
-  # test function to test bindings
-  row = dg_MRAPreview.SelectedItem
-  MessageBox.Show("SelectedItem type: " + str(row.GetType()))
-  MessageBox.Show("Has SelectedAnswerID? " + str(hasattr(row, "SelectedAnswerID")))
+  # defer slightly so CurrentItem is updated, especially with grouping
+  try:
+    dg_MRAPreview.Dispatcher.BeginInvoke(
+      DispatcherPriority.Background,
+      lambda: _sync_combo_to_current_row()
+    )
+  except:
+    _sync_combo_to_current_row()
   return
+
+
+def _current_preview_row():
+  # Prefer CurrentItem (works properly with grouping)
+  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRAPreview.SelectedItem
 
 def cbo_MRAPreview_SelectedComboAnswer_SelectionChanged(s, event):
-  # test function to test bindings
-  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
-  if view:
+  q = _get_current_question()
+  if q is None or not hasattr(q, "SelectedAnswer"):
+    return
+
+  ans = cbo_MRAPreview_SelectedComboAnswer.SelectedItem
+  if ans is not None and not hasattr(ans, "AnswerID"):
+    return
+
+  q.SelectedAnswer = ans
+
+  view = _get_preview_view()
+  if view is not None:
     view.Refresh()
 
-  #row = dg_MRAPreview.SelectedItem
-  #if row is None:
-  #  return
-  #MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
+  ##MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
   return
 
+def btn_MRAPreview_SaveAnswer_Click(s, event):
+  q = _current_preview_row()
+  if q is None:
+    MessageBox.Show("No question selected to save answer for!", "Save")
+    return
+
+  a = getattr(q, "SelectedAnswer", None)
+  if a is None:
+    MessageBox.Show("No answer selected for the current question!", "Save")
+    return
+
+  MessageBox.Show("Saved: QID={0}, AnswerID={1}".format(q.QuestionID, a.AnswerID))
+  return
+
+## Helper functions to sync the ComboBox to datagrid (in terms of displaying value)
+def _get_preview_view():
+  return CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+
+def _get_current_question():
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRAPreview.SelectedItem
+
+def _sync_combo_to_current_row():
+  q = _get_current_question()
+  if q is None or not hasattr(q, "AvailableAnswers"):
+    return
+
+  # set ItemsSource explicitly to be safe (it should already be via binding)
+  try:
+    cbo_MRAPreview_SelectedComboAnswer.ItemsSource = q.AvailableAnswers
+  except:
+    pass
+
+  # Pick the AnswerItem object that matches q.SelectedAnswer (or clear)
+  target = getattr(q, "SelectedAnswer", None)
+  if target is None:
+    cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
+    return
+
+  # Ensure SelectedItem is an item from this row’s list instance
+  try:
+    for a in q.AvailableAnswers:
+      if getattr(a, "AnswerID", None) == getattr(target, "AnswerID", None):
+        cbo_MRAPreview_SelectedComboAnswer.SelectedItem = a
+        return
+  except:
+    pass
+
+  cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
 
 # SELECT Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.QuestionID
 # FROM Usr_MRAv2_Answer Ans 
@@ -2903,7 +2986,7 @@ tb_MRAPreview_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb
 cbo_MRAPreview_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRAPreview_SelectedComboAnswer')
 cbo_MRAPreview_SelectedComboAnswer.SelectionChanged += cbo_MRAPreview_SelectedComboAnswer_SelectionChanged
 btn_MRAPreview_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_SaveAnswer')
-#btn_MRAPreview_SaveAnswer.Click += btn_MRAPreview_SaveAnswer_Click
+btn_MRAPreview_SaveAnswer.Click += btn_MRAPreview_SaveAnswer_Click
 chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
 tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
 

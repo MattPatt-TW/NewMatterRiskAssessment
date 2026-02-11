@@ -509,14 +509,14 @@
 
         <!-- LEFT: Tree -->
         <Border Grid.Column="0" Grid.Row="1"
-                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
-                  CornerRadius="10">
+                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
+                CornerRadius="10">
 
 
           <TreeView x:Name="tvTemplate"
-                      ItemsSource="{Binding Groups}" 
-                      ScrollViewer.HorizontalScrollBarVisibility="Auto" 
-                      ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                    ItemsSource="{Binding Groups}" 
+                    ScrollViewer.HorizontalScrollBarVisibility="Auto" 
+                    ScrollViewer.VerticalScrollBarVisibility="Auto" >
 
             <TreeView.ItemTemplate>
               <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
@@ -548,8 +548,8 @@
 
         <!-- RIGHT: Editor -->
         <Border Grid.Column="1" Grid.Row="1"
-                  Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
-                  CornerRadius="10">
+                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
+                CornerRadius="10">
           <DockPanel>
 
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
@@ -959,7 +959,7 @@
           
           <DataGrid x:Name="dg_MRAPreview" Grid.Row="1" Grid.Column="0" 
                     AlternatingRowBackground="#FFAEDEB9" 
-                    SelectionMode="Single" 
+                    SelectionMode="Single" SelectionUnit="FullRow"
                     AutoGenerateColumns="False" 
                     IsTextSearchEnabled="True" Margin="0,0,6,2" 
                     IsSynchronizedWithCurrentItem="True"
@@ -1058,11 +1058,7 @@
 
               <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
                                   Binding="{Binding QuestionID}" Visibility="Collapsed"/>
-              <DataGridTextColumn Header="AnswerIDs" IsReadOnly="True" Width="100"
-                                  Binding="{Binding AnswerIDs}" Visibility="Collapsed"/>
 
-              <DataGridTextColumn Header="AnswerIDs" IsReadOnly="True" Width="100"
-                                  Binding="{Binding SelectedAnswerID}" Visibility="Collapsed"/>
               
               <DataGridTemplateColumn Header="Your Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200">
                 <DataGridTemplateColumn.CellTemplate>
@@ -1077,6 +1073,9 @@
                                   Binding="{Binding SelectedAnswerScore}"
                                   HeaderStyle="{StaticResource TotalColumn}"/>
 
+              <DataGridTextColumn Header="SelectedAnswerID" IsReadOnly="True" Width="100"
+                                  Binding="{Binding SelectedAnswerID}" Visibility="Visible"/>
+
               <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
@@ -1089,13 +1088,13 @@
           </DataGrid>
 
           <StackPanel Grid.Row="1" Grid.Column="2" 
-                      DataContext="{Binding ElementName=dg_MRAPreview, Path=SelectedItem}"
+                      DataContext="{Binding ElementName=dg_MRAPreview, Path=Items.CurrentItem}"
                       Margin="6,0,4,4">
 
             <GroupBox Header="Selected Question:"  BorderBrush="Gray">
               <StackPanel Orientation="Vertical" >
-                <TextBlock x:Name="tb_MRAPreview_QuestionText" 
-                           Text="{Binding QuestionText}"
+                <!--x:Name="tb_MRAPreview_QuestionText"-->
+                <TextBlock Text="{Binding QuestionText}"
                            VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="340" 
                            Margin="4,0,0,0" FontSize="22" />
 
@@ -1105,15 +1104,17 @@
             <GroupBox Header="Your Answer:" Margin="0,6,0,0" BorderBrush="Gray">
               <StackPanel>
 
-                <ComboBox x:Name="cbo_MRAPreview_SelectedComboAnswer" 
+                <!--x:Name="cbo_MRAPreview_SelectedComboAnswer"-->
+                <ComboBox x:Name="cbo_MRAPreview_SelectedComboAnswer"
                           Height="23" VerticalAlignment="Center" Visibility="Visible" 
                           ItemsSource="{Binding AvailableAnswers}"
                           DisplayMemberPath="AnswerText"
-                          SelectedValuePath="AnswerID"
-                          SelectedValue="{Binding SelectedAnswerID, 
-                                                  Mode=TwoWay, 
-                                                  UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Text="{Binding ElementName=cbo_MRAPreview_SelectedComboAnswer, Path=SelectedValue}" />
+                           />
+                <!--SelectedValuePath="AnswerID"
+                                SelectedItem="{Binding SelectedAnswer, 
+                       Mode=TwoWay, 
+                       UpdateSourceTrigger=PropertyChanged}"-->
+                <TextBlock Text="{Binding SelectedAnswerID}" />
 
 
                 <Button x:Name="btn_MRAPreview_SaveAnswer" HorizontalAlignment="Center" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
