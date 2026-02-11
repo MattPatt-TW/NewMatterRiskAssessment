@@ -962,7 +962,11 @@
                     SelectionMode="Single" 
                     AutoGenerateColumns="False" 
                     IsTextSearchEnabled="True" Margin="0,0,6,2" 
-                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                    IsSynchronizedWithCurrentItem="True"
+                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
+                    VirtualizingPanel.IsVirtualizing="False"
+                    EnableRowVirtualization="False"
+                    EnableColumnVirtualization="False">
 
             <DataGrid.Resources>
               <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
@@ -1064,18 +1068,19 @@
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
                     <TextBlock Text="{Binding SelectedAnswerText}" TextAlignment="Left" 
-                           VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
+                               VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
-              <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" Binding="{Binding LUP_Score}"
+              <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" 
+                                  Binding="{Binding SelectedAnswerScore}"
                                   HeaderStyle="{StaticResource TotalColumn}"/>
 
               <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding LUP_EmailComment}" TextAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
+                    <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -1083,12 +1088,14 @@
 
           </DataGrid>
 
-          <StackPanel Grid.Row="1" Grid.Column="2" Margin="6,0,4,4">
+          <StackPanel Grid.Row="1" Grid.Column="2" 
+                      DataContext="{Binding ElementName=dg_MRAPreview, Path=SelectedItem}"
+                      Margin="6,0,4,4">
 
             <GroupBox Header="Selected Question:"  BorderBrush="Gray">
               <StackPanel Orientation="Vertical" >
                 <TextBlock x:Name="tb_MRAPreview_QuestionText" 
-                           Text="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.QuestionText}"
+                           Text="{Binding QuestionText}"
                            VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="340" 
                            Margin="4,0,0,0" FontSize="22" />
 
@@ -1100,29 +1107,29 @@
 
                 <ComboBox x:Name="cbo_MRAPreview_SelectedComboAnswer" 
                           Height="23" VerticalAlignment="Center" Visibility="Visible" 
-                          ItemsSource="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.AvailableAnswers}"
+                          ItemsSource="{Binding AvailableAnswers}"
                           DisplayMemberPath="AnswerText"
                           SelectedValuePath="AnswerID"
-                          SelectedValue="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.SelectedAnswerID, Mode=TwoWay}" />
+                          SelectedValue="{Binding SelectedAnswerID, 
+                                                  Mode=TwoWay, 
+                                                  UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="{Binding ElementName=cbo_MRAPreview_SelectedComboAnswer, Path=SelectedValue}" />
 
 
-                <TextBox x:Name="tb_MRAPreview_SelectedTextAnswer" MinHeight="23" MaxHeight="160" 
-                         TextWrapping="Wrap" VerticalContentAlignment="Center" Margin="0,0,0,0"/>
-
-                <StackPanel Orientation="Horizontal" >
-                  <Button x:Name="btn_MRAPreview_SaveAnswer" HorizontalAlignment="Left" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
-                  <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center" IsChecked="True" FlowDirection="RightToLeft" Margin="20,4,0,0">
-                    <CheckBox.Resources>
-                      <Style TargetType="{x:Type Path}">
-                        <Setter Property="FlowDirection" Value="LeftToRight" />
-                      </Style>
-                    </CheckBox.Resources>
-                  </CheckBox>
-                </StackPanel>
+                <Button x:Name="btn_MRAPreview_SaveAnswer" HorizontalAlignment="Center" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
+                <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center" 
+                          IsChecked="True" FlowDirection="RightToLeft" 
+                          HorizontalAlignment="Center" Margin="0,4,0,0">
+                  <CheckBox.Resources>
+                    <Style TargetType="{x:Type Path}">
+                      <Setter Property="FlowDirection" Value="LeftToRight" />
+                    </Style>
+                  </CheckBox.Resources>
+                </CheckBox>
 
                 <Label Content="Email Comment:" />
                 <TextBlock x:Name="tb_MRAPreview_EC" VerticalAlignment="Top" 
-                           Text="{Binding ElementName=dg_MRAPreview, Path=SelectedItem.SelectedAnswerEmailComment}" 
+                           Text="{Binding SelectedAnswerEmailComment}" 
                            TextWrapping="Wrap" Height="Auto"/>
 
               </StackPanel>

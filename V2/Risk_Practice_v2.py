@@ -15,7 +15,7 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime, Environment, String, Convert, DBNull
+from System import DateTime, Environment, String, Convert, DBNull, Delegate
 from System.IO import Path, File, Directory
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
@@ -25,7 +25,7 @@ from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper, Clipboard 
 from System.Windows import Data, UIElement, Visibility, Window
 from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
-from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
+from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
 from System.Windows.Input import KeyEventHandler
 from System.Windows.Media import Brush, Brushes
@@ -2563,7 +2563,7 @@ def btn_MRATemplate_Preview_Click(s, event):
   # finally, show this Preview tab and hide 'Overview' tab
   ti_MRA_Overview.Visibility = Visibility.Collapsed
   ti_MRA_Preview.Visibility = Visibility.Visible
-
+  ti_MRA_Preview.IsSelected = True
   #MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
   return
   
@@ -2579,9 +2579,23 @@ def btn_MRAPreview_BackToOverview_Click(sender, e):
 # Concept with Preview MRA is to load MRA Template into memory only - and we get answer data from DataGrid data
 # difference from v1 is that we have different columns in the datagrid, and got rid of redundant ones.
 
-class QuestionItem(NotifyBase):
+class NotifyBase_MRAPreview(INotifyPropertyChanged):
+  def __init__(self):
+    self._pc = None
+
+  def add_PropertyChanged(self, handler):
+    self._pc = Delegate.Combine(self._pc, handler)
+
+  def remove_PropertyChanged(self, handler):
+    self._pc = Delegate.Remove(self._pc, handler)
+
+  def _raise(self, prop_name):
+    if self._pc is not None:
+      self._pc(self, PropertyChangedEventArgs(prop_name))
+
+class QuestionItem(NotifyBase_MRAPreview):
   def __init__(self, group_name, order_no, qid, qtext, answers):
-    NotifyBase.__init__(self)
+    NotifyBase_MRAPreview.__init__(self)
     self.QuestionGroup = group_name or ""
     self.QuestionOrder = int(order_no) if order_no is not None else 0
     self.QuestionID = int(qid) if qid is not None else None
@@ -2598,6 +2612,7 @@ class QuestionItem(NotifyBase):
 
   @SelectedAnswerID.setter
   def SelectedAnswerID(self, value):
+    MessageBox.Show("Setter fired. value=" + str(value))
     v = None if value in ("", None) else int(value)
     if v == self._selectedAnswerID:
       return
@@ -2606,8 +2621,7 @@ class QuestionItem(NotifyBase):
     # notify anything bound to these fields
     self._raise("SelectedAnswerID")
     self._raise("SelectedAnswerText")
-    self._raise("LUP_Score")
-    self._raise("LUP_EmailComment")
+    self._raise("SelectedAnswerScore")
     self._raise("SelectedAnswerEmailComment")
 
   def _get_selected_answer(self):
@@ -2625,19 +2639,14 @@ class QuestionItem(NotifyBase):
     return "" if a is None else a.AnswerText
 
   @property
-  def LUP_Score(self):
+  def SelectedAnswerScore(self):
     a = self._get_selected_answer()
     return 0 if a is None else a.Score
 
   @property
-  def LUP_EmailComment(self):
-    a = self._get_selected_answer()
-    return "" if a is None else a.EmailComment
-
-  @property
   def SelectedAnswerEmailComment(self):
-    # for the right panel Email Comment block
-    return self.LUP_EmailComment
+    a = self._get_selected_answer()
+    return "" if a is None else a.EmailComment  # for the right panel Email Comment block
 
 
 class AnswerItem(object):
@@ -2749,8 +2758,25 @@ def MRA_Preview_UpdateTotalScore(s, event):
   # This function will update the overall total score
   pass    
 
+def dg_MRAPreview_SelectionChanged(s, event):
+  # test function to test bindings
+  row = dg_MRAPreview.SelectedItem
+  MessageBox.Show("SelectedItem type: " + str(row.GetType()))
+  MessageBox.Show("Has SelectedAnswerID? " + str(hasattr(row, "SelectedAnswerID")))
+  return
 
-  
+def cbo_MRAPreview_SelectedComboAnswer_SelectionChanged(s, event):
+  # test function to test bindings
+  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+  if view:
+    view.Refresh()
+
+  #row = dg_MRAPreview.SelectedItem
+  #if row is None:
+  #  return
+  #MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
+  return
+
 
 # SELECT Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.QuestionID
 # FROM Usr_MRAv2_Answer Ans 
@@ -2871,13 +2897,11 @@ tb_NoMRA_PreviewQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_P
 grid_Preview_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_Preview_MRA')
 
 dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
-#dg_MRAPreview.SelectionChanged += dg_MRAPreview_SelectionChanged
+dg_MRAPreview.SelectionChanged += dg_MRAPreview_SelectionChanged
 
 tb_MRAPreview_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_QuestionText')
 cbo_MRAPreview_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRAPreview_SelectedComboAnswer')
-#cbo_MRAPreview_SelectedComboAnswer.SelectionChanged += update_EmailComment
-tb_MRAPreview_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_SelectedTextAnswer')
-#tb_MRAPreview_SelectedTextAnswer.TextChanged += update_EmailComment
+cbo_MRAPreview_SelectedComboAnswer.SelectionChanged += cbo_MRAPreview_SelectedComboAnswer_SelectionChanged
 btn_MRAPreview_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_SaveAnswer')
 #btn_MRAPreview_SaveAnswer.Click += btn_MRAPreview_SaveAnswer_Click
 chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
