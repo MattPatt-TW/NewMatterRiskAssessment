@@ -245,7 +245,7 @@ def btn_MRATemplate_SaveHeaderDetails_Click(s, event):
   # This is the 'Save' button on the 'List of NMRA Templates' tab, and saves the 'header'/details to the selected template
 
   # firstly check something is selected
-  if dg_MRA_Templates.SelectedIndex == -1:
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
     MessageBox.Show("No Matter Risk Assessment Template has been selected!\nPlease select a template before clicking 'Save Changes'", "Error: Save Changes to Selected Matter Risk Assessment Template...")
     return
 
@@ -309,7 +309,7 @@ def MRATemplates_refreshAndReselect(withTemplateID=None):
   if withTemplateID is not None:
     currentSelectedID = withTemplateID
   else:
-    currentSelectedID = dg_MRA_Templates.SelectedItem['TemplateID'] if dg_MRA_Templates.SelectedIndex != -1 else None
+    currentSelectedID = dg_MRA_Templates.SelectedItem['TemplateID'] if dg_MRA_Templates.SelectedIndex != UNSELECTED else None
 
   refresh_MRA_Templates()
 
@@ -2075,7 +2075,7 @@ def save_template_to_db(vm):
 
   tid = to_int(vm.TemplateID)
  
-  # 1a) Resolve Questions/Answers (add any new ones, update text of existing ones if changed, handle duplicates as needed)
+  # 1a) Resolve Questions/Answers (add any new ones,  handle duplicates as needed)
   # Note: this logs results to Debug window AND the log_file
   for g in vm.Groups:
     for q in g.Questions:
