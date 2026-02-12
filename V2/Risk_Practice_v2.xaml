@@ -895,31 +895,78 @@
       <StackPanel Background="LightGray">
 
         <StackPanel Orientation="Horizontal">
-          <Label Content="PREVIEW: " Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" />
+          
+          <GroupBox Margin="6,2,0,0" BorderBrush="Black" VerticalAlignment="Center">
+            <GroupBox.Header>
+              <StackPanel Orientation="Horizontal" >
+                <TextBlock Text="Previewing: " />
+                <TextBlock x:Name="tb_MRAPreview_ID" Text="ID" Margin="4,0,0,0"/>
+                <TextBlock x:Name="tb_MRAPreview_Name" Text="NAME"  MaxWidth="300" Margin="8,0"/>
 
-          <StackPanel Orientation="Vertical">
+              </StackPanel>
+              
+            </GroupBox.Header>
 
-            <Label x:Name="lbl_MRAPreview_ID" Content="ID" />
-            <Label x:Name="lbl_MRAPreview_Name" Content="NAME"  Width="236" />
+            <StackPanel Orientation="Horizontal" Margin="4,2">
+              <TextBlock Text="Medium Trigger:" />
+              <TextBlock x:Name="tb_MRAPreview_ScoreTriggerMedium" Margin="4,0,0,0" Text="100"/>
 
-          </StackPanel>
-
-
-          <StackPanel Orientation="Vertical" Margin="80,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Label Content="Current Score: "  />
-              <Label x:Name="lbl_MRAPreview_Score" Content="-1"  />
+              <TextBlock Text="High Trigger:" Margin="20,0,0,0"/>
+              <TextBlock x:Name="tb_MRAPreview_ScoreTriggerHigh" Margin="4,0,0,0" Text="500"/>
 
             </StackPanel>
-            <StackPanel Orientation="Horizontal">
-              <Label Content="Risk Category: "   />
-              <Label x:Name="lbl_MRAPreview_RiskCategory" Content="Low/Med/High"  />
-              <Label x:Name="lbl_MRAPreview_RiskCategoryID" Content="1/2/3"  />
-            </StackPanel>
-          </StackPanel>
 
-          <Button x:Name="btn_MRAPreview_BackToOverview" Content="Back to Overview" 
-                  Padding="6" VerticalAlignment="Center"  Margin="80,0,0,0" />
+          </GroupBox>
+
+          <GroupBox Header="Current Scoring" BorderBrush="Black" Margin="50,2,0,0" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Margin="4,0" VerticalAlignment="Center">
+              <TextBlock Text="Total: " VerticalAlignment="Center" />
+              <TextBlock x:Name="tb_MRAPreview_Score" Text="-1"  Margin="4,0,0,0" VerticalAlignment="Center"/>
+
+              <TextBlock Text="Risk Category: "  Margin="30,0,0,0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="tb_MRAPreview_RiskCategory" Padding="4,2" Text="Low" VerticalAlignment="Center">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <!-- optional default background -->
+                    <Setter Property="Background" Value="Transparent"/>
+
+                    <Style.Triggers>
+
+                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
+                                   Value="Low">
+                        <Setter Property="Background" Value="Green"/>
+                      </DataTrigger>
+
+                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
+                                   Value="Medium">
+                        <Setter Property="Background" Value="Yellow"/>
+                      </DataTrigger>
+
+                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
+                                   Value="High">
+                        <Setter Property="Background" Value="Red"/>
+                      </DataTrigger>
+
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+
+              <TextBlock x:Name="tb_MRAPreview_RiskCategoryID" Text="1/2/3"  Margin="4,0,0,0" VerticalAlignment="Center"/>
+
+            </StackPanel>
+
+          </GroupBox>
+
+
+          <Button x:Name="btn_MRAPreview_BackToOverview"
+                  VerticalAlignment="Center"  Margin="80,0,0,0" 
+                  Height="34">
+            <StackPanel Orientation="Horizontal">
+              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png" Margin="4,0,4,0"/>
+              <TextBlock Margin="0,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="100" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
 
         </StackPanel>
 

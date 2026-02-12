@@ -15,7 +15,7 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime, Environment, String, Convert, DBNull, Delegate
+from System import DateTime, Environment, String, Convert, DBNull, Action
 from System.IO import Path, File, Directory
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
@@ -24,11 +24,9 @@ from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventAr
 from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper, Clipboard 
 from System.Windows import Data, UIElement, Visibility, Window
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, Validation
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, Validation, DataGridCellInfo
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
-from System.Windows.Input import KeyEventHandler
-from System.Windows.Media import Brush, Brushes
 from System.Windows.Threading import DispatcherPriority
 import re
 
@@ -37,24 +35,8 @@ preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
 
 MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
-
 MRA_PREVIEW_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
-MRA_PREVIEW_QUESTION_ROW = {
-  "QuestionGroup": "",
-  "QuestionOrder": 0,
-  "QuestionID": None,
-  "QuestionText": "",
-  "SelectedAnswerID": None,
-  "AnswerIDs": []   # list of dicts: {"AnswerText":..., "Score":..., "EmailComment":...}
-}
-
-MRA_PREVIEW_ANSWER_ROW = {
-  "AnswerID": None,
-  "QuestionID": None,
-  "AnswerText": "",
-  "Score": 0,
-  "EmailComment": ""
-}
+_preview_combo_syncing = False
 
 ## GLOBAL CONSTANTS##
 UNSELECTED = -1
@@ -2552,11 +2534,13 @@ def btn_MRATemplate_Preview_Click(s, event):
     return
   
   # put details into header area of 'Preview' tab
-  lbl_MRAPreview_ID.Content = str(lbl_MRATemplate_ID.Content)
-  lbl_MRAPreview_Name.Content = str(tb_MRATemplate_Name.Text)
-  lbl_MRAPreview_Score.Content = '0'          #str(tb_ScoreLowTo.Text)
-  lbl_MRAPreview_RiskCategory.Content = '-'   # "Low Risk" if int(tb_ScoreLowTo.Text) == 0 else "Medium Risk" if int(tb_ScoreMedFrom.Text) > 0 and int(tb_ScoreMedFrom.Text) <= int(tb_ScoreHighFrom.Text) else "High Risk"
-  lbl_MRAPreview_RiskCategoryID.Content = "1" if lbl_MRAPreview_RiskCategory.Content == "Low Risk" else "2" if lbl_MRAPreview_RiskCategory.Content == "Medium Risk" else "3"
+  tb_MRAPreview_ID.Text = str(lbl_MRATemplate_ID.Content)
+  tb_MRAPreview_Name.Text = str(tb_MRATemplate_Name.Text)
+  tb_MRAPreview_Score.Text = '0'          #str(tb_ScoreLowTo.Text)
+  tb_MRAPreview_RiskCategory.Text = '-'   # "Low Risk" if int(tb_ScoreLowTo.Text) == 0 else "Medium Risk" if int(tb_ScoreMedFrom.Text) > 0 and int(tb_ScoreMedFrom.Text) <= int(tb_ScoreHighFrom.Text) else "High Risk"
+  tb_MRAPreview_RiskCategoryID.Text = "1" if tb_MRAPreview_RiskCategory.Text == "Low Risk" else "2" if tb_MRAPreview_RiskCategory.Text == "Medium Risk" else "3"
+  tb_MRAPreview_ScoreTriggerMedium.Text = str(tb_ScoreMedFrom.Text)
+  tb_MRAPreview_ScoreTriggerHigh.Text = str(tb_ScoreHighFrom.Text)
 
   # get AnswerList in memory for this template
   MRAPreview_load_Answers_toMemory()
@@ -2661,7 +2645,7 @@ def MRAPreview_load_Answers_toMemory():
              FROM Usr_MRAv2_Templates T
                 JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
              WHERE T.TemplateID = {0}
-             ORDER BY T.QuestionID, T.AnswerOrder;""".format(lbl_MRAPreview_ID.Content)
+             ORDER BY T.QuestionID, T.AnswerOrder;""".format(tb_MRAPreview_ID.Text)
 
   _tikitDbAccess.Open(mySQL)
   dr = _tikitDbAccess._dr
@@ -2694,7 +2678,7 @@ def MRAPreview_load_Questions_DataGrid():
                 LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
              WHERE MRAT.TemplateID = {0}
              GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
-             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(lbl_MRAPreview_ID.Content)
+             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(tb_MRAPreview_ID.Text)
   
   #MessageBox.Show("SQL: " + str(mySQL) + "\n\nRefreshing list (datagrid of questions)", "Debug: Populating List of Questions (Preview MRA)")
 
@@ -2728,50 +2712,112 @@ def MRAPreview_load_Questions_DataGrid():
   tb_NoMRA_PreviewQs.Visibility = Visibility.Collapsed if has_items else Visibility.Visible
 
   if has_items:
-    first = MRA_PREVIEW_QUESTIONS_LIST[0]   # <-- this is the first QUESTION row
-    dg_MRAPreview.SelectedItem = first      # <-- avoids group header selection
-    view.MoveCurrentTo(first)               # <-- keeps CurrentItem in sync with SelectedItem
-    dg_MRAPreview.ScrollIntoView(first)
-
-  # also sync the combo to first row (defer so layout/bindings finish)
-  try:
+    # defer until UI has built group containers
     dg_MRAPreview.Dispatcher.BeginInvoke(
-      DispatcherPriority.Background,
-      lambda: _sync_combo_to_current_row()
-    )
+                  DispatcherPriority.ContextIdle,
+                  Action(_select_first_preview_row)
+                  )
+
+    #first = MRA_PREVIEW_QUESTIONS_LIST[0]   # <-- this is the first QUESTION row
+    #dg_MRAPreview.SelectedItem = first      # <-- avoids group header selection
+    #view.MoveCurrentTo(first)               # <-- keeps CurrentItem in sync with SelectedItem
+    #dg_MRAPreview.ScrollIntoView(first)
+  return
+
+
+def _select_first_preview_row():
+  if len(MRA_PREVIEW_QUESTIONS_LIST) <= 0:
+    return
+
+  first = MRA_PREVIEW_QUESTIONS_LIST[0]
+
+  # force containers to exist
+  try:
+    dg_MRAPreview.UpdateLayout()
   except:
-    _sync_combo_to_current_row()    
+    pass
+
+  # 1) Force a real selection change event (important with Grouping DataGrids), select nothing and then first row
+  dg_MRAPreview.SelectedItem = None
+  dg_MRAPreview.SelectedItem = first
+
+  # 2) ensure CurrentItem is aligned
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(first)
+    except:
+      pass
+
+  # 3) Commit "current cell" so WPF treats it as a real row selection
+  try:
+    if dg_MRAPreview.Columns.Count > 0:
+      dg_MRAPreview.CurrentCell = DataGridCellInfo(first, dg_MRAPreview.Columns[0])
+  except:
+    pass
+
+  try:
+    dg_MRAPreview.ScrollIntoView(first)
+    dg_MRAPreview.Focus()
+  except:
+    pass
+
+  _sync_combo_to_current_row()
+  MRAPreview_RecalcTotalScore()
+
+
+def MRAPreview_AdvanceToNextQuestion():
+  # Uses the real list, so grouping doesn't break indices
+  if len(MRA_PREVIEW_QUESTIONS_LIST) <= 0:
+    return
+
+  curr = _get_current_question()
+  if curr is None:
+    # if something went odd, just go to first
+    _select_first_preview_row()
+    return
+
+  try:
+    idx = MRA_PREVIEW_QUESTIONS_LIST.index(curr)
+  except:
+    # CurrentItem might be a group wrapper; fall back to SelectedItem
+    try:
+      idx = MRA_PREVIEW_QUESTIONS_LIST.index(dg_MRAPreview.SelectedItem)
+    except:
+      _select_first_preview_row()
+      return
+
+  next_idx = idx + 1
+  if next_idx >= len(MRA_PREVIEW_QUESTIONS_LIST):
+    next_idx = 0  # wrap to first; change this if you'd rather stop at end
+
+  nxt = MRA_PREVIEW_QUESTIONS_LIST[next_idx]
+
+  # Update selection + CurrentItem + scroll, then sync right panel combo
+  dg_MRAPreview.SelectedItem = nxt
+
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(nxt)
+    except:
+      pass
+
+  try:
+    dg_MRAPreview.ScrollIntoView(nxt)
+  except:
+    pass
+
+  _sync_combo_to_current_row()
   return
-
-
-def MRA_Preview_AutoAdvance(currentDGindex, s, event):
   
-  #MessageBox.Show("Test - do we get here?")    # debug
-  currPlusOne = currentDGindex + 1
-  totalDGitems = dg_MRAPreview.Items.Count
-  #MessageBox.Show("Current Index: " + str(currentDGindex) + "\nPlusOne: " + str(currPlusOne) + "\nTotalDGitems: " + str(totalDGitems), "Auto-Advance to next question...")
-  
-  # if we're at the end of current list...
-  if currentDGindex == totalDGitems:
-    # go to beginning of list (index 0)
-    dg_MRAPreview.SelectedIndex = 0
-  else:
-    # go to next question (current index + 1)
-    dg_MRAPreview.SelectedIndex = currPlusOne
-    dg_MRAPreview.ScrollIntoView(dg_MRAPreview.Items[currPlusOne])
-  return
-  
-
-def MRA_Preview_UpdateTotalScore(s, event):
-  # This function will update the overall total score
-  pass    
 
 def dg_MRAPreview_SelectionChanged(s, event):
   # defer slightly so CurrentItem is updated, especially with grouping
   try:
     dg_MRAPreview.Dispatcher.BeginInvoke(
       DispatcherPriority.Background,
-      lambda: _sync_combo_to_current_row()
+      Action(_sync_combo_to_current_row)
     )
   except:
     _sync_combo_to_current_row()
@@ -2789,12 +2835,19 @@ def _current_preview_row():
   return dg_MRAPreview.SelectedItem
 
 def cbo_MRAPreview_SelectedComboAnswer_SelectionChanged(s, event):
+  global _preview_combo_syncing
+  if _preview_combo_syncing:
+    return  # ignore programmatic sync changes
+
   q = _get_current_question()
   if q is None or not hasattr(q, "SelectedAnswer"):
     return
 
   ans = cbo_MRAPreview_SelectedComboAnswer.SelectedItem
-  if ans is not None and not hasattr(ans, "AnswerID"):
+
+  # IMPORTANT: ignore the transient "None" that occurs when ItemsSource swaps
+  # unless the user genuinely cleared it (rare in your UI)
+  if ans is None:
     return
 
   q.SelectedAnswer = ans
@@ -2803,6 +2856,7 @@ def cbo_MRAPreview_SelectedComboAnswer_SelectionChanged(s, event):
   if view is not None:
     view.Refresh()
 
+  MRAPreview_RecalcTotalScore()
   ##MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
   return
 
@@ -2817,7 +2871,23 @@ def btn_MRAPreview_SaveAnswer_Click(s, event):
     MessageBox.Show("No answer selected for the current question!", "Save")
     return
 
-  MessageBox.Show("Saved: QID={0}, AnswerID={1}".format(q.QuestionID, a.AnswerID))
+  #MessageBox.Show("Saved: QID={0}, AnswerID={1}".format(q.QuestionID, a.AnswerID))
+  # if 'move to next' checkbox is ticked, then move to next question
+  try:
+    auto = (chk_MRAPreview_AutoSelectNext.IsChecked == True)
+  except:
+    auto = False
+
+  if auto:
+    # Defer slightly so UI settles before we change selection
+    try:
+      dg_MRAPreview.Dispatcher.BeginInvoke(
+        DispatcherPriority.Background,
+        lambda: MRAPreview_AdvanceToNextQuestion()
+      )
+    except:
+      MRAPreview_AdvanceToNextQuestion()
+
   return
 
 ## Helper functions to sync the ComboBox to datagrid (in terms of displaying value)
@@ -2834,32 +2904,71 @@ def _get_current_question():
   return dg_MRAPreview.SelectedItem
 
 def _sync_combo_to_current_row():
+  global _preview_combo_syncing
   q = _get_current_question()
   if q is None or not hasattr(q, "AvailableAnswers"):
     return
 
-  # set ItemsSource explicitly to be safe (it should already be via binding)
+  _preview_combo_syncing = True
   try:
-    cbo_MRAPreview_SelectedComboAnswer.ItemsSource = q.AvailableAnswers
-  except:
-    pass
+    # Make sure combo is showing this row’s answers
+    try:
+      cbo_MRAPreview_SelectedComboAnswer.ItemsSource = q.AvailableAnswers
+    except:
+      pass
 
-  # Pick the AnswerItem object that matches q.SelectedAnswer (or clear)
-  target = getattr(q, "SelectedAnswer", None)
-  if target is None:
-    cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
-    return
+    target = getattr(q, "SelectedAnswer", None)
+    if target is None:
+      cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
+      return
 
-  # Ensure SelectedItem is an item from this row’s list instance
-  try:
+    # Choose matching item by AnswerID
+    tid = getattr(target, "AnswerID", None)
+    found = None
     for a in q.AvailableAnswers:
-      if getattr(a, "AnswerID", None) == getattr(target, "AnswerID", None):
-        cbo_MRAPreview_SelectedComboAnswer.SelectedItem = a
-        return
-  except:
-    pass
+      if getattr(a, "AnswerID", None) == tid:
+        found = a
+        break
 
-  cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
+    cbo_MRAPreview_SelectedComboAnswer.SelectedItem = found
+  finally:
+    _preview_combo_syncing = False
+
+
+def MRAPreview_RecalcTotalScore():
+  total = 0
+  try:
+    for q in MRA_PREVIEW_QUESTIONS_LIST:
+      # SelectedAnswerScore is 0 when no answer selected
+      try:
+        total += int(getattr(q, "SelectedAnswerScore", 0) or 0)
+      except:
+        pass
+  except:
+    total = 0
+
+  tb_MRAPreview_Score.Text = str(total)
+
+  # now work out 'category' based on score and thresholds; we have two thresholds: MediumFrom and HighFrom; if score is below MediumFrom, it's Low Risk; if it's between MediumFrom and HighFrom, it's Medium Risk; if it's above HighFrom, it's High Risk
+  tb_MRAPreview_ScoreTriggerMedium.Text
+  tb_MRAPreview_ScoreTriggerHigh.Text
+  if total < to_int(tb_MRAPreview_ScoreTriggerMedium.Text): 
+    category = "Low"
+    categoryNum = 1 
+  elif total >= to_int(tb_MRAPreview_ScoreTriggerMedium.Text) and total < to_int(tb_MRAPreview_ScoreTriggerHigh.Text):
+    category = "Medium" 
+    categoryNum = 2
+  elif total >= to_int(tb_MRAPreview_ScoreTriggerHigh.Text):
+    category = "High" 
+    categoryNum = 3
+  else: 
+    category = "-"
+    categoryNum = 0 
+  
+  tb_MRAPreview_RiskCategory.Text = category
+  tb_MRAPreview_RiskCategoryID.Text = str(categoryNum)
+  return total
+
 
 # SELECT Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.QuestionID
 # FROM Usr_MRAv2_Answer Ans 
@@ -2970,11 +3079,13 @@ lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
 btn_MRAPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_BackToOverview')
 btn_MRAPreview_BackToOverview.Click += btn_MRAPreview_BackToOverview_Click
 
-lbl_MRAPreview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_ID')
-lbl_MRAPreview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Name')
-lbl_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Score')
-lbl_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategory')
-lbl_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategoryID')
+tb_MRAPreview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ID')
+tb_MRAPreview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_Name')
+tb_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_Score')
+tb_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_RiskCategory')
+tb_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_RiskCategoryID')
+tb_MRAPreview_ScoreTriggerMedium = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ScoreTriggerMedium')
+tb_MRAPreview_ScoreTriggerHigh = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ScoreTriggerHigh')
 
 tb_NoMRA_PreviewQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_PreviewQs')
 grid_Preview_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_Preview_MRA')
