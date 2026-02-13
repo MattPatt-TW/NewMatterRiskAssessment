@@ -5,24 +5,29 @@
       <![CDATA[
 import clr
 import System
-#from Partner_Test import test_function
+
+clr.AddReference("System")            # for new MRA Edit Template tab code
+clr.AddReference("WindowsBase")       # for new MRA Edit Template tab code
 
 clr.AddReference('mscorlib')
 clr.AddReference('PresentationCore')
 clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
-from System import DateTime
+from System import DateTime, Action, Convert, DBNull
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
+from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
+from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper
 from System.Windows import Data, UIElement, Visibility, Window, GridLength, GridUnitType
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
-from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
-from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, DataGridCellInfo
+from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
+from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
 from System.Windows.Input import KeyEventHandler
 from System.Windows.Media import Brush, Brushes
+from System.Windows.Threading import DispatcherPriority
 
 # Global Variables
 UserIsHod = False
@@ -31,6 +36,15 @@ UserIsAnApprovalUser = False
 UserCanReviewFiles = False
 RiskAndITUsers = ['MP', 'AF1', 'LD1', 'AH1', 'EP1']
 
+# for newer structure of MRA
+MRA_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
+MRA_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
+_preview_combo_syncing = False   # temp variable to avoid triggering 'SelectionChanged' event when we're programmatically changing combo box selections in the MRA preview screen
+
+# dict to hold current matter answer/comment by QuestionID
+MRA_MATTER_SELECTIONS_BY_QID = {}   # qid -> {"AnswerID": int|None, "Comments": str}
+
+UNSELECTED = -1
 # Global Variables for session tokens
 token1 = 0
 
@@ -257,7 +271,7 @@ def showHide_ApproveMRAbutton(s, event):
   # Retrieve necessary fields from the selected item
   tmpSelectedRiskRating = dg_MRAFR.SelectedItem['RiskRating']
   tmpSelectedStatus = dg_MRAFR.SelectedItem['Status']
-  tmpSelectedApprovedByHOD = dg_MRAFR.SelectedItem['AppovedByHod']
+  tmpSelectedApprovedByHOD = dg_MRAFR.SelectedItem['ApprovedByHod']
   tmpSelectedType = dg_MRAFR.SelectedItem['Type']
 
   # Check if the selected item is of type 'Matter Risk Assessment'
@@ -311,11 +325,11 @@ def MRA_setStatus(idToUpdate, newStatus):
 # # # #   O V E R V I E W    TAB   # # # # 
 
 class MRAFR(object):
-  def __init__(self, myID, myDesc, myType, myTypeID, myStatus, myExpiryDate, myRiskR, myAppByHOD, myScore, myQCount, myQOS, myFRReviewer, mySubbedBy, mySubbedOn):
-    self.ID = myID
-    self.Desc = myDesc
-    self.Type = myType
-    self.TypeID = myTypeID
+  def __init__(self, mymraID, myTemplateID, myName, myExpiryDate, myScore, myRiskR, 
+               myAppByHOD, myQCount, myQOS, myStatus, mySubbedBy, mySubbedOn, 
+               myScoreTriggerMed, myScoreTriggerHigh, myFRReviewer):
+    self.mraID = mymraID
+    self.Name = myName
     self.Status = myStatus
     self.ExpiryDate = myExpiryDate
     if myRiskR == 0:
@@ -331,23 +345,26 @@ class MRAFR(object):
       self.AppByHOD = 'Yes'
     else:
       self.AppByHOD = 'No'
-    self.Score = myScore
+
     self.QCount = myQCount
     self.QOutstanding = myQOS
     self.FRReviewer = myFRReviewer
     self.SubbedBy = mySubbedBy
     self.SubbedOn = mySubbedOn
+    self.ScoreTriggerMed = myScoreTriggerMed
+    self.ScoreTriggerHigh = myScoreTriggerHigh
+    self.TemplateID = myTemplateID
+    self.Score = myScore
+    self.Type = 'Matter Risk Assessment'
     return
     
   def __getitem__(self, index):
-    if index == 'ID':
-      return self.ID
-    elif index == 'Desc':
-      return self.Desc
-    elif index == 'Type':
-      return self.Type
-    elif index == 'TypeID':
-      return self.TypeID
+    if index == 'mraID':
+      return self.mraID
+    elif index == 'Name':
+      return self.Name
+    elif index == 'TemplateID':
+      return self.TemplateID
     elif index == 'Status':
       return self.Status
     elif index == 'Expiry':
@@ -364,8 +381,16 @@ class MRAFR(object):
       return self.SubbedBy
     elif index == 'SubbedOn':
       return self.SubbedOn
-    elif index == 'AppovedByHod':
+    elif index == 'ApprovedByHod':
       return self.AppByHOD
+    elif index == 'ScoreTriggerMedium':
+      return self.ScoreTriggerMed
+    elif index == 'ScoreTriggerHigh':
+      return self.ScoreTriggerHigh
+    elif index == 'Type':
+      return self.Type
+    elif index == 'Score':
+      return self.Score
     else:
       return ''
 
@@ -373,22 +398,47 @@ def dg_MRAFR_Refresh(s, event):
   # This funtion populates the main Matter Risk Assessment & File Review data grid 
 
   # SQL to populate datagrid
-  getTableSQL = """SELECT '0-RowID' = MRAO.ID, '1-TypeID' = MRAO.TypeID, '2-TypeName' = TT.TypeName, '3-ExpiryDate' = MRAO.ExpiryDate, 
-                      '4-LocalName' = MRAO.LocalName, '5-Score' = MRAO.Score, '6-RiskRating' = MRAO.RiskRating, '7-ApprovedByHOD' = MRAO.ApprovedByHOD, 
-                      '8-Q Count' = (SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE OV_ID = MRAO.ID AND EntityRef = MRAO.EntityRef AND MatterNo = MRAO.MatterNo), 
-                      '9-OS Qs' = (SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE OV_ID = MRAO.ID AND EntityRef = MRAO.EntityRef AND MatterNo = MRAO.MatterNo AND SelectedAnswerID = -1), 
-                      '10-FR Reviewer' = ISNULL((SELECT '(' + U.Code + ') ' + U.FullName FROM Users U WHERE MRAO.FR_Reviewer = U.Code), 'N/A'), 
-                      '11-Status' = ISNULL(MRAO.Status, 'Draft'), '12-SubbedBy' = ISNULL('(' + U.Code + ') ' + U.FullName, ''), '13-SubbedOn' = MRAO.SubmittedDate 
-                  FROM Usr_MRA_Overview MRAO 
-                      LEFT OUTER JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID 
-                      LEFT OUTER JOIN Users U ON MRAO.SubmittedBy = U.Code 
-                  WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} """.format(_tikitEntity, _tikitMatter)
+  getTableSQL = """WITH MatterHeader AS (
+                        SELECT MH.mraID, MH.Name, MH.Status, MH.ApprovedByHOD, MH.DateAdded, 
+                          MH.ExpiryDate, MH.SubmittedBy, MH.SubmittedDate, MH.TemplateID
+                        FROM Usr_MRAv2_MatterHeader MH 
+                        WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo}
+                      ), 
+                      AnsweredQuestions AS (
+                        SELECT MD.mraID, MD.QuestionGroup, MD.QuestionID, MD.AnswerID, MD.Score, 
+                            MD.Comments, MD.DisplayOrder, MD.EmailComment
+                        FROM Usr_MRAv2_MatterDetails MD 
+                        WHERE MD.EntityRef = '{entRef}' AND MD.MatterNo = {matNo}
+                      ), 
+                      TemplateHeader AS (
+                        SELECT TD.TemplateID, TD.Name, TD.ScoreMediumTrigger, TD.ScoreHighTrigger
+                        FROM Usr_MRAv2_TemplateDetails TD
+                          INNER JOIN MatterHeader MH ON TD.TemplateID = MH.TemplateID
+                      ), 
+                      TemplateStructure AS (
+                        SELECT T.TemplateID, T.QuestionGroup, T.QuestionID, 
+                            T.AnswerID, T.QuestionOrder, T.Score, 
+                            TQ.QuestionText, TA.AnswerText
+                        FROM Usr_MRAv2_Templates T 
+                          JOIN Usr_MRAv2_Question TQ ON T.QuestionID = TQ.QuestionID
+                          JOIN Usr_MRAv2_Answer TA ON T.AnswerID = TA.AnswerID
+                          INNER JOIN MatterHeader MH ON T.TemplateID = MH.TemplateID
+                      )
+                    SELECT '00-mraID' = MH.mraID, '01-TemplateID' = MH.TemplateID,
+                           '02-Name' = MH.Name, '03-ExpiryDate' = MH.ExpiryDate, 
+                           '04-Score' = (SELECT ISNULL(SUM(Score), 0) FROM AnsweredQuestions WHERE mraID = MH.mraID),
+                           '05-RiskRating' = 0, '06-ApprovedByHod' = MH.ApprovedByHOD, 
+                           '07-QCount' = (SELECT COUNT(DISTINCT QuestionID) FROM TemplateStructure WHERE TemplateID = MH.TemplateID), 
+                           '08-OS Count' = ((SELECT COUNT(DISTINCT QuestionID) FROM TemplateStructure WHERE TemplateID = MH.TemplateID) -
+                                     ISNULL((SELECT COUNT(DISTINCT AnswerID) FROM AnsweredQuestions WHERE AnsweredQuestions.mraID = MH.mraID), 0)), 
+                           '09-Status' = MH.Status, '10-SubbedBy' = MH.SubmittedBy, '11-SubbedDate' = MH.SubmittedDate, 
+                           '12-ScoreTriggerMed' = TH.ScoreMediumTrigger, '13-ScoreTriggerHigh' = TH.ScoreHighTrigger, '14-DateAdded' = MH.DateAdded
+                    FROM MatterHeader MH
+                      LEFT OUTER JOIN TemplateHeader TH    ON MH.TemplateID = TH.TemplateID 
+                    ORDER BY MH.DateAdded DESC """.format(entRef=_tikitEntity, matNo=_tikitMatter)
   
   tmpText = "'Matter Risk Assessment(s)' or 'File Review(s)'"
     
-  # add ordering
-  #getTableSQL += "ORDER BY MRAO.DateAdded DESC"
-  
   #MessageBox.Show("GetTableSQL:\n" + getTableSQL, "Debug: Populating Matter Risk Assessment and File Review")
   
   tmpItem = []
@@ -399,23 +449,27 @@ def dg_MRAFR_Refresh(s, event):
     if dr.HasRows:
       while dr.Read():
         if not dr.IsDBNull(0):
-          iID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          iTypeID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          iType = '' if dr.IsDBNull(2) else dr.GetString(2)
+          imraID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+          iTemplateID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
+          iName = '' if dr.IsDBNull(2) else dr.GetString(2)
           iExpiry = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          iFName = '' if dr.IsDBNull(4) else dr.GetString(4)
-          iScore = 0 if dr.IsDBNull(5) else dr.GetValue(5) 
-          iRiskR = 0 if dr.IsDBNull(6) else dr.GetValue(6)
-          iAppByHOD = '' if dr.IsDBNull(7) else dr.GetString(7)
-          iQCount = 0 if dr.IsDBNull(8) else dr.GetValue(8) 
-          iOSQs = 0 if dr.IsDBNull(9) else dr.GetValue(9) 
-          iFRR = '' if dr.IsDBNull(10) else dr.GetString(10)
-          iStatus = '' if dr.IsDBNull(11) else dr.GetString(11)
-          iSubBy = '' if dr.IsDBNull(12) else dr.GetString(12)
-          iSubOn = '' if dr.IsDBNull(13) else dr.GetValue(13)
-          
-          tmpItem.append(MRAFR(iID, iFName, iType, iTypeID, iStatus, iExpiry, iRiskR, iAppByHOD, iScore, iQCount, iOSQs, iFRR, iSubBy, iSubOn))
+          iScore = 0 if dr.IsDBNull(4) else dr.GetValue(4) 
+          iRiskR = 0 if dr.IsDBNull(5) else dr.GetValue(5)
+          iAppByHOD = '' if dr.IsDBNull(6) else dr.GetString(6)
+          iQCount = 0 if dr.IsDBNull(7) else dr.GetValue(7) 
+          iOSQs = 0 if dr.IsDBNull(8) else dr.GetValue(8) 
+          iStatus = '' if dr.IsDBNull(9) else dr.GetString(9)
+          iSubBy = '' if dr.IsDBNull(10) else dr.GetString(10)
+          iSubOn = '' if dr.IsDBNull(11) else dr.GetValue(11)
+          iScoreTrigMed = 0 if dr.IsDBNull(12) else dr.GetValue(12)
+          iScoreTrigHigh = 0 if dr.IsDBNull(13) else dr.GetValue(13)
+          iDateAdded = 0 if dr.IsDBNull(14) else dr.GetValue(14)
+          #iFRR = '' if dr.IsDBNull(15) else dr.GetString(15)
 
+          tmpItem.append(MRAFR(mymraID=imraID, myTemplateID=iTemplateID, myName=iName, myExpiryDate=iExpiry, myScore=iScore, 
+                               myRiskR=iRiskR, myAppByHOD=iAppByHOD, myQCount=iQCount, myQOS=iOSQs, 
+                               myStatus=iStatus, mySubbedBy=iSubBy, mySubbedOn=iSubOn, 
+                               myScoreTriggerMed=iScoreTrigMed, myScoreTriggerHigh=iScoreTrigHigh, myFRReviewer=''))
     dr.Close()
   
   #close db connection
@@ -441,44 +495,14 @@ def dg_MRAFR_Refresh(s, event):
   return
 
 
-def dg_MRAFR_CellEditEnding(s, event):
-  # This function will update the 'friendly name' back to the SQL table
-  # TODO: Toying with the idea of allowing IT/RISK to be able to edit the 'status' (or should we do via other means??)
-
-  tmpCol = event.Column
-  tmpColName = tmpCol.Header
-  
-  # Get Initial values updated
-  itemID = dg_MRAFR.SelectedItem['ID']
-  newName = str(dg_MRAFR.SelectedItem['Desc'])
-  newName1 = newName.replace("'", "''")
-  # get current index so we can re-select after refresh
-  tmpIndex = dg_MRAFR.SelectedIndex
-  #MessageBox.Show("New name in DG: {0}\nName in label: {1}".format(newName, lbl_MRAFR_Name.Content), "DEBUGGING")
-
-  # Conditionally add parts depending on column updated and whether value has changed
-  if tmpColName == 'Friendly Name':
-    if newName != lbl_MRAFR_Name.Content:
-      updateSQL = "[SQL: UPDATE Usr_MRA_Overview SET LocalName = '{0}' WHERE ID = {1}]".format(newName1, itemID)
-      try:
-        _tikitResolver.Resolve(updateSQL)
-        dg_MRAFR_Refresh(s, event)
-        # now select same item again, and scroll into view
-        dg_MRAFR.SelectedIndex = tmpIndex
-        dg_MRAFR.ScrollIntoView(dg_MRAFR.Items[tmpIndex])
-      except:
-        MessageBox.Show("There was an error updating the Friendly Name, using SQL:\n{0}".format(updateSQL), "Error: Editing 'Friendly Name'...")
-  return
- 
- 
 def dg_MRAFR_SelectionChanged(s, event):
   # This function will populate the label controls to temp store ID and Name
 
   global UserIsHod
 
   if dg_MRAFR.SelectedIndex > -1:
-    lbl_MRAFR_ID.Content = dg_MRAFR.SelectedItem['ID']
-    lbl_MRAFR_Name.Content = dg_MRAFR.SelectedItem['Desc']
+    lbl_MRAFR_ID.Content = dg_MRAFR.SelectedItem['mraID']
+    lbl_MRAFR_Name.Content = dg_MRAFR.SelectedItem['Name']
     #refresh_MRA_LMH_ScoreThresholds(s, event)
     tmpType = str(dg_MRAFR.SelectedItem['Type'])
     tmpSearchText = str('Matter Risk Assessment')
@@ -735,8 +759,8 @@ def dg_MRAFR_CopySelected(s, event):
   if myResult == DialogResult.No:
     return
   
-  idItemToCopy = dg_MRAFR.SelectedItem['ID']
-  nameToCopy = dg_MRAFR.SelectedItem['Desc']
+  idItemToCopy = dg_MRAFR.SelectedItem['mraID']
+  nameToCopy = dg_MRAFR.SelectedItem['Name']
   mra_or_fr = str(dg_MRAFR.SelectedItem['Type'])
   mra_or_fr = mra_or_fr.replace("Matter Risk Assessment", "NMRA")
   mra_or_fr = mra_or_fr.replace("File Review", "FR")
@@ -792,8 +816,8 @@ def dg_MRAFR_ViewSelected(s, event):
     return  
 
   tmpType = dg_MRAFR.SelectedItem['Type']
-  tmpName = dg_MRAFR.SelectedItem['Desc']
-  tmpID = dg_MRAFR.SelectedItem['ID']
+  tmpName = dg_MRAFR.SelectedItem['Name']
+  tmpID = dg_MRAFR.SelectedItem['mraID']
   tmpStatus = dg_MRAFR.SelectedItem['Status']
   #MessageBox.Show("tmpType: " + str(tmpType) + "\ntmpName: " + str(tmpName) + "\ntmpID: " + str(tmpID), "DEBUG: Test Selected Values")
   
@@ -824,15 +848,13 @@ def dg_MRAFR_ViewSelected(s, event):
     lbl_MRA_ID.Content = tmpID
     lbl_MRA_Status.Content = tmpStatus
   
-    MRA_UpdateTotalScore(s, event)
-    populate_MRA_QGroups(s, event)
-    refresh_MRA(s, event)
+    #! MRA_UpdateTotalScore(s, event)
+    #! populate_MRA_QGroups(s, event)
+    #! refresh_MRA(s, event)
     
-    if dg_GroupItems.Items.Count > -1:
-      dg_GroupItems.SelectedIndex = 0
       
     # show / hide 'Save' buttons accordingly
-    btn_BackToOverview.Visibility = Visibility.Visible
+    #! btn_BackToOverview.Visibility = Visibility.Visible
     btn_MRA_Submit.Visibility = Visibility.Collapsed
     btn_MRA_SaveAsDraft.Visibility = Visibility.Collapsed
     #btn_MRA_SaveAnswer.IsEnabled = False
@@ -873,8 +895,8 @@ def dg_MRAFR_EditSelected(s, event):
     return
   
   tmpType = dg_MRAFR.SelectedItem['Type']
-  tmpName = dg_MRAFR.SelectedItem['Desc']
-  tmpID = dg_MRAFR.SelectedItem['ID']
+  tmpName = dg_MRAFR.SelectedItem['Name']
+  tmpID = dg_MRAFR.SelectedItem['mraID']
   #MessageBox.Show("tmpType: " + str(tmpType) + "\ntmpName: " + str(tmpName) + "\ntmpID: " + str(tmpID), "DEBUG: Test Selected Values")
   
   if 'Matter Risk Assessment' in tmpType:
@@ -910,21 +932,23 @@ def dg_MRAFR_EditSelected(s, event):
     ti_FR.IsSelected = True
   else:
     # is a MRA... first need to load up the 'Questions' tab and then select the tab
-    lbl_MRA_Name.Text = tmpName
+    lbl_MRA_Name.Content = tmpName
     lbl_MRA_ID.Content = tmpID
+    lbl_ScoreTrigger_High.Content = dg_MRAFR.SelectedItem['ScoreTriggerHigh']
+    lbl_ScoreTrigger_Medium.Content = dg_MRAFR.SelectedItem['ScoreTriggerMedium']
+    lbl_MRA_TemplateID.Content = dg_MRAFR.SelectedItem['TemplateID']
     lbl_MRA_Status.Content = dg_MRAFR.SelectedItem['Status']
 
-    MRA_UpdateTotalScore(s, event)
-    populate_MRA_QGroups(s, event)
-    refresh_MRA(s, event)
-    
-    if dg_GroupItems.Items.Count > -1:
-      dg_GroupItems.SelectedIndex = 1
-    if dg_MRA.Items.Count > -1:
-      dg_MRA.SelectedIndex = 0
+    # get answerlist in memory for this template
+    MRA_load_Answers_toMemory()
+    # load questions and answers for this MRA into datagrid
+    MRA_load_Questions_DataGrid()
+
+    # do we need to update score as well (did on old version but may want to check)
+    #MRA_RecalcTotalScore()
     
     # show / hide 'Save' buttons accordingly
-    btn_BackToOverview.Visibility = Visibility.Collapsed
+    btn_MRA_BackToOverview.Visibility = Visibility.Collapsed
     btn_MRA_Submit.Visibility = Visibility.Visible
     btn_MRA_SaveAsDraft.Visibility = Visibility.Visible
     #btn_MRA_SaveAnswer.IsEnabled = True
@@ -947,9 +971,9 @@ def btn_MRA_HOD_Approve(s, event):
     return   
 
   tmpIndex = dg_MRAFR.SelectedIndex
-  returnVal = HOD_Approves_Item(myOV_ID = dg_MRAFR.SelectedItem['ID'], 
+  returnVal = HOD_Approves_Item(myOV_ID = dg_MRAFR.SelectedItem['mraID'], 
                                myEntRef = _tikitEntity, myMatNo = _tikitMatter, 
-                              myMRADesc = dg_MRAFR.SelectedItem['Desc'])
+                              myMRADesc = dg_MRAFR.SelectedItem['Name'])
 
   if returnVal == 1:
     dg_MRAFR_Refresh(s, event)
@@ -960,7 +984,7 @@ def btn_MRA_HOD_Approve(s, event):
   return
 
 
-def btn_MRA_HOD_Approve1(s, event):
+def btn_HOD_Approval_MRA1_Click(s, event):
   # New button added for HOD to approve a High Risk MRA (no checks are made here as to whether user is a HOD because this is handled onload (eg: if user is not HOD, button remains disabled)
   # Note: This button is the one on the actual 'Edit' page (rather than previous function that's for the button on the 'Overview' tab)
 
@@ -1036,7 +1060,7 @@ def dg_MRAFR_DeleteSelected(s, event):
     return
 
   # First get the ID, as we'll also want to delete questions using this ID
-  tmpID = dg_MRAFR.SelectedItem['ID'] 
+  tmpID = dg_MRAFR.SelectedItem['mraID'] 
   if 'File Review' in dg_MRAFR.SelectedItem['Type']:
     tmpType = 'File Review'
   else:
@@ -1505,348 +1529,582 @@ def FR_checkForOSca_andFinalise(sender, e, ovID = 0, callingFrom = ''):
 
 
 # # # #    M A T T E R   R I S K   A S S E S S M E N T    TAB  # # # #
+# # V2: Updated to use new model (MVVM approach) - Data is loaded into model in UI, and only when user clicks 'Save as Draft' or 'Submit' do we then
+#       write back to the database - this is a much cleaner approach, and also means we don't have to run multiple updates to the database as user is making changes (eg: selecting answers, adding comments etc) 
+#       One difference that the Practice version doesn't have (on the 'Preview MRA' tab), is the 'Comments' field (as that's just a 'practice' screen for testing changes without commiting and checking on live matter)
 
-class MRA(object):
-  def __init__(self, myID, myOrder, myQuestion, myAnsGrp, myQGroup, myQID, 
-               myAnswerID, myAnswerText, myScore, myEC, myGroupName, myNotes):
-    self.RowID = myID
-    self.DOrder = myOrder
-    self.QuestionText = myQuestion
-    self.AnswerGroupName = myAnsGrp
-    self.QGroupID = myQGroup
-    self.QuestionID = myQID
-    self.LUP_AnswerID = myAnswerID
-    self.LUP_AnswerText = '' if myAnswerID == -1 else myAnswerText
-    self.LUP_Score = myScore
-    self.LUP_EmailComment = myEC
-    self.GroupName = myGroupName
-    self.QNotes = myNotes
-    return
-    
-  def __getitem__(self, index):
-    # AnswerList    = Answer List GROUP name
-    # Answer        = Answer ID (as per Usr_MRA_TemplateAs)
-    # AText         = Looked up Answer Text (using AnswerID) AND tbAnswerText if AnswerID = -2 (TextBox)
-    # SourceAnswers = List of Available Answers (broken up) - NEW: QuestionID (if greater than 0)
-    if index == 'ID':
-      return self.RowID
-    elif index == 'Order':
-      return self.DOrder
-    elif index == 'Question':
-      return self.QuestionText
-    elif index == 'AnswerGroupName':
-      return self.AnswerGroupName
-    elif index == 'QGroupID':
-      return self.QGroupID
-    elif index == 'Qid':
-      return self.QuestionID
-    elif index == 'AnswerID':
-      return self.LUP_AnswerID
-    elif index == 'AnswerText':
-      return self.LUP_AnswerText
-    elif index == 'Score':
-      return self.LUP_Score
-    elif index == 'EmailComment':
-      return self.LUP_EmailComment
-    elif index == 'GroupName':
-      return self.GroupName
-    elif index == 'QNotes':
-      return self.QNotes
-    else:
-      return ''
-      
-def refresh_MRA(s, event):
-  # Firstly, update AnswerListToUse (in case they were changed and not updated here) - DON'T THINK WE NEED THIS WITH NEW SETUP AS EACH Question WILL HAVE Answers
-  uSQL = """[SQL: UPDATE Usr_MRA_Detail SET AnswerListToUse = (SELECT AnswerList FROM Usr_MRA_TemplateQs WHERE Usr_MRA_TemplateQs.QuestionID = Usr_MRA_Detail.QuestionID) 
-                  WHERE EntityRef = '{0}' AND MatterNo = {1} AND AnswerListToUse != 
-                  (SELECT AnswerList FROM Usr_MRA_TemplateQs WHERE Usr_MRA_TemplateQs.QuestionID = Usr_MRA_Detail.QuestionID)]""".format(_tikitEntity, _tikitMatter)
-  runSQL(uSQL, True, "There was an error updating the answer list for questions", "Error: Updating Questions/Answers...")
-  
-  # This function will populate the Matter Risk Assessment datagrid
-  tmpGroup = 0 
-  if dg_GroupItems.SelectedIndex > -1:
-    if dg_GroupItems.SelectedIndex == 0:
-      #dg_MRA.Columns[10].Visibility = Visibility.Visible
-      showGrouping = True
-    else:
-      showGrouping = False
-      tmpGroup = dg_GroupItems.SelectedItem['ID']
-      #dg_MRA.Columns[10].Visibility = Visibility.Collapsed
-  else:
-    showGrouping = False
-    #dg_MRA.Columns[10].Visibility = Visibility.Collapsed
-  
-  #MessageBox.Show("Testing lbl_MRA_ID.Content: " str(lbl_MRA_ID.Content), "DEBUG: Populate Matter Risk Assessment")
-  
-  mySQL = """SELECT '0-RowID' = MRAD.ID, '1-DispOrder' = MRAD.DisplayOrder, '2-QText' = (SELECT TQ.QuestionText FROM Usr_MRA_TemplateQs TQ WHERE TQ.QuestionID = MRAD.QuestionID), 
-              '3-AnswerGroupName' = MRAD.AnswerListToUse, '4-GroupID' = MRAD.QGroupID, '5-QuestionID' = MRAD.QuestionID, '6-AnswerID' = MRAD.SelectedAnswerID, 
-              '7-LUP Answer Text' = CASE WHEN MRAD.AnswerListToUse = '(TextBox)' THEN tbAnswerText ELSE (SELECT AnswerText FROM Usr_MRA_TemplateAs WHERE MRAD.SelectedAnswerID = AnswerID AND MRAD.QuestionID = QuestionID) END, 
-              '8-LUP Answer Score' = MRAD.CurrentAnswerScore, '9-LUP Email Comment' = ISNULL(EmailComment, ''), 
-              '10-QGroupName' = QG.Name, '11-QNotes' = MRAD.Notes 
-              FROM Usr_MRA_Detail MRAD 
-                LEFT OUTER JOIN Usr_MRA_QGroups QG ON MRAD.QGroupID = QG.ID 
-              WHERE MRAD.EntityRef = '{0}' AND MRAD.MatterNo = {1} AND MRAD.OV_ID = {2} """.format(_tikitEntity, _tikitMatter, lbl_MRA_ID.Content, lbl_MRA_ID.Content)
+class NotifyBase(INotifyPropertyChanged):
+  # This creates add_PropertyChanged/remove_PropertyChanged automatically
+  def __init__(self):
+    # store delegates that WPF adds via add_PropertyChanged
+    self._pc_handlers = []
 
-  if tmpGroup != 0:
-    mySQL += "AND MRAD.QGroupID = {0} ".format(tmpGroup)
+  # .NET event accessor: WPF calls this when binding subscribes
+  def add_PropertyChanged(self, handler):
+    if handler is None:
+      return
+    self._pc_handlers.append(handler)
+
+  # .NET event accessor: WPF calls this when binding unsubscribes
+  def remove_PropertyChanged(self, handler):
+    if handler is None:
+      return
+    # remove first matching instance
+    for i in range(len(self._pc_handlers) - 1, -1, -1):
+      if self._pc_handlers[i] == handler:
+        del self._pc_handlers[i]
+        break
+
   
-  # add order
-  mySQL += "ORDER BY QG.DisplayOrder, MRAD.DisplayOrder "
-  #MessageBox.Show("MySQL:\n" + str(mySQL), "DEBUG: Getting Groups and Questions...")
+  def _raise(self, prop_name):
+    if not self._pc_handlers:
+      return
+    args = PropertyChangedEventArgs(prop_name)
+    # iterate over a copy in case handlers mutate subscriptions
+    for h in list(self._pc_handlers):
+      h(self, args)
+
+# -------------------------
+# Answer model
+# -------------------------
+class AnswerItem(object):
+  def __init__(self, answer_id, text, email_comment="", score=0):
+    self.AnswerID = int(answer_id) if answer_id is not None else None
+    self.AnswerText = text or ""
+    self.EmailComment = email_comment or ""
+    self.Score = int(score) if score is not None else 0
+
+  def __repr__(self):
+    return self.AnswerText
+
+# -------------------------
+# Question model (bindable)
+# -------------------------
+class MatterQuestionItem(NotifyBase):
+  def __init__(self, group_name, order_no, qid, qtext, answers):
+    NotifyBase.__init__(self)
+    self.QuestionGroup = group_name or ""
+    self.QuestionOrder = int(order_no) if order_no is not None else 0
+    self.QuestionID = int(qid) if qid is not None else None
+    self.QuestionText = qtext or ""
+    self.AvailableAnswers = answers or []
+    self._SelectedAnswer = None  # <-- bind target
+    self._UserComment = ""   # free-form per question
+
+  @property
+  def UserComment(self):
+    return self._UserComment
+
+  @UserComment.setter
+  def UserComment(self, value):
+    v = "" if value is None else str(value)
+    if self._UserComment == v:
+      return
+    self._UserComment = v
+    self._raise("UserComment")
+
+  @property
+  def SelectedAnswer(self):
+    return self._SelectedAnswer
+
+  @SelectedAnswer.setter
+  def SelectedAnswer(self, value):
+    # value should be an AnswerItem (or None)
+    if self._SelectedAnswer == value:
+      return
+    self._SelectedAnswer = value
+
+    # Notify all dependents
+    self._raise("SelectedAnswer")
+    self._raise("SelectedAnswerID")
+    self._raise("SelectedAnswerText")
+    self._raise("SelectedAnswerScore")
+    self._raise("SelectedAnswerEmailComment")
+
+  # Computed (read-only) convenience properties
+  @property
+  def SelectedAnswerID(self):
+    return None if self._SelectedAnswer is None else self._SelectedAnswer.AnswerID
+
+  @property
+  def SelectedAnswerText(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.AnswerText
+
+  @property
+  def SelectedAnswerScore(self):
+    return 0 if self._SelectedAnswer is None else self._SelectedAnswer.Score
+
+  @property
+  def SelectedAnswerEmailComment(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.EmailComment
   
+
+def _get_preview_current_question():
+  view = CollectionViewSource.GetDefaultView(dg_MRA.ItemsSource)
+  if view is None:
+    return None
+  return view.CurrentItem
+
+def to_int(x, default=0):
+  if is_dbnull(x):
+    return default
+  try:
+    return Convert.ToInt32(x)
+  except:
+    try:
+      return Convert.ToInt32(str(x))
+    except:
+      return default
+
+def sql_escape(s):
+  # Very basic single-quote escaping for building SQL strings.
+  if s is None:
+    return ""
+  return str(s).replace("'", "''")
+
+def is_dbnull(x):
+  try:
+    return x is None or x == DBNull.Value
+  except:
+    return x is None
+  
+def MRA_load_Answers_toMemory():
+  global MRA_ANSWERS_BY_QID
+  MRA_ANSWERS_BY_QID = {}
+
+  # This differs from the 'Practice' version as we're working with 'live' data that user may have entered already
+  # Therefore, need to get TemplateID from 'Usr_MRAv2_MatterHeader' table, and then all answers to Q's get stored in 'Usr_MRAv2_MatterDetails'
+
+  mySQL = """SELECT T.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.Score
+             FROM Usr_MRAv2_Templates T
+                JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
+             WHERE T.TemplateID = {0}
+             ORDER BY T.QuestionID, T.AnswerOrder;""".format(lbl_MRA_TemplateID.Content)
+
   _tikitDbAccess.Open(mySQL)
-  myItems = []
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      qid = to_int(dr.GetValue(0))
+      aid = to_int(dr.GetValue(1))
+      text = "" if dr.IsDBNull(2) else dr.GetString(2)
+      ec = "" if dr.IsDBNull(3) else dr.GetString(3)
+      score = 0 if dr.IsDBNull(4) else to_int(dr.GetValue(4))
+
+      item = AnswerItem(aid, text, ec, score)
+      MRA_ANSWERS_BY_QID.setdefault(qid, []).append(item)
+
+    dr.Close()
+  _tikitDbAccess.Close()
+  return
+
+def MRA_load_Questions_DataGrid():
+  # This function will populate the Matter Risk Assessment Preview datagrid
+  #MessageBox.Show("Start - getting group ID", "Refreshing list (datagrid of questions)")
+
+  global MRA_QUESTIONS_LIST
+  # wipe list in case we're reloading (this function should only be called once for initial load of MRA template)
+  MRA_QUESTIONS_LIST = []
+
+  #MessageBox.Show("Genating SQL...", "Refreshing list (datagrid of questions)")
+  # firstly, we'll get main Question structure from source table (MRAv2_Templates)
+  mySQL = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             FROM Usr_MRAv2_Templates MRAT
+                LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
+             WHERE MRAT.TemplateID = {0}
+             GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(lbl_MRA_TemplateID.Content)
   
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          iID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          iDO = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          iQText = '-' if dr.IsDBNull(2) else dr.GetString(2)
-          iAnsGrpName = '' if dr.IsDBNull(3) else dr.GetString(3)
-          iQGrpID = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          iQid = 0 if dr.IsDBNull(5) else dr.GetValue(5)
-          iAnsID = '' if dr.IsDBNull(6) else dr.GetValue(6)
-          iLUP_AnsTxt = '' if dr.IsDBNull(7) else dr.GetString(7)
-          iLUP_AnsScore = '' if dr.IsDBNull(8) else dr.GetValue(8)
-          iAEC = '' if dr.IsDBNull(9) else dr.GetString(9)
-          iGroupName = '' if dr.IsDBNull(10) else dr.GetString(10)
-          iNotes = '' if dr.IsDBNull(11) else dr.GetString(11)
-          
-          myItems.append(MRA(myID=iID, myOrder=iDO, myQuestion=iQText, myAnsGrp=iAnsGrpName, 
-                             myQGroup=iQGrpID, myQID=iQid, myAnswerID=iAnsID, myAnswerText=iLUP_AnsTxt,
-                             myScore=iLUP_AnsScore, myEC=iAEC, myGroupName=iGroupName, myNotes=iNotes))
-      
+  #MessageBox.Show("SQL: " + str(mySQL) + "\n\nRefreshing list (datagrid of questions)", "Debug: Populating List of Questions (Preview MRA)")
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      group_name = "" if dr.IsDBNull(0) else dr.GetValue(0)
+      order_no = to_int(dr.GetValue(1))
+      qid = to_int(dr.GetValue(2))
+      qtext = "" if dr.IsDBNull(3) else dr.GetString(3)
+
+      answers = MRA_ANSWERS_BY_QID.get(qid, [])
+      MRA_QUESTIONS_LIST.append(MatterQuestionItem(group_name, order_no, qid, qtext, answers))
+
     dr.Close()
   _tikitDbAccess.Close()
   
-  #! new 04/09/2025 - added 'Grouping' to the DataGrid but only if '(Show All)' option selected
-  if showGrouping == False:
-    dg_MRA.ItemsSource = myItems
-  else:
-    tmpC = ListCollectionView(myItems)
-    tmpC.GroupDescriptions.Add(PropertyGroupDescription('GroupName'))
-    dg_MRA.ItemsSource = tmpC
+
+  # then, we'll overlay existing selections for this matter (if any)
+  MRA_load_MatterSelections_toMemory()
+  MRA_apply_existing_selections()
+
+  # and now we have a list of question items in memory for this template, with their available answers;
+  # we can bind this to the datagrid and it should show the questions grouped by 'QuestionGroup' with a
+  # combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the
+  # MatterQuestionItem, which will allow us to easily get the selected answer and its score/email comment (when
+  # user selects an answer in the preview)
+  # create observable collection for WPF and bind to datagrid; this should show the questions grouped by 'QuestionGroup' with a combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the QuestionItem, which will allow us to easily get the selected answer and its score/email comment when user selects an answer in the preview)
+  view = ListCollectionView(MRA_QUESTIONS_LIST)
+  view.GroupDescriptions.Add(PropertyGroupDescription("QuestionGroup"))
+  dg_MRA.ItemsSource = view
+
+  has_items = (len(MRA_QUESTIONS_LIST) > 0)
+  grid_MRA.Visibility = Visibility.Visible if has_items else Visibility.Collapsed
+  tb_NoMRA_Qs.Visibility = Visibility.Collapsed if has_items else Visibility.Visible
+
+  if has_items:
+    # defer until UI has built group containers
+    dg_MRA.Dispatcher.BeginInvoke(
+                  DispatcherPriority.ContextIdle,
+                  Action(_select_first_MRA_row)
+                  )
+
   return
 
+def MRA_load_MatterSelections_toMemory():
+  #  Loads existing selections for this matter+mraID into MRA_MATTER_SELECTIONS_BY_QID:
+  #  AnswerID + Comments per QuestionID
+  global MRA_MATTER_SELECTIONS_BY_QID
+  MRA_MATTER_SELECTIONS_BY_QID = {}
 
-def MRA_AutoAdvance(currentDGindex, s, event):
-  
-  currPlusOne = currentDGindex + 1
-  totalDGitems = dg_MRA.Items.Count
-  #MessageBox.Show("Current Index: " + str(currentDGindex) + "\nPlusOne: " + str(currPlusOne) + "\nTotalDGitems: " + str(totalDGitems), "Auto-Advance to next question...")
-  
-  # firstly check to see if we're at the end of current list
-  if currPlusOne == totalDGitems:
-    currGroupIndex = dg_GroupItems.SelectedIndex
-    totalGroupItems = dg_GroupItems.Items.Count  
-  
-    # now to start checking what 'tab' we're on
-    if currGroupIndex == (totalGroupItems - 1):
-      # select '0' (show all)
-      dg_GroupItems.SelectedIndex = 0
-    else:
-      # then select next 'group'
-      dg_GroupItems.SelectedIndex = currGroupIndex + 1
-    dg_MRA.SelectedIndex = 0
-    
-  else:
-    dg_MRA.SelectedIndex = currPlusOne
-  # finally scroll the selected item into view
-  dg_MRA.ScrollIntoView(dg_MRA.SelectedItem)
-  return
-  
+  # These should already be set before showing this tab:
+  entity = str(_tikitEntity) 
+  matter = to_int(_tikitMatter)
+  mra_id = to_int(lbl_MRA_ID.Content)
 
-def MRA_UpdateTotalScore(s, event):
-  # This function will update the overall total score, and additionally update the counter of 'Total Answered'
-  total_SQL = "[SQL: SELECT SUM(CurrentAnswerScore) FROM Usr_MRA_Detail WHERE EntityRef = '{0}' AND MatterNo = {1} AND OV_ID = {2}]".format(_tikitEntity, _tikitMatter, lbl_MRA_ID.Content)
-  tmpTotal = int(_tikitResolver.Resolve(total_SQL))
-  lbl_MRA_Score.Content = str(tmpTotal)     #'{:,.0f}'.format(tmpTotal)
-  
-  tmpSQL_ID = "[SQL: SELECT SM.LMH_ID FROM Usr_MRA_ScoreMatrix SM WHERE SM.TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0}) AND ({1} BETWEEN SM.Score_From AND SM.Score_To)]".format(lbl_MRA_ID.Content, tmpTotal)
-  try:
-    tmpCatID = _tikitResolver.Resolve(tmpSQL_ID)
-    lbl_MRA_RiskCategoryID.Content = str(tmpCatID)
-  except:
-    lbl_MRA_RiskCategoryID.Content = '0'
-    MessageBox.Show("There was an error getting the Low, Medium or High ID, using SQL:\n" + tmpSQL_ID, "Error: Getting Low, Med, High ID")
+  if not entity or matter is None or mra_id <= 0:
+    # If you haven't wired these labels yet, just return silently
+    return
 
+  sql = """SELECT QuestionID, AnswerID, ISNULL(Comments,'')
+           FROM Usr_MRAv2_MatterDetails
+           WHERE EntityRef = '{0}' AND MatterNo = {1} AND mraID = {2}
+           ORDER BY DisplayOrder;""".format(entity, to_int(matter), to_int(mra_id))
 
-  tmpSQL_Text = """[SQL: SELECT 'LMH Text' = CASE SM.LMH_ID WHEN  1 THEN 'Low' WHEN 2 THEN 'Medium' WHEN 3 THEN 'High' END 
-                          FROM Usr_MRA_ScoreMatrix SM 
-                         WHERE SM.TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0}) 
-                          AND ({1} BETWEEN SM.Score_From AND SM.Score_To)]""".format(lbl_MRA_ID.Content, tmpTotal)
-  try:
-    tmpCat = _tikitResolver.Resolve(tmpSQL_Text)
-    lbl_MRA_RiskCategory.Content = tmpCat
-    if tmpCat == 'Low':
-      tmpColour = Brushes.Green
-      tmpTxtColour = Brushes.White
-    elif tmpCat == 'Medium':
-      tmpColour = Brushes.Yellow
-      tmpTxtColour = Brushes.Navy
-    elif tmpCat == 'High':
-      tmpColour = Brushes.Red
-      tmpTxtColour = Brushes.White
-    else:
-      tmpColour = Brushes.Null
-      tmpTxtColour = Brushes.Navy
-    lbl_MRA_RiskCategory.Background = tmpColour
-    lbl_MRA_RClabel.Background = tmpColour
-    lbl_MRA_RiskCategory.Foreground = tmpTxtColour
-    lbl_MRA_RClabel.Foreground = tmpTxtColour
-  except:
-    lbl_MRA_RiskCategory.Content = ''
-    lbl_MRA_RiskCategory.Background = Brushes.Null
-    lbl_MRA_RClabel.Background = Brushes.Null
-    lbl_MRA_RiskCategory.Foreground = Brushes.Navy
-    lbl_MRA_RClabel.Foreground = Brushes.Navy
-    MessageBox.Show("There was an error getting the Low, Medium or High text, using SQL:\n" + tmpSQL_Text, "Error: Getting Low, Med, High Text")
-  
-  # now update 'Total Answered'
-  qCount = _tikitResolver.Resolve("[SQL: SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE OV_ID = {0} AND EntityRef = '{1}' AND MatterNo = {2}]".format(lbl_MRA_ID.Content, _tikitEntity, _tikitMatter))
-  qOS = _tikitResolver.Resolve("[SQL: SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE OV_ID = {0} AND EntityRef = '{1}' AND MatterNo = {2} AND SelectedAnswerID = -1]".format(lbl_MRA_ID.Content, _tikitEntity, _tikitMatter))
-  qAnswered = int(qCount) - int(qOS)
-  lbl_TotalQs.Content = str(qCount)
-  lbl_TotalAnswered.Content = str(qAnswered)
+  _tikitDbAccess.Open(sql)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      qid = to_int(dr.GetValue(0), 0)
+      aid = to_int(dr.GetValue(1), 0)
+      cmt = "" if dr.IsDBNull(2) else dr.GetString(2)
 
-  if btn_MRA_Submit.Visibility == Visibility.Visible:
-    if int(qOS) == 0:
-      btn_MRA_Submit.IsEnabled = True
-    else:
-      btn_MRA_Submit.IsEnabled = False
+      if qid > 0:
+        MRA_MATTER_SELECTIONS_BY_QID[qid] = {
+          "AnswerID": (aid if aid > 0 else None),
+          "Comments": cmt or ""
+        }
+    dr.Close()
+  _tikitDbAccess.Close()
   return
 
+def MRA_apply_existing_selections():
+  # Overlays saved matter answers/comments onto the in-memory Question objects.
+  # Must be called AFTER MRA_QUESTIONS_LIST is built and AvailableAnswers populated.
+  global MRA_QUESTIONS_LIST
 
-def MRA_SelectionChanged(s, event):
-  if dg_MRA.SelectedIndex > -1:
-    lbl_MRA_DGID.Content = dg_MRA.SelectedItem['ID']
-    lbl_MRA_CurrVal.Content = dg_MRA.SelectedItem['AnswerText']
-    tb_MRA_QestionText.Text = dg_MRA.SelectedItem['Question']
-    tb_MRA_QNotes.Text = dg_MRA.SelectedItem['QNotes']
-    
-    if dg_MRA.SelectedItem['AnswerGroupName'] == '(TextBox)':
-      #cbo_MRA_SelectedComboAnswer.SelectedIndex = -1
-      cbo_MRA_SelectedComboAnswer.Visibility = Visibility.Collapsed
-      tb_MRA_SelectedTextAnswer.Text = dg_MRA.SelectedItem['AnswerText']
-      tb_MRA_SelectedTextAnswer.Visibility = Visibility.Visible
-    else:
-      tb_MRA_SelectedTextAnswer.Text = ''
-      tb_MRA_SelectedTextAnswer.Visibility = Visibility.Collapsed    
+  if not MRA_QUESTIONS_LIST:
+    return
 
-      cbo_MRA_SelectedComboAnswer.Visibility = Visibility.Visible
-      populate_MRA_SelectAnswerCombo(s, event)
-      
-      pCount = -1
-      for xRow in cbo_MRA_SelectedComboAnswer.Items:
-        pCount += 1
-        if xRow.AText == dg_MRA.SelectedItem['AnswerText']:
-          cbo_MRA_SelectedComboAnswer.SelectedIndex = pCount
+  # quick lookup AnswerItem by (qid, aid)
+  for q in MRA_QUESTIONS_LIST:
+    sel = MRA_MATTER_SELECTIONS_BY_QID.get(to_int(q.QuestionID), None)
+    if sel is None:
+      continue
+
+    # Comments
+    try:
+      q.UserComment = sel.get("Comments", "") or ""
+    except:
+      pass
+
+    # Selected answer
+    aid = sel.get("AnswerID", None)
+    if aid is None:
+      continue
+
+    found = None
+    try:
+      for a in q.AvailableAnswers:
+        if to_int(getattr(a, "AnswerID", None)) == to_int(aid):
+          found = a
           break
-    
-    #if btn_BackToOverview.Visibility == Visibility.Visible:
-    #  btn_MRA_SaveAnswer.IsEnabled = False
-    #else:
-    #  btn_MRA_SaveAnswer.IsEnabled = True
-
-  else:
-    lbl_MRA_DGID.Content = ''
-    lbl_MRA_CurrVal.Content = ''    
-    tb_MRA_QestionText.Text = '-NO QUESTION SELECTED - PLEASE SELECT FROM THE LIST ABOVE-'
-    tb_MRA_SelectedTextAnswer.Text = ''
-    #cbo_MRA_SelectedComboAnswer.SelectedIndex = -1
-    #btn_MRA_SaveAnswer.IsEnabled = False
-    tb_MRA_SelectedTextAnswer.Visibility = Visibility.Collapsed
-    cbo_MRA_SelectedComboAnswer.Visibility = Visibility.Collapsed
-    tb_MRA_QNotes.Text = ''
-  return
-  
-
-class YourAnswer(object):
-  def __init__(self, myText, myScore, myEC, myAid):
-    self.AText = myText
-    self.AScore = myScore
-    self.AEmailComment = myEC
-    self.AID = myAid
-    return
-    
-  def __getitem__(self, index):
-    if index == 'Text':
-      return self.AText
-    elif index == 'Score':
-      return self.AScore
-    elif index == 'EmailComment':
-      return self.AEmailComment
-    elif index == 'ID':
-      return self.AID
-    else:
-      return ''
-
-def populate_MRA_SelectAnswerCombo(s, event):
-  # New 2nd May 2024 - this will populate the Combo box on the 'MRA' tab for the selected Question
-  # 18th June - added 'ORDER BY DisplayOrder' into SQL statement (should've been there from the beginning)
-  
-  if dg_MRA.SelectedIndex > -1:
-    tmpQID = dg_MRA.SelectedItem['Qid']
-  else:
-    return
-  
-  mySQL = "SELECT AnswerText, Score, EmailComment, AnswerID FROM Usr_MRA_TemplateAs WHERE QuestionID = {0} ORDER BY DisplayOrder".format(tmpQID)
-
-  _tikitDbAccess.Open(mySQL)
-  myItems = []
-  
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          iAText = '' if dr.IsDBNull(0) else dr.GetString(0)
-          iScore = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          iEmailComment = '' if dr.IsDBNull(2) else dr.GetString(2)
-          iID = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          
-          myItems.append(YourAnswer(iAText, iScore, iEmailComment, iID))
-      
-    dr.Close()
-  _tikitDbAccess.Close()
-
-  cbo_MRA_SelectedComboAnswer.ItemsSource = myItems
-  return
-  
-
-def MRA_UpdateRiskCategory(s, event):
-  # This function handles updating the main 'Risk Category' for this MRA, and setting at the Matter level (viewable in Matter Properties)
-  
-  MRA_UpdateTotalScore(s, event)
-  
-  if lbl_MRA_RiskCategoryID.Content in ('123'):
-    # Update Risk Rating for current state
-    tmpSQL = "[SQL: UPDATE Usr_MRA_Overview SET RiskRating = {0} WHERE ID = {1}]".format(lbl_MRA_RiskCategoryID.Content, lbl_MRA_ID.Content)
-    try:
-      _tikitResolver.Resolve(tmpSQL)
-      #MessageBox.Show("Updated RiskRating on our 'Overview'... now updating Matter...", "DEBUGGING...")
     except:
-      MessageBox.Show("There was an error saving the current 'Risk Rating', using SQL:\n" + str(tmpSQL), "Error: Saving Risk Rating...")
-    
-    # now also update the matter proper...
-    # SELECT RiskOpening, RiskProcessing, RiskClosing FROM Matters WHERE EntityRef = '' AND Number = 0
-    tmpSQL = "[SQL: UPDATE Matters SET RiskOpening = {0} WHERE EntityRef = '{1}' AND Number = {2}]".format(lbl_MRA_RiskCategoryID.Content, _tikitEntity, _tikitMatter)
-    try:
-      _tikitResolver.Resolve(tmpSQL)
-      #MessageBox.Show("Updated 'RiskOpening' to: " + str(lbl_MRA_RiskCategory.Content), "DEBUGGING...")
-    except:
-      MessageBox.Show("There was an error saving the current 'Risk Rating' (to actual matter), using SQL:\n" + str(tmpSQL), "Error: Saving Risk Rating...")
-  #else:
-  #  MessageBox.Show("The risk category ID: '" + str(lbl_MRA_RiskCategoryID.Content) + "' was not in '123'\nNo updates made to Matter Risk Category!", "DEBUGGING...")
+      found = None
+
+    # Important: set the object, not the ID
+    if found is not None:
+      try:
+        q.SelectedAnswer = found
+      except:
+        pass
+
   return
 
 
-def MRA_BackToOverview(s, event):
+def _select_first_MRA_row():
+  if len(MRA_QUESTIONS_LIST) <= 0:
+    return
+
+  first = MRA_QUESTIONS_LIST[0]
+
+  # force containers to exist
+  try:
+    dg_MRA.UpdateLayout()
+  except:
+    pass
+
+  # 1) Force a real selection change event (important with Grouping DataGrids), select nothing and then first row
+  dg_MRA.SelectedItem = None
+  dg_MRA.SelectedItem = first
+
+  # 2) ensure CurrentItem is aligned
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(first)
+    except:
+      pass
+
+  # 3) Commit "current cell" so WPF treats it as a real row selection
+  try:
+    if dg_MRA.Columns.Count > 0:
+      dg_MRA.CurrentCell = DataGridCellInfo(first, dg_MRA.Columns[0])
+  except:
+    pass
+
+  try:
+    dg_MRA.ScrollIntoView(first)
+    dg_MRA.Focus()
+  except:
+    pass
+
+  _sync_combo_to_current_row()
+  MRA_RecalcTotalScore()
+
+
+def MRA_AdvanceToNextQuestion():
+  # Uses the real list, so grouping doesn't break indices
+  if len(MRA_QUESTIONS_LIST) <= 0:
+    return
+
+  curr = _get_current_question()
+  if curr is None:
+    # if something went odd, just go to first
+    _select_first_MRA_row()
+    return
+
+  try:
+    idx = MRA_QUESTIONS_LIST.index(curr)
+  except:
+    # CurrentItem might be a group wrapper; fall back to SelectedItem
+    try:
+      idx = MRA_QUESTIONS_LIST.index(dg_MRA.SelectedItem)
+    except:
+      _select_first_MRA_row()
+      return
+
+  next_idx = idx + 1
+  if next_idx >= len(MRA_QUESTIONS_LIST):
+    next_idx = 0  # wrap to first; change this if you'd rather stop at end
+
+  nxt = MRA_QUESTIONS_LIST[next_idx]
+
+  # Update selection + CurrentItem + scroll, then sync right panel combo
+  dg_MRA.SelectedItem = nxt
+
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(nxt)
+    except:
+      pass
+
+  try:
+    dg_MRA.ScrollIntoView(nxt)
+  except:
+    pass
+
+  _sync_combo_to_current_row()
+  return
+  
+
+def dg_MRA_SelectionChanged(s, event):
+  # defer slightly so CurrentItem is updated, especially with grouping
+  try:
+    dg_MRA.Dispatcher.BeginInvoke(
+      DispatcherPriority.Background,
+      Action(_sync_combo_to_current_row)
+    )
+  except:
+    _sync_combo_to_current_row()
+  return
+
+
+def _current_MRA_row():
+  # Prefer CurrentItem (works properly with grouping)
+  view = CollectionViewSource.GetDefaultView(dg_MRA.ItemsSource)
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRA.SelectedItem
+
+
+def cbo_MRA_SelectedComboAnswer_SelectionChanged(s, event):
+  global _preview_combo_syncing
+  if _preview_combo_syncing:
+    return  # ignore programmatic sync changes
+
+  q = _get_current_question()
+  if q is None or not hasattr(q, "SelectedAnswer"):
+    return
+
+  ans = cbo_MRA_SelectedComboAnswer.SelectedItem
+
+  # IMPORTANT: ignore the transient "None" that occurs when ItemsSource swaps
+  # unless the user genuinely cleared it (rare in your UI)
+  if ans is None:
+    return
+
+  q.SelectedAnswer = ans
+
+  view = _get_preview_view()
+  if view is not None:
+    view.Refresh()
+
+  MRA_RecalcTotalScore()
+  ##MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
+  return
+
+def btn_MRASaveAnswer_Click(s, event):
+  q = _current_MRA_row()
+  if q is None:
+    MessageBox.Show("No question selected to save answer for!", "Save")
+    return
+
+  a = getattr(q, "SelectedAnswer", None)
+  if a is None:
+    MessageBox.Show("No answer selected for the current question!", "Save")
+    return
+
+  #MessageBox.Show("Saved: QID={0}, AnswerID={1}".format(q.QuestionID, a.AnswerID))
+  # if 'move to next' checkbox is ticked, then move to next question
+  try:
+    auto = (chk_MRA_AutoSelectNext.IsChecked == True)
+  except:
+    auto = False
+
+  if auto:
+    # Defer slightly so UI settles before we change selection
+    try:
+      dg_MRA.Dispatcher.BeginInvoke(
+        DispatcherPriority.Background,
+        lambda: MRA_AdvanceToNextQuestion()
+      )
+    except:
+      MRA_AdvanceToNextQuestion()
+
+  return
+
+## Helper functions to sync the ComboBox to datagrid (in terms of displaying value)
+def _get_preview_view():
+  return CollectionViewSource.GetDefaultView(dg_MRA.ItemsSource)
+
+def _get_current_question():
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRA.SelectedItem
+
+def _sync_combo_to_current_row():
+  global _preview_combo_syncing
+  q = _get_current_question()
+  if q is None or not hasattr(q, "AvailableAnswers"):
+    return
+
+  _preview_combo_syncing = True
+  try:
+    # Make sure combo is showing this row’s answers
+    try:
+      cbo_MRA_SelectedComboAnswer.ItemsSource = q.AvailableAnswers
+    except:
+      pass
+
+    target = getattr(q, "SelectedAnswer", None)
+    if target is None:
+      cbo_MRA_SelectedComboAnswer.SelectedItem = None
+      return
+
+    # Choose matching item by AnswerID
+    tid = getattr(target, "AnswerID", None)
+    found = None
+    for a in q.AvailableAnswers:
+      if getattr(a, "AnswerID", None) == tid:
+        found = a
+        break
+
+    cbo_MRA_SelectedComboAnswer.SelectedItem = found
+  finally:
+    _preview_combo_syncing = False
+
+
+def MRA_RecalcTotalScore():
+  # This function will Recalc the total score for selected answers and will also update the Total Questions / # answered
+  # fields too
+
+  # first, update totalQs and totalAnswered
+  answered = 0
+  for q in MRA_QUESTIONS_LIST:
+    if getattr(q, "SelectedAnswer", None) is not None:
+      answered += 1
+
+  lbl_TotalQs.Content = str(len(MRA_QUESTIONS_LIST))
+  lbl_TotalAnswered.Content = str(answered)
+
+  # finally, calculate score and update label
+  total = 0
+  try:
+    for q in MRA_QUESTIONS_LIST:
+      # SelectedAnswerScore is 0 when no answer selected
+      try:
+        total += int(getattr(q, "SelectedAnswerScore", 0) or 0)
+      except:
+        pass
+  except:
+    total = 0
+
+  lbl_MRA_Score.Content = str(total)
+
+  # now work out 'category' based on score and thresholds; we have two thresholds: MediumFrom and HighFrom; if score is below MediumFrom, it's Low Risk; if it's between MediumFrom and HighFrom, it's Medium Risk; if it's above HighFrom, it's High Risk
+  if total < to_int(lbl_ScoreTrigger_Medium.Content): 
+    category = "Low"
+    categoryNum = 1 
+  elif total >= to_int(lbl_ScoreTrigger_Medium.Content) and total < to_int(lbl_ScoreTrigger_High.Content):
+    category = "Medium" 
+    categoryNum = 2
+  elif total >= to_int(lbl_ScoreTrigger_High.Content):
+    category = "High" 
+    categoryNum = 3
+  else: 
+    category = "-"
+    categoryNum = 0 
+  
+  lbl_MRA_RiskCategory.Content = category
+  lbl_MRA_RiskCategoryID.Content = str(categoryNum)
+  return total
+
+################################################################
+
+def btn_MRA_BackToOverview_Click(s, event):
   # This function should clear the 'MRA Questions' tab and take us back to the 'Overview' tab
+  MRA_BackToOverview()
+  return
 
+def MRA_BackToOverview():
   # update 'MinsToComplete' field (we want to track how long it takes to complete these)
   if len(str(lbl_TimeEntered.Content)) > 0:
     # get the time we entered screen
@@ -1871,25 +2129,25 @@ def MRA_BackToOverview(s, event):
   return
 
 
-def MTA_SaveAsDraft(s, event):
+def btn_MRA_SaveAsDraft_Click(s, event):
   # This function will return back to the 'Overview' screen and save the MRA in a 'draft' (incomplete) state
   
   # update 'Status'
   MRA_setStatus(lbl_MRA_ID.Content, 'Draft')
   
   # update the Risk Category (sets MRA level, and in Matter Properties)
-  MRA_UpdateRiskCategory(s, event)
+  #! MRA_UpdateRiskCategory(s, event)
   
   # update main 'Risk Status' label on 'Overview' tab
   setMasterRiskStatus(s, event)
   # refresh main overview datagrid
   dg_MRAFR_Refresh(s, event)
   # go back to overview tab
-  MRA_BackToOverview(s, event)
+  MRA_BackToOverview()
   return
 
 
-def MRA_SaveAsFinalSubmit(s, event):
+def btn_MRA_Submit_Click(s, event):
   # This function will return back to the 'Overview' screen and save the MRA in a 'Complete' state
   # Note: additional checks are made here to make sure every question has an answer
 
@@ -1916,7 +2174,7 @@ def MRA_SaveAsFinalSubmit(s, event):
   MRA_setStatus(mraID, 'Complete')
   
   # update the Risk Category (sets MRA level, and in Matter Properties)
-  MRA_UpdateRiskCategory(s, event)
+  #MRA_UpdateRiskCategory(s, event)
   riskRating = lbl_MRA_RiskCategory.Content
   cuAnApprovalUser = isUserAnApprovalUser(userToCheck = _tikitUser)
   
@@ -1995,7 +2253,7 @@ def MRA_SaveAsFinalSubmit(s, event):
   # refresh main overview datagrid
   dg_MRAFR_Refresh(s, event)
   # go back to overview tab
-  MRA_BackToOverview(s, event)
+  MRA_BackToOverview()
   return
 
 
@@ -2027,150 +2285,7 @@ def populate_MRA_DaysUntilLocked(s, event):
   return
 
 
-class QGroups(object):
-  def __init__(self, myID, myDO, myDesc, myTotalQs):
-    self.gID = myID
-    self.gDO = myDO
-    self.gDesc = myDesc
-    self.gTotalQs = myTotalQs
-    return
-    
-  def __getitem__(self, index):
-    if index == 'ID':
-      return self.gID
-    elif index == 'Order':
-      return self.gDO
-    elif index == 'Desc':
-      return self.gDesc     
-    elif index == 'TotalQs':
-      return self.gTotalQs 
-    #elif index == '':
-    #  return self. 
-    else:
-      return ''
-      
-def populate_MRA_QGroups(s, event):
-  # This function populates the new Question Groups data grid on the Preview MRA tab
-  mySQL = """SELECT QG.ID, QG.DisplayOrder, QG.Name, COUNT(MRAD.ID) FROM Usr_MRA_Detail MRAD 
-             LEFT OUTER JOIN Usr_MRA_QGroups QG ON MRAD.QGroupID = QG.ID 
-             WHERE MRAD.EntityRef = '{0}' AND MRAD.MatterNo = {1} AND MRAD.OV_ID = {2}
-             GROUP BY QG.ID, QG.DisplayOrder, QG.Name ORDER BY QG.DisplayOrder""".format(_tikitEntity, _tikitMatter, lbl_MRA_ID.Content)
-  
-  try:
-    totalQCount = _tikitResolver.Resolve("[SQL: SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE EntityRef = '{0}' AND MatterNo = {1} AND OV_ID = {2}]".format(_tikitEntity, _tikitMatter, lbl_MRA_ID.Content))
-  except:
-    totalQCount = 0
-
-  myItems = []
-  myItems.append(QGroups(0, 0, '(View All)', totalQCount))
-
-  if int(totalQCount) > 0: 
-    _tikitDbAccess.Open(mySQL)
-  
-    if _tikitDbAccess._dr is not None:
-      dr = _tikitDbAccess._dr
-      if dr.HasRows:
-        while dr.Read():
-          if not dr.IsDBNull(0):
-            iID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-            iDO = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-            iQGroup = '-' if dr.IsDBNull(2) else dr.GetString(2)
-            iCount = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-                    
-            myItems.append(QGroups(iID, iDO, iQGroup, iCount))  
-      
-      dr.Close()
-    _tikitDbAccess.Close()
-  
-  dg_GroupItems.ItemsSource = myItems
-  
-  if dg_GroupItems.Items.Count == 1:
-    grid_MRA.Visibility = Visibility.Hidden
-    tb_NoMRA_Qs.Visibility = Visibility.Visible
-  else:
-    grid_MRA.Visibility = Visibility.Visible
-    tb_NoMRA_Qs.Visibility = Visibility.Hidden
-    #dg_GroupItems.SelectedIndex = 0
-  return  
-
-
-def MRA_SaveAnswer(s, event):
-  # This replaces the 'Cell Edit Ending' function of the (old) editable data grid (now putting values beneath DG)
-  # NB: This needs a re-write to use dedicated fields on form plus account of 'question text' answer type (versus previous ComboBox only)
-  
-  # get current values
-  rowID = dg_MRA.SelectedItem['ID']
-  tmpQID = dg_MRA.SelectedItem['Qid']
-  updateSQL = "[SQL: UPDATE Usr_MRA_Detail SET "
-  tmpEC = ''
-  tmpNotes = ''
-  
-  if dg_MRA.SelectedItem['AnswerGroupName'] == '(TextBox)':
-    newTextVal = tb_MRA_SelectedTextAnswer.Text
-    newTextVal = newTextVal.replace("'", "''")
-    fromAnsList = ''
-    tmpAnsID = -2
-    if len(newTextVal.strip()) == 0:
-      # text string is empty, set answer to 'no answer' score
-      tmpScore = _tikitResolver.Resolve("[SQL: SELECT Score FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-Empty)' AND QuestionID = {0}]".format(tmpQID))
-      tmpEC_Count = _tikitResolver.Resolve("[SQL: SELECT COUNT(EmailComment) FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-Empty)' AND QuestionID = {0}]".format(tmpQID))
-      if int(tmpEC_Count) == 0:
-        tmpEC = ''
-      else:
-        tmpEC = _tikitResolver.Resolve("[SQL: SELECT ISNULL(EmailComment, '') FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-Empty)' AND QuestionID = {0}]".format(tmpQID))
-    else:
-      tmpScore = _tikitResolver.Resolve("[SQL: SELECT Score FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-NotEmpty)' AND QuestionID = {0}]".format(tmpQID))
-      tmpEC_Count = _tikitResolver.Resolve("[SQL: SELECT COUNT(EmailComment) FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-NotEmpty)' AND QuestionID = {0}]".format(tmpQID))
-      if int(tmpEC_Count) == 0:
-        tmpEC = ''
-      else:
-        tmpEC = _tikitResolver.Resolve("[SQL: SELECT ISNULL(EmailComment, '') FROM Usr_MRA_TemplateAs WHERE GroupName = '(TextBox)' AND AnswerText = '(TextBox-NotEmpty)' AND QuestionID = {0}]".format(tmpQID))
-    updateSQL += "tbAnswerText = '" + str(newTextVal) + "', "
-    
-  else:  
-    # lookup answer index and score
-    if cbo_MRA_SelectedComboAnswer.SelectedIndex == -1:
-      tmpAnsID = -1
-      tmpScore = 0
-      return
-    else:
-      newTextVal = cbo_MRA_SelectedComboAnswer.SelectedItem['Text']
-      tmpAnsID = cbo_MRA_SelectedComboAnswer.SelectedItem['ID']
-      tmpScore = cbo_MRA_SelectedComboAnswer.SelectedItem['Score']
-      tmpEC = cbo_MRA_SelectedComboAnswer.SelectedItem['EmailComment']
-      
-  #MessageBox.Show("rowID: " + str(rowID) + "\nNewTextVal: " + str(newTextVal))
-  #MessageBox.Show("tmpAnsID: " + str(tmpAnsID) + "\ntmpScore: " + str(tmpScore))
-  if len(tmpEC) > 0:
-    tmpEC = tmpEC.replace("'", "''")
-  
-  tmpNotes = tb_MRA_QNotes.Text if len(tb_MRA_QNotes.Text) > 0 else ''
-  tmpNotes = tmpNotes.replace("'", "''")
-  
-  updateSQL += "SelectedAnswerID = {0}, CurrentAnswerScore = {1}, EmailComment = '{2}', Notes = '{3}' WHERE ID = {4}]".format(tmpAnsID, tmpScore, tmpEC, tmpNotes, rowID)
-  canContinue = False
-  try:
-    _tikitResolver.Resolve(updateSQL)
-    canContinue = True
-  except:
-    MessageBox.Show("There was an error updating the answer (no updates made!), using SQL:\n" + updateSQL, "Error: MRA - Updating Answer...")
-    
-  if canContinue == True:
-    currDGindex = dg_MRA.SelectedIndex
-    MRA_UpdateTotalScore(s, event) 
-    refresh_MRA(s, event)
-    
-    if chk_MRA_AutoSelectNext.IsChecked == True:
-      MRA_AutoAdvance(currDGindex, s, event)
-    else:
-      dg_MRA.SelectedIndex = currDGindex
-  return
-  
-
-def GroupItems_SelectionChanged(s, event):
-  refresh_MRA(s, event)
-  dg_MRA.SelectedIndex = 0
-
+ 
 
 # # # #   END OF:   M A T T E R   R I S K   A S S E S S M E N T    TAB   # # # #
 
@@ -2718,19 +2833,6 @@ def update_FR_Stats(ov_ID='ID'):
 
 # # # #   C O R R E C T I V E   A C T I O N S   (ON FILE REVIEW TAB)  # # # #
   
-
-def tog_Test_CorrectiveActions(s, event):
-  ###  THIS WAS JUST A TEST TO SEE IF WE CAN ADJUST THE GRID-WIDTH AND IT APPEARS WE CAN (with added 'from System.Windows import GridLength, GridUnitType')
-
-  if tog_TEST_CorrActions.IsChecked == True:
-    tmpContent = "Hide Corrective Actions Area"
-  else:
-    tmpContent = "Show Corrective Actions Area"
-    
-  tog_TEST_CorrActions.Content = tmpContent
-  return
-  
-
 def txt_CorractiveActionTaken_LostFocus(s, event):
   # This will commit any update to the database
   #! Linked to XAML control.event: txt_CorractiveActionTaken.LostFocus
@@ -3333,9 +3435,9 @@ def dg_MRAFR_ReSaveEmailToCase(s, event):
     MessageBox.Show("Nothing selected to save to case!", "Error: Resave selected item to case...")
     return
 
-  tmpID = dg_MRAFR.SelectedItem['ID']
+  tmpID = dg_MRAFR.SelectedItem['mraID']
   tmpType = dg_MRAFR.SelectedItem['Type']
-  tmpName = dg_MRAFR.SelectedItem['Desc']
+  tmpName = dg_MRAFR.SelectedItem['Name']
   tmpStatus = dg_MRAFR.SelectedItem['Status']
 
   # alert user and exit funtion if status is 'Draft' or 'In Progress'
@@ -3399,7 +3501,6 @@ lbl_ClientName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ClientName
 
 ## O V E R V I E W   - TAB ##
 dg_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAFR')
-dg_MRAFR.CellEditEnding += dg_MRAFR_CellEditEnding
 dg_MRAFR.SelectionChanged += dg_MRAFR_SelectionChanged
 lbl_MRAFR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_ID')
 lbl_MRAFR_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_Name')
@@ -3415,8 +3516,6 @@ btn_Edit_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Edit_MRAFR
 btn_Edit_MRAFR.Click += dg_MRAFR_EditSelected
 btn_HOD_Approval_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_HOD_Approval_MRA')
 btn_HOD_Approval_MRA.Click += btn_MRA_HOD_Approve
-btn_HOD_Approval_MRA1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_HOD_Approval_MRA1')
-btn_HOD_Approval_MRA1.Click += btn_MRA_HOD_Approve1
 btn_DeleteSelected_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelected_MRAFR')
 btn_DeleteSelected_MRAFR.Click += dg_MRAFR_DeleteSelected
 #btn_DeleteSelected_MRAFR.Click += lambda s, event: (test_dgItem_DeleteSelected(childDeletes = [{'table': 'Usr_MRA_Detail','foreignKey': 'OV_ID','conditions': {'EntityRef': _tikitEntity,'MatterNo': _tikitMatter}}], dgControl=dg_MRAFR, tableToUpdate='Usr_MRA_Overview', primaryKeyColName='ID', displayOrderColName='', keyColumns={'EntityRef': _tikitEntity, 'MatterNo': _tikitMatter}, selectedColumns={'ID': 'ID', 'Name': 'Desc'}, typeFilterColName='', typeFilterVal=0), dg_MRAFR_Refresh(s, event))
@@ -3454,49 +3553,49 @@ btn_UpdateReviewerWithActionTaken.Click += FR_UpdateReviewerWithActionTaken_Clic
 
 
 ##   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
-btn_MRA_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_BackToOverview')
-btn_MRA_BackToOverview.Click += MRA_BackToOverview
-btn_MRA_SaveAsDraft = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_SaveAsDraft')
-btn_MRA_SaveAsDraft.Click += MTA_SaveAsDraft
-btn_MRA_Submit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_Submit')
-btn_MRA_Submit.Click += MRA_SaveAsFinalSubmit
-btn_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_BackToOverview')
-btn_BackToOverview.Click += MRA_BackToOverview
+lbl_MRA_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Status')
+stk_RiskInfo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_RiskInfo')
+lbl_MRA_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Score')
+lbl_MRA_RClabel = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RClabel')
+lbl_MRA_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategory')
+lbl_MRA_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategoryID')
 lbl_TotalQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_TotalQs')
 lbl_TotalAnswered = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_TotalAnswered')
 
-stk_RiskInfo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_RiskInfo')
+btn_MRA_SaveAsDraft = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_SaveAsDraft')
+btn_MRA_SaveAsDraft.Click += btn_MRA_SaveAsDraft_Click
+btn_MRA_Submit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_Submit')
+btn_MRA_Submit.Click += btn_MRA_Submit_Click
+btn_MRA_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_BackToOverview')
+btn_MRA_BackToOverview.Click += btn_MRA_BackToOverview_Click
+btn_HOD_Approval_MRA1 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_HOD_Approval_MRA1')
+btn_HOD_Approval_MRA1.Click += btn_HOD_Approval_MRA1_Click
+
 tb_DaysUntilLocked = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_DaysUntilLocked')
 tb_MatterWillBeLockedMsg = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MatterWillBeLockedMsg')
+
 lbl_TimeEntered = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_TimeEntered')
+
 lbl_MRA_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_ID')
 lbl_MRA_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Name')
-lbl_MRA_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Status')
-lbl_MRA_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Score')
-lbl_MRA_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategory')
-lbl_MRA_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategoryID')
-lbl_MRA_RClabel = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RClabel')
+lbl_MRA_TemplateID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_TemplateID')
+lbl_ScoreTrigger_Medium = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ScoreTrigger_Medium')
+lbl_ScoreTrigger_High = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ScoreTrigger_High')
 
 tb_NoMRA_Qs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_Qs')
 grid_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_MRA')
 dg_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRA')
-dg_MRA.SelectionChanged += MRA_SelectionChanged
-lbl_MRA_DGID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_DGID')
-lbl_MRA_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_CurrVal')
-chk_MRA_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRA_AutoSelectNext')
+dg_MRA.SelectionChanged += dg_MRA_SelectionChanged
 
-dg_GroupItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems')
-dg_GroupItems.SelectionChanged += GroupItems_SelectionChanged
-tb_MRA_QestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_QestionText')
-cbo_MRA_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRA_SelectedComboAnswer')
-cbo_MRA_SelectedComboAnswer.DropDownClosed += MRA_SaveAnswer
-tb_MRA_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_SelectedTextAnswer')
-tb_MRA_SelectedTextAnswer.LostFocus += MRA_SaveAnswer
-btn_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_SaveAnswer')
-btn_MRA_SaveAnswer.Click += MRA_SaveAnswer
 grp_MRA_SelectedQuestionArea = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grp_MRA_SelectedQuestionArea')
+chk_MRA_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRA_AutoSelectNext')
+cbo_MRA_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRA_SelectedComboAnswer')
+#cbo_MRA_SelectedComboAnswer.DropDownClosed += MRA_SaveAnswer
+cbo_MRA_SelectedComboAnswer.SelectionChanged += cbo_MRA_SelectedComboAnswer_SelectionChanged
 tb_MRA_QNotes = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_QNotes')
-tb_MRA_QNotes.LostFocus += MRA_SaveAnswer
+#tb_MRA_QNotes.LostFocus += MRA_SaveAnswer
+btn_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_SaveAnswer')
+btn_MRA_SaveAnswer.Click += btn_MRASaveAnswer_Click
 
 
 ##   F I L E   R E V I E W   - TAB ##
