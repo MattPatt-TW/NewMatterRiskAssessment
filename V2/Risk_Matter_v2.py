@@ -20,7 +20,7 @@ from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
 from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
 from System.Collections.ObjectModel import ObservableCollection
-from System.Windows import Controls, Forms, LogicalTreeHelper
+from System.Windows import Controls, Forms, LogicalTreeHelper, RoutedEventHandler
 from System.Windows import Data, UIElement, Visibility, Window, GridLength, GridUnitType
 from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, DataGridCellInfo
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
@@ -95,6 +95,10 @@ def myOnLoadEvent(s, event):
   if _tikitUser not in RiskAndITUsers:
     sep_Delete.Visibility = Visibility.Collapsed
     btn_DeleteSelected_MRAFR.Visibility = Visibility.Collapsed
+
+  # wire up new 'New' button popup
+  icTemplates.AddHandler(Button.ClickEvent,
+        RoutedEventHandler(TemplateButton_Click))
 
   showHide_ApproveMRAbutton(s, event)
   POPULATE_AGENDA_NAMES(_tikitSender, 'onLoad')
@@ -408,43 +412,60 @@ def dg_MRAFR_Refresh(s, event):
 
   # SQL to populate datagrid
   getTableSQL = """WITH MatterHeader AS (
-                        SELECT MH.mraID, MH.Name, MH.Status, MH.ApprovedByHOD, MH.DateAdded, 
-                          MH.ExpiryDate, MH.SubmittedBy, MH.SubmittedDate, MH.TemplateID
-                        FROM Usr_MRAv2_MatterHeader MH 
-                        WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo}
-                      ), 
+                          SELECT MH.mraID, MH.Name, MH.Status, MH.ApprovedByHOD, MH.DateAdded,
+                                MH.ExpiryDate, MH.SubmittedBy, MH.SubmittedDate, MH.TemplateID
+                          FROM Usr_MRAv2_MatterHeader MH
+                          WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo  = {matNo}
+                      ),
                       AnsweredQuestions AS (
-                        SELECT MD.mraID, MD.QuestionGroup, MD.QuestionID, MD.AnswerID, MD.Score, 
-                            MD.Comments, MD.DisplayOrder, MD.EmailComment
-                        FROM Usr_MRAv2_MatterDetails MD 
-                        WHERE MD.EntityRef = '{entRef}' AND MD.MatterNo = {matNo}
-                      ), 
-                      TemplateHeader AS (
-                        SELECT TD.TemplateID, TD.Name, TD.ScoreMediumTrigger, TD.ScoreHighTrigger
-                        FROM Usr_MRAv2_TemplateDetails TD
-                          INNER JOIN MatterHeader MH ON TD.TemplateID = MH.TemplateID
-                      ), 
+                          SELECT MD.mraID, MD.QuestionID, MD.AnswerID, MD.Score
+                          FROM Usr_MRAv2_MatterDetails MD
+                          WHERE MD.EntityRef = '{entRef}' AND MD.MatterNo  = {matNo}
+                      ),
                       TemplateStructure AS (
-                        SELECT T.TemplateID, T.QuestionGroup, T.QuestionID, 
-                            T.AnswerID, T.QuestionOrder, T.Score, 
-                            TQ.QuestionText, TA.AnswerText
-                        FROM Usr_MRAv2_Templates T 
-                          JOIN Usr_MRAv2_Question TQ ON T.QuestionID = TQ.QuestionID
-                          JOIN Usr_MRAv2_Answer TA ON T.AnswerID = TA.AnswerID
+                          SELECT T.TemplateID, T.QuestionID
+                          FROM Usr_MRAv2_Templates T
                           INNER JOIN MatterHeader MH ON T.TemplateID = MH.TemplateID
+                      ),
+                      AnswerAgg AS (
+                          SELECT mraID,
+                                SUM(ISNULL(Score,0))                  AS Score,
+                                COUNT(*)                              AS AnswerCount,
+                                COUNT(DISTINCT QuestionID)            AS AnsweredQuestionCount
+                          FROM AnsweredQuestions
+                          GROUP BY mraID
+                      ),
+                      TemplateAgg AS (
+                          SELECT TemplateID,
+                                COUNT(DISTINCT QuestionID)            AS QCount
+                          FROM TemplateStructure
+                          GROUP BY TemplateID
+                      ),
+                      TemplateHeader AS (
+                          SELECT TD.TemplateID,
+                                MAX(TD.ScoreMediumTrigger) AS ScoreTriggerMed,
+                                MAX(TD.ScoreHighTrigger)   AS ScoreTriggerHigh
+                          FROM Usr_MRAv2_TemplateDetails TD
+                          GROUP BY TD.TemplateID
                       )
-                    SELECT '00-mraID' = MH.mraID, '01-TemplateID' = MH.TemplateID,
-                           '02-Name' = MH.Name, '03-ExpiryDate' = MH.ExpiryDate, 
-                           '04-Score' = (SELECT ISNULL(SUM(Score), 0) FROM AnsweredQuestions WHERE mraID = MH.mraID),
-                           '05-RiskRating' = 0, '06-ApprovedByHod' = MH.ApprovedByHOD, 
-                           '07-QCount' = (SELECT COUNT(DISTINCT QuestionID) FROM TemplateStructure WHERE TemplateID = MH.TemplateID), 
-                           '08-OS Count' = ((SELECT COUNT(DISTINCT QuestionID) FROM TemplateStructure WHERE TemplateID = MH.TemplateID) -
-                                     ISNULL((SELECT COUNT(DISTINCT AnswerID) FROM AnsweredQuestions WHERE AnsweredQuestions.mraID = MH.mraID), 0)), 
-                           '09-Status' = MH.Status, '10-SubbedBy' = MH.SubmittedBy, '11-SubbedDate' = MH.SubmittedDate, 
-                           '12-ScoreTriggerMed' = TH.ScoreMediumTrigger, '13-ScoreTriggerHigh' = TH.ScoreHighTrigger, '14-DateAdded' = MH.DateAdded
-                    FROM MatterHeader MH
-                      LEFT OUTER JOIN TemplateHeader TH    ON MH.TemplateID = TH.TemplateID 
-                    ORDER BY MH.DateAdded DESC """.format(entRef=_tikitEntity, matNo=_tikitMatter)
+                  SELECT '00-mraID' = MH.mraID, '01-TemplateID' = MH.TemplateID, 
+                         '02-Name' = MH.Name, '03-ExpiryDate' = MH.ExpiryDate,
+                         '04-Score' = ISNULL(AA.Score, 0),
+                         '05-RiskRating' = CASE WHEN ISNULL(AA.Score, 0) < TH.ScoreTriggerMed THEN 1 
+                                                WHEN ISNULL(AA.Score, 0) >= TH.ScoreTriggerHigh THEN 3
+                                                ELSE 2 END,
+                          '06-ApprovedByHOD' = MH.ApprovedByHOD,
+                          '07-QCount' = TA.QCount,
+                          '08-OS Count' = TA.QCount - ISNULL(AA.AnswerCount, 0),
+                          '09-Status' = MH.Status,
+                          '10-SubmittedBy' = MH.SubmittedBy, '11-SubmittedDate' = MH.SubmittedDate, 
+                          '12-ScoreTriggerMed' = TH.ScoreTriggerMed, '13-ScoreTriggerHigh' = TH.ScoreTriggerHigh, 
+                          '14-DateAdded' = MH.DateAdded
+                  FROM MatterHeader MH
+                    LEFT JOIN AnswerAgg      AA ON AA.mraID      = MH.mraID
+                    LEFT JOIN TemplateAgg    TA ON TA.TemplateID = MH.TemplateID
+                    LEFT JOIN TemplateHeader TH ON TH.TemplateID = MH.TemplateID
+                  ORDER BY MH.DateAdded DESC;""".format(entRef=_tikitEntity, matNo=_tikitMatter)
   
   tmpText = "'Matter Risk Assessment(s)' or 'File Review(s)'"
     
@@ -469,7 +490,7 @@ def dg_MRAFR_Refresh(s, event):
           iOSQs = 0 if dr.IsDBNull(8) else dr.GetValue(8) 
           iStatus = '' if dr.IsDBNull(9) else dr.GetString(9)
           iSubBy = '' if dr.IsDBNull(10) else dr.GetString(10)
-          iSubOn = '' if dr.IsDBNull(11) else dr.GetValue(11)
+          iSubOn = 0 if dr.IsDBNull(11) else dr.GetValue(11)
           iScoreTrigMed = 0 if dr.IsDBNull(12) else dr.GetValue(12)
           iScoreTrigHigh = 0 if dr.IsDBNull(13) else dr.GetValue(13)
           iDateAdded = 0 if dr.IsDBNull(14) else dr.GetValue(14)
@@ -538,6 +559,85 @@ def dg_MRAFR_SelectionChanged(s, event):
     
   showHide_ApproveMRAbutton(s, event)
   return
+
+class TemplateOption(object):
+  def __init__(self, template_id, name):
+      self.TemplateID = template_id
+      self.Name = name
+
+def load_templates_for_case_type(matterCaseType):
+  sql = """SELECT TD.TemplateID, TD.Name
+           FROM Usr_MRAv2_TemplateDetails TD
+               JOIN Usr_MRAv2_CaseTypeDefaults CTD ON TD.TemplateID = CTD.TemplateID
+           WHERE CTD.CaseTypesCode = {CaseType}
+           ORDER BY TD.Name
+        """.format(CaseType=matterCaseType)
+
+  items = ObservableCollection[object]()
+  # standard P4W 'execute' SQL pattern
+  _tikitDbAccess.Open(sql)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        template_id = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+        name = '' if dr.IsDBNull(1) else dr.GetString(1)
+        items.Add(TemplateOption(template_id, name))
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  return items
+
+def btnNew_Click(sender, args):
+  # ToggleButton behaviour: use IsChecked to decide open state
+  is_open = bool(sender.IsChecked)
+
+  if is_open:
+    matterCaseType = tb_CaseTypeRef.Text
+    templates = load_templates_for_case_type(matterCaseType)
+
+    # Bind list
+    icTemplates.ItemsSource = templates
+
+    # Open popup
+    popTemplates.IsOpen = True
+  else:
+    popTemplates.IsOpen = False
+
+def TemplateButton_Click(sender, args):
+  # Because we used AddHandler on icTemplates, sender may be the ItemsControl.
+  # args.OriginalSource should be the actual Button (or something inside it).
+
+  btn = args.OriginalSource
+  # Sometimes OriginalSource is a TextBlock inside the Button; walk up to Button
+  while btn is not None and not isinstance(btn, Button):
+    btn = getattr(btn, "TemplatedParent", None) or getattr(btn, "Parent", None)
+
+  if btn is None:
+    return
+
+  template_id = btn.Tag
+  try:
+    template_id = int(template_id)
+  except:
+    pass
+
+  # Call your existing create/new function
+  #MRA_AddNew(template_id)
+  MessageBox.Show("You clicked to add a new MRA with TemplateID: {0}".format(template_id), "DEBUG: Add new MRA")
+
+  # Close popup
+  popTemplates.IsOpen = False
+
+def CancelPopup_Click(sender, args):
+  popTemplates.IsOpen = False
+
+def popTemplates_Closed(sender, args):
+  # Ensure the toggle button pops back up
+  if btnNew is not None:
+    btnNew.IsChecked = False
+
+# - END OF 'ADD NEW' Button controls #
 
 
 def dg_MRAFR_AddNewMRA(s, event):
@@ -773,7 +873,7 @@ def btn_CopySelected_MRAFR_Click(s, event):
   
   idItemToCopy = dg_MRAFR.SelectedItem['mraID']
 
-  newMRAid = createNewMRA_BasedOnCurrent(idItemToCopy=idItemToCopy, _tikitEntity=_tikitEntity, _tikitMatter=_tikitMatter)
+  newMRAid = createNewMRA_BasedOnCurrent(idItemToCopy=idItemToCopy, entRef=_tikitEntity, matNo=_tikitMatter)
 
   if int(newMRAid) > 0:
     # refresh main list
@@ -2089,24 +2189,12 @@ def btn_MRA_BackToOverview_Click(s, event):
   return
 
 def MRA_BackToOverview():
-  # update 'MinsToComplete' field (we want to track how long it takes to complete these)
-  if len(str(lbl_TimeEntered.Content)) > 0:
-    # get the time we entered screen
-    timeEntered = lbl_TimeEntered.Content
-  
-    # get current value for field
-    existingMins = runSQL("SELECT ISNULL(MinsToComplete, 0) FROM Usr_MRA_Overview WHERE ID = {0}".format(lbl_MRA_ID.Content))
-    
-    # calculate mins spent
-    thisSessionMins = runSQL("SELECT ISNULL(DATEDIFF(minute, '{0}', GETDATE()), 0)".format(timeEntered))
-    #MessageBox.Show("Existing Mins: " + str(existingMins) + "\nThis Session Mins: " + str(thisSessionMins), "DEBUG")
-    
-    newTotalSpent = int(existingMins) + int(thisSessionMins)
-    #MessageBox.Show("New Total Time Spent: " + str(newTotalSpent), "DEBUG")
-    
-    # finally update timer with new mins
-    runSQL("UPDATE Usr_MRA_Overview SET MinsToComplete = {0} WHERE ID = {1}".format(newTotalSpent, lbl_MRA_ID.Content))
-    
+  # formally we were also setting the 'MinsToComplete' in 'Usr_MRA_Overview' table when user clicked 'Save as Draft' or 'Submit',
+  # but as I didn't add field into new 'Usr_MRAv2_MatterHeader' table, we're not doing at the mo. 
+  # If we were to re-add, I'd recommend we calculate 'seconds' rather than 'minutes', because it would be a lot more accurate (eg: 
+  #  on the 'minutes' approach, it only counts whole minutes, so if took you 59 seconds, it would register 0 etc!)
+  # I initially thought storing 'minutes' would be easier for reporting, however, due to accuracy issue, I think it's better to store 'seconds'
+  #  and then just convert to minutes (rounding as needed) in any reports/dashboard etc. that we build on top.
   ti_Main.Visibility = Visibility.Visible
   ti_Main.IsSelected = True
   ti_MRA.Visibility = Visibility.Collapsed
@@ -2217,7 +2305,7 @@ def save_matterdetails_to_db(store_unanswered=True):
 
   # Execute as one batch (preferred)
   batch_sql = ";\r\n".join(sql_batch) + ";"
-  runSQL(batch_sql, useAltResolver=False)
+  runSQL(batch_sql)
   return
 
 
@@ -2225,8 +2313,7 @@ def btn_MRA_SaveAsDraft_Click(s, event):
   # This function will return back to the 'Overview' screen and save the MRA in a 'draft' (incomplete) state
   
   # save current answers to db:
-  save_matterdetails_to_db(store_unanswered=True)
-
+  save_matterdetails_to_db(store_unanswered=False)
 
   # update 'Status'
   MRA_setStatus(lbl_MRA_ID.Content, 'Draft')
@@ -2423,7 +2510,7 @@ def btn_MRA_Submit_Click(s, event):
                                mraID=mraID, entRef=_tikitEntity, matNo=_tikitMatter)
 
   # execute header update
-  runSQL(updateHeaderSQL, useAltResolver=False)
+  runSQL(updateHeaderSQL)
   # note: no longer using separate 'MRA_setStatus' function here as we also need to update RiskRating at the same time, 
   # and it's more efficient to do in one SQL statement. The only other thing that function did was to put the new status
   # in the 'lbl_MRA_Status' label, but since we're going back to the overview immediately after, there's no need to update
@@ -3432,10 +3519,10 @@ def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
   newName = runSQL(newNameSQL)
 
   # create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
-  newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader(EntityRef, MatterNo, TemplateID, Name, Score, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
-                       OUTPUT Usr_MRAv2_MatterHeader.mraID 
-                       SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', 0, RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
-                       GETDATE(), (SELECT COUNT(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE ID = {idItemToCopy}  
+  newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
+                       OUTPUT INSERTED.mraID 
+                       SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
+                       GETDATE(), (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE mraID = {idItemToCopy}  
                     """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
 
   try:
@@ -3663,6 +3750,15 @@ dg_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAFR')
 dg_MRAFR.SelectionChanged += dg_MRAFR_SelectionChanged
 lbl_MRAFR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_ID')
 lbl_MRAFR_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_Name')
+
+btnNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btnNew')
+btnNew.Click += btnNew_Click
+popTemplates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'popTemplates')
+popTemplates.Closed += popTemplates_Closed
+icTemplates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'icTemplates')
+btnCancel = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btnCancel')
+btnCancel.Click += CancelPopup_Click
+
 btn_AddNew_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_MRA')
 btn_AddNew_MRA.Click += dg_MRAFR_AddNewMRA
 btn_AddNew_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_FR')

@@ -179,7 +179,7 @@
             <Canvas>
               <ToolBarTray IsLocked="True">
                 <ToolBar  Background="Transparent" Width="751">
-                  <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                  <StackPanel Orientation="Vertical" VerticalAlignment="Center"  Visibility="Collapsed">
                     <Button x:Name="btn_AddNew_MRA" Background="{x:Null}" BorderBrush="{x:Null}">
                       <StackPanel Orientation="Horizontal">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
@@ -196,6 +196,56 @@
                       </StackPanel>
                     </Button>
                   </StackPanel>
+
+                  <Separator/>
+                  <ToggleButton x:Name="btnNew"
+                                Width="60">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                      <TextBlock Margin="3,4,3,4" Text="New..."  TextWrapping="Wrap" Width="Auto" TextAlignment="Center"/>
+                    </StackPanel>
+                  </ToggleButton>
+
+                  <!-- Popup anchored to the New button -->
+                  <Popup x:Name="popTemplates"
+                         PlacementTarget="{Binding ElementName=btnNew}"
+                         Placement="Bottom"
+                         StaysOpen="False"
+                         AllowsTransparency="True"
+                         PopupAnimation="Fade">
+
+                    <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="6"
+                            Background="White" Padding="10">
+                      <StackPanel MinWidth="260">
+
+                        <TextBlock Text="Add from template"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+
+                        <!-- Scroll if lots of templates -->
+                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                          <ItemsControl x:Name="icTemplates">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <!-- Show Name, keep TemplateID in Tag -->
+                                <Button Content="{Binding Name}"
+                                        Tag="{Binding TemplateID}"
+                                        Margin="0,0,0,6"
+                                        HorizontalAlignment="Stretch"/>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </ScrollViewer>
+
+                        <Separator Margin="0,8,0,8"/>
+
+                        <Button x:Name="btnCancel"
+                                Content="Cancel"
+                                HorizontalAlignment="Right"
+                                Width="80"/>
+                      </StackPanel>
+                    </Border>
+                  </Popup>
 
                   <Separator/>
                   <Button x:Name="btn_CopySelected_MRAFR">
