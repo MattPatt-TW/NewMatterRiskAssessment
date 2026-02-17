@@ -45,6 +45,13 @@ _preview_combo_syncing = False   # temp variable to avoid triggering 'SelectionC
 MRA_MATTER_SELECTIONS_BY_QID = {}   # qid -> {"AnswerID": int|None, "Comments": str}
 
 UNSELECTED = -1
+
+# Standardised MRA Outcomes
+OUTCOME_AUTO_APPROVE = "AUTO_APPROVE"
+OUTCOME_REQUEST_HOD  = "REQUEST_HOD"
+OUTCOME_SUBMIT_STD   = "SUBMIT_STD"
+OUTCOME_ON_BEHALF    = "SUBMIT_ON_BEHALF"
+
 # Global Variables for session tokens
 token1 = 0
 
@@ -57,7 +64,7 @@ def myOnLoadEvent(s, event):
   global UserSelfApproves
   global UserIsAnApprovalUser
   global UserCanReviewFiles
-  UserIsHod = canUserApproveFeeEarner(UserToCheck = _tikitUser, FeeEarner = lbl_FERef.Content)
+  UserIsHod = canUserApproveFeeEarner(UserToCheck = _tikitUser, FeeEarner = tb_FERef.Text)
   UserSelfApproves = canApproveSelf(userToCheck = _tikitUser)
   UserIsAnApprovalUser = isUserAnApprovalUser(userToCheck = _tikitUser)
   UserCanReviewFiles = canUserReviewFiles(userToCheck = _tikitUser)
@@ -288,7 +295,7 @@ def showHide_ApproveMRAbutton(s, event):
     isApprovalUser = isUserAnApprovalUser(userToCheck=currentUser)
         
     # Check if the current user can approve the fee earner
-    if canUserApproveFeeEarner(UserToCheck=currentUser, FeeEarner=lbl_FERef.Content):
+    if canUserApproveFeeEarner(UserToCheck=currentUser, FeeEarner=tb_FERef.Text):
       btn_HOD_Approval_MRA.IsEnabled = isApprovalUser
       btn_HOD_Approval_MRA1.IsEnabled = isApprovalUser
       return
@@ -305,6 +312,8 @@ def setMasterRiskStatus(s, event):
   tmpSQL = "SELECT CASE RiskOpening WHEN 1 THEN 'Low' WHEN 2 THEN 'Medium' WHEN 3 THEN 'High' ELSE 'NotSet' END FROM Matters WHERE EntityRef = '{0}' AND Number = {1}".format(_tikitEntity, _tikitMatter) 
   lbl_OV_RiskStatus.Content = runSQL(tmpSQL, False, '', '')
   
+  # display or hide the 'advisory' text for High Risk matters as appropriate
+  #  (this just advises that for HighRisk matters, a new one is req each month)
   if lbl_OV_RiskStatus.Content == 'High':
     lbl_RiskScore_AdvisoryText.Visibility = Visibility.Visible
   else:
@@ -316,7 +325,7 @@ def MRA_setStatus(idToUpdate, newStatus):
   # This function will set the status of the active MRA accordingly
   
   if int(idToUpdate) > 0 and len(newStatus) > 0:
-    mySQL = "UPDATE Usr_MRA_Overview SET Status = '{0}', SubmittedBy = '{1}', SubmittedDate = GETDATE() WHERE ID = {2}".format(newStatus, _tikitUser, idToUpdate)
+    mySQL = "UPDATE Usr_MRAv2_MatterHeader SET Status = '{0}', SubmittedBy = '{1}', SubmittedDate = GETDATE() WHERE mraID = {2}".format(newStatus, _tikitUser, idToUpdate)
     runSQL(mySQL, True, "There was an error updating the Status for this Matter Risk Assessment", "Error: MRA_setStatus")
     lbl_MRA_Status.Content = newStatus
   return
@@ -573,7 +582,7 @@ def dg_MRAFR_AddNewMRA(s, event):
   # determine what to do based on count of templates found
   if int(countOfTemplates) == 0:
     # nothing to add so quit function now
-    MessageBox.Show("Cannot add as there doesn't appear to be any Matter Risk Assessment templates setup for this matters' Case Type ({0} - {1})!".format(mCaseType, lbl_CaseType.Content), msgBoxTitle)
+    MessageBox.Show("Cannot add as there doesn't appear to be any Matter Risk Assessment templates setup for this matters' Case Type ({0} - {1})!".format(mCaseType, tb_CaseType.Text), msgBoxTitle)
     return
   elif int(countOfTemplates) == 1:
     # only 1 so add the template ID to our list and disable prompt asking to confirm to add
@@ -672,7 +681,7 @@ def dg_MRAFR_AddNewFR(s, event):
   # ! Linked to XAML control.event: btn_AddNew_FR.Click
 
   # First need to lookup case type on matter to see which template we need
-  tmpSQL = "[SQL: SELECT TOP 1 TemplateID FROM Usr_MRA_CaseType_Defaults WHERE CaseTypeID = {0} AND TypeName = 'File Review']".format(lbl_CaseTypeRef.Content)
+  tmpSQL = "[SQL: SELECT TOP 1 TemplateID FROM Usr_MRA_CaseType_Defaults WHERE CaseTypeID = {0} AND TypeName = 'File Review']".format(tb_CaseTypeRef.Text)
   try:
     templateID_forMatterCaseType = _tikitResolver.Resolve(tmpSQL)
     #MessageBox.Show(templateID_forMatterCaseType)
@@ -746,8 +755,11 @@ def dg_MRAFR_AddNewFR(s, event):
   
   return
   
-def dg_MRAFR_CopySelected(s, event):
+def btn_CopySelected_MRAFR_Click(s, event):
   # This function will DUPLICATE the currently selected item (including the questions), AFTER confirmation from user
+  #! Note: 17/02/2026: Been re-written to use 'createNewMRA_BasedOnCurrent' function instead as simpler 
+  #!       Only diff here is that we want to auto-select this item in the DataGrid after creation. 
+  #!       Our new function will return the mraID of the added row (or -1 if error creating header, and -2 if error copying questions) so we can use this to select the new item in the grid after creation.
    
   if dg_MRAFR.SelectedIndex == -1:
     MessageBox.Show("Nothing selected to copy!", "Error: Duplicate Selected item...")
@@ -760,50 +772,20 @@ def dg_MRAFR_CopySelected(s, event):
     return
   
   idItemToCopy = dg_MRAFR.SelectedItem['mraID']
-  nameToCopy = dg_MRAFR.SelectedItem['Name']
-  mra_or_fr = str(dg_MRAFR.SelectedItem['Type'])
-  mra_or_fr = mra_or_fr.replace("Matter Risk Assessment", "NMRA")
-  mra_or_fr = mra_or_fr.replace("File Review", "FR")
-  # get next number for this particular type
-  nextNum = get_NextMRAFR_NumberForMatter(ovID=idItemToCopy)
 
-  # Firstly, copy main template and get new ID
-  tempName = "{0} - {1} (copy of {2})".format(mra_or_fr, nextNum, idItemToCopy)
-  insertSQL = """INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded) 
-                  SELECT '{0}', {1}, TypeID, DATEADD(day, 14, GETDATE()), '{2}', Score, RiskRating, 'N', GETDATE() 
-                  FROM Usr_MRA_Overview WHERE ID = {3}""".format(_tikitEntity, _tikitMatter, tempName, idItemToCopy)
-  try: 
-    _tikitResolver.Resolve("[SQL: " + insertSQL + "]")
-  except:
-    MessageBox.Show("There was an error duplicating main 'overview' row, using SQL:\n{0}".format(insertSQL), "Error: Duplicate selected item...")
-    return
-  
-  # now get ID of added row...
-  rowID = _tikitResolver.Resolve("[SQL: SELECT TOP 1 ID FROM Usr_MRA_Overview WHERE LocalName = '{0}' AND EntityRef = '{1}' AND MatterNo = {2} ORDER BY DateAdded DESC]".format(tempName, _tikitEntity, _tikitMatter))
-  
-  # Then copy over questions (but noting the new ID)
-  if int(rowID) > 0:
-    copyQ_SQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, CorrActionID) 
-                  SELECT '{0}', {1}, {2}, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, Null 
-                  FROM Usr_MRA_Detail WHERE OV_ID = {3}""".format(_tikitEntity, _tikitMatter, rowID, idItemToCopy) 
-    try:
-      _tikitResolver.Resolve("[SQL: " + copyQ_SQL + "]")
-      MessageBox.Show("Successfully copied '{0}'".format(nameToCopy))
-      dg_MRAFR.Focus()
-      dg_MRAFR.SelectedIndex = (dg_MRAFR.Items.Count - 1)
-    except:
-      MessageBox.Show("An error occurred copying the Questions, using SQL:\n{0}".format(copyQ_SQL), "Error: Duplicate selected item - Copying Questions...")
-      return
+  newMRAid = createNewMRA_BasedOnCurrent(idItemToCopy=idItemToCopy, _tikitEntity=_tikitEntity, _tikitMatter=_tikitMatter)
 
-  # refresh main list
-  dg_MRAFR_Refresh(s, event)
-  # and select newly added item
-  for x in dg_MRAFR.Items:
-    if x['Desc'] == tempName:
-      dg_MRAFR.SelectedItem = x
-      # and scroll into view
-      dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
-      break
+  if int(newMRAid) > 0:
+    # refresh main list
+    dg_MRAFR_Refresh(s, event)
+    # and select newly added item
+    for x in dg_MRAFR.Items:
+      if x['mraID'] == newMRAid:
+        dg_MRAFR.SelectedItem = x
+        # and scroll into view
+        dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
+        break
+
   return  
 
   
@@ -880,7 +862,7 @@ def dg_MRAFR_ViewSelected(s, event):
   return
   
   
-def dg_MRAFR_EditSelected(s, event):
+def btn_Edit_MRAFR_Click(s, event):
   # This function will load the 'Questions' tab for the selected item 
 
   # Reset session token
@@ -900,8 +882,8 @@ def dg_MRAFR_EditSelected(s, event):
   #MessageBox.Show("tmpType: " + str(tmpType) + "\ntmpName: " + str(tmpName) + "\ntmpID: " + str(tmpID), "DEBUG: Test Selected Values")
   
   if 'Matter Risk Assessment' in tmpType:
-    if _tikitUser != lbl_FERef.Content:
-      if canUserApproveFeeEarner(UserToCheck = _tikitUser, FeeEarner = lbl_FERef.Content) == False and canUserApproveFeeEarner(UserToCheck = lbl_FERef.Content, FeeEarner = _tikitUser) == False:
+    if _tikitUser != tb_FERef.Text:
+      if canUserApproveFeeEarner(UserToCheck = _tikitUser, FeeEarner = tb_FERef.Text) == False and canUserApproveFeeEarner(UserToCheck = tb_FERef.Text, FeeEarner = _tikitUser) == False:
         MessageBox.Show("Only the matter Fee Earner, or the Fee Earners' Approver(s) can edit!", "Error: Edit selected item...")
         return
 
@@ -964,7 +946,9 @@ def dg_MRAFR_EditSelected(s, event):
   return
 
 
-def btn_MRA_HOD_Approve(s, event):
+def btn_HOD_Approval_MRA_Click(s, event):
+  #! This is the 'Approval' button on the main 'Overview' tab (eg: so this function is tied to the DataGrid 'dg_MRAFR' and not the 'Questions' tab).
+  # - The button on the 'Questions' tab is linked to the 'btn_HOD_Approval_MRA1_Click' function below.
   # New button added for HOD to approve a High Risk MRA (no checks are made here as to whether user is a HOD because this is handled onload (eg: if user is not HOD, button remains disabled)
   if dg_MRAFR.SelectedIndex == -1:
     MessageBox.Show("Nothing selected to 'Approve'!", "Error: HOD Approval for High Risk matter...")
@@ -2129,9 +2113,121 @@ def MRA_BackToOverview():
   return
 
 
+def MRA_save_answers_to_db(vm):
+
+  if vm is None:
+    return
+  
+  # 1) flatten vm rows into a list that we can intert into Usr_MRAv2_MatterDetails; we only want to insert rows
+  #  for questions that have an answer selected (we can ignore unanswered questions, as they will just show as
+  #  blank in the datagrid, and we don't want to overwrite any existing answers with blanks)
+
+
+  # 2) we'll do this in a transaction, deleting existing records for this matter+mraID and then re-inserting
+  #  all selected answers (for simplicity - as opposed to trying to match and update/insert as needed)
+
+def flatten_matter_rows(store_unanswered=True):
+  # Returns list[dict] ready for INSERT into Usr_MRAv2_MatterDetails.
+  # Uses current on-screen order (MRA_QUESTIONS_LIST), so grouping won't break order.
+  rows = []
+
+  entity = str(_tikitEntity)  # 15-char
+  matter = to_int(_tikitMatter)
+  mra_id = to_int(lbl_MRA_ID.Content)
+
+  if not entity or matter <= 0 or mra_id <= 0:
+    raise Exception("Cannot save: missing Entity/Matter/mraID context.")
+
+  display = 1
+  for q in MRA_QUESTIONS_LIST:
+    qid = to_int(getattr(q, "QuestionID", 0))
+    if qid <= 0:
+      continue
+
+    group_name = getattr(q, "QuestionGroup", "") or ""
+    ans_obj = getattr(q, "SelectedAnswer", None)
+    aid = None if ans_obj is None else to_int(getattr(ans_obj, "AnswerID", None), 0)
+    score = 0 if ans_obj is None else to_int(getattr(ans_obj, "Score", 0), 0)
+    email_comment = "" if ans_obj is None else (getattr(ans_obj, "EmailComment", "") or "")
+    comments = getattr(q, "UserComment", "") or ""
+
+    if ans_obj is None and not store_unanswered:
+      # skip unanswered entirely
+      display += 1
+      continue
+
+    rows.append({
+      "EntityRef": entity,
+      "MatterNo": matter,
+      "mraID": mra_id,
+      "QuestionID": qid,
+      "AnswerID": (aid if (aid is not None and aid > 0) else None),
+      "Score": score,
+      "Comments": comments,
+      "DisplayOrder": display,
+      "EmailComment": email_comment,
+      "GroupName": group_name
+    })
+
+    display += 1
+
+  return rows
+
+def save_matterdetails_to_db(store_unanswered=True):
+  entity = str(_tikitEntity)
+  matter = to_int(_tikitMatter)
+  mra_id = to_int(lbl_MRA_ID.Content)
+
+  rows = flatten_matter_rows(store_unanswered=store_unanswered)
+
+  # Delete existing matter detail rows for this MRA instance
+  delete_sql = """DELETE FROM Usr_MRAv2_MatterDetails
+                  WHERE EntityRef = '{0}' AND MatterNo = {1} AND mraID = {2};""".format(
+                    sql_escape(entity), matter, mra_id
+                  )
+
+  sql_batch = [delete_sql]
+
+  if rows:
+    values_sql = []
+    for r in rows:
+      # AnswerID can be NULL (Draft/unanswered)
+      aid_sql = "NULL" if r["AnswerID"] is None else str(to_int(r["AnswerID"]))
+      values_sql.append(
+        "('{EntityRef}', {MatterNo}, {mraID}, '{QuestionGroup}', {QuestionID}, {AnswerID}, {Score}, '{Comments}', {DisplayOrder}, '{EmailComment}')".format(
+          EntityRef=sql_escape(r["EntityRef"]),
+          MatterNo=to_int(r["MatterNo"]),
+          mraID=to_int(r["mraID"]),
+          QuestionGroup=sql_escape(r["GroupName"]),
+          QuestionID=to_int(r["QuestionID"]),
+          AnswerID=aid_sql,
+          Score=to_int(r["Score"]),
+          Comments=sql_escape(r["Comments"]),
+          DisplayOrder=to_int(r["DisplayOrder"]),
+          EmailComment=sql_escape(r["EmailComment"])
+        )
+      )
+
+    insert_sql = (
+      "INSERT INTO Usr_MRAv2_MatterDetails "
+      "(EntityRef, MatterNo, mraID, QuestionGroup, QuestionID, AnswerID, Score, Comments, DisplayOrder, EmailComment) "
+      "VALUES {0};".format(", ".join(values_sql))
+    )
+    sql_batch.append(insert_sql)
+
+  # Execute as one batch (preferred)
+  batch_sql = ";\r\n".join(sql_batch) + ";"
+  runSQL(batch_sql, useAltResolver=False)
+  return
+
+
 def btn_MRA_SaveAsDraft_Click(s, event):
   # This function will return back to the 'Overview' screen and save the MRA in a 'draft' (incomplete) state
   
+  # save current answers to db:
+  save_matterdetails_to_db(store_unanswered=True)
+
+
   # update 'Status'
   MRA_setStatus(lbl_MRA_ID.Content, 'Draft')
   
@@ -2147,106 +2243,191 @@ def btn_MRA_SaveAsDraft_Click(s, event):
   return
 
 
-def btn_MRA_Submit_Click(s, event):
-  # This function will return back to the 'Overview' screen and save the MRA in a 'Complete' state
-  # Note: additional checks are made here to make sure every question has an answer
+def validate_all_answered():
+  # This function checks that every question has an answer selected; if any are missing, it returns False
+  # and a message listing the first few missing questions; if all are answered, it returns True and an empty message
+  missing = []
+  for q in MRA_QUESTIONS_LIST:
+    if getattr(q, "SelectedAnswer", None) is None:
+      missing.append(getattr(q, "QuestionText", ""))
+  if missing:
+    return (False, "Please answer all questions before submitting.\n\nFirst missing:\n• " + "\n• ".join(missing[:10]))
+  return (True, "")
 
-  mraID = lbl_MRA_ID.Content
-  feEmail = lbl_FE_Email.Content
-  feName = lbl_FE_Forename.Content
-  matDesc = lbl_MatterDesc.Content
-  matDesc = matDesc.replace("'", "''")
-  clName = lbl_ClientName.Content
-  clName = clName.replace("'", "''")
-  mraName = lbl_MRA_Name.Text
-  mraName = mraName.replace("'", "''")
-  ourRef = lbl_OurRef.Content
+# helper functions to avoid duplication with MRA Submit
+def is_high_risk():
+  # returns True/False based on whether the current risk category is 'High' - this is used to determine whether we need to trigger the HOD approval process or not
+  return str(lbl_MRA_RiskCategory.Content) == "High"
 
-  # NB only continue if every question has an answer...
-  countOSqS = runSQL("SELECT ISNULL(COUNT(ID), 0) FROM Usr_MRA_Detail WHERE OV_ID = {0} AND EntityRef = '{1}' AND MatterNo = {2} AND SelectedAnswerID = -1".format(mraID, _tikitEntity, _tikitMatter), False, "Error - nothing returned", "")
-  #MessageBox.Show("Count of Outstanding Questions: " + str(countOSqS))
+def current_user_is_fee_earner():
+  # returns True/False based on whether the current user is the same as the Matter Fee Earner (based on tb_FERef.Text) - this is used to determine which approval rules to apply when submitting
+  return str(_tikitUser) == str(tb_FERef.Text)
+
+def can_auto_approve(high_risk):
+  # Only relevant for high risk:
+  # - if user is FE: canApproveSelf(user)
+  # - else: canUserApproveFeeEarner(user, FE)
   
-  if int(countOSqS) > 0:
-    MessageBox.Show("Cannot mark this as 'Complete' as there are {0} Question(s) that do not yet have an answer!\n\nPlease use the 'Save as Draft' button if you wish to save current progress and come back to complete this later".format(countOSqS),"Mark as 'Complete' error - Questions missing Answers...")
+  if not high_risk:
+    return False
+
+  if current_user_is_fee_earner():
+    return canApproveSelf(userToCheck=_tikitUser) == True
+  else:
+    return canUserApproveFeeEarner(UserToCheck=_tikitUser, FeeEarner=tb_FERef.Text) == True
+
+def get_user_email(code):
+  # returns the email address for a given user code; used for getting HOD email to send to when submitting high risk MRA
+  return runSQL("SELECT EMailExternal FROM Users WHERE Code = '{0}'".format(code), False, '', '')
+
+def get_user_name(code):
+  # returns the forename (or full name if forename is null) for a given user code; 
+  # used for getting HOD name to personalise email when submitting high risk MRA
+  return runSQL("SELECT ISNULL(Forename, FullName) FROM Users WHERE Code = '{0}'".format(code), False, '', '')
+
+def get_two_user_emails(code1, code2):
+  # returns "a@x; b@y" (handles NULLs defensively)
+  s = runSQL("SELECT STRING_AGG(EMailExternal, '; ') FROM Users WHERE Code IN ('{0}', '{1}')".format(code1, code2), False, '', '')
+  return "" if s is None else str(s)
+
+def request_hod_email_to_for_fee_earner(fee_earner_code, include_current_user=False):
+  hod = getUsersApproversEmail(forUser=fee_earner_code) or ""
+  if not include_current_user:
+    return hod
+
+  both = get_two_user_emails(_tikitUser, fee_earner_code)
+  # combine both + hod
+  # avoid double ;; if either side blank
+  parts = [p.strip() for p in [both, hod] if p and str(p).strip()]
+  return "; ".join(parts)
+
+def decide_submit_outcome():
+  # determines the 'outcome' of submitting the MRA, which will determine which TaskCentre email gets triggered; this is based on:
+  # 1) whether the MRA is high risk or not (based on lbl_MRA_RiskCategory.Content)
+  # 2) whether the current user is the Matter Fee Earner or not (based on tb_FERef.Text vs _tikitUser)
+  # 3) whether the current user has approval rights (either canApproveSelf if FE, or canUserApproveFeeEarner if not FE)
+  # The outcome will be one of:
+  # - 'Submit_MRA_Standard' (not high risk, so no HOD approval needed; email goes to FE only)
+  # - 'Submit_MRA_HighRisk_AutoApproved' (high risk but current user can approve, so no HOD approval needed; email goes to FE only)
+  # - 'Submit_MRA_HighRisk_RequestHOD' (high risk and current user cannot approve, so HOD approval needed; email goes to HOD and FE)
+  # - 'Submit_MRA_OnBehalf' (not high risk, but current user is not FE, so submitting on behalf of FE; email goes to FE only)
+  high = is_high_risk()
+  is_fe = current_user_is_fee_earner()
+
+  if not high:
+    # Standard risk
+    return OUTCOME_SUBMIT_STD if is_fe else OUTCOME_ON_BEHALF
+
+  # High risk
+  if can_auto_approve(high_risk=True):
+    return OUTCOME_AUTO_APPROVE
+
+  # all else fallback to needing HOD approval
+  return OUTCOME_REQUEST_HOD
+
+
+def execute_submit_outcome(outcome, mraID, mraName, ourRef, matDesc, clName, feEmail, feName, riskRatingStr):
+
+  if outcome == OUTCOME_AUTO_APPROVE:
+    # Auto-approve triggers its own email via HOD_Approves_Item
+    return HOD_Approves_Item(myOV_ID=mraID, myEntRef=_tikitEntity, myMatNo=_tikitMatter, myMRADesc=mraName)
+
+  if outcome == OUTCOME_REQUEST_HOD:
+    # High risk, not authorised to auto approve -> request HOD
+    if current_user_is_fee_earner():
+      # Email HOD, CC FE (your existing behaviour)
+      hodEmails = request_hod_email_to_for_fee_earner(_tikitUser, include_current_user=False)
+      insert_into_MRAEvents(
+        userRef=_tikitUser, triggerText='Submit_MRA_HighRisk', ov_ID=mraID,
+        emailTo=hodEmails, emailCC=feEmail, toUserName=feName,
+        ourRef=ourRef, matterDesc=matDesc, clientName=clName,
+        addtl1=mraName, addtl2=riskRatingStr
+      )
+      return
+
+    # Not FE: include current user + FE + HOD
+    emailToAddr = request_hod_email_to_for_fee_earner(tb_FERef.Text, include_current_user=True)
+    emailToName = get_user_name(_tikitUser)
+    insert_into_MRAEvents(
+      userRef=_tikitUser, triggerText='Submit_MRA_HighRisk', ov_ID=mraID,
+      emailTo=emailToAddr, emailCC=feEmail, toUserName=emailToName,
+      ourRef=ourRef, matterDesc=matDesc, clientName=clName,
+      addtl1=mraName, addtl2=riskRatingStr
+    )
     return
 
-  # update 'Status' (we only get here is every Q has an answer, as above will exit if any missing)
-  MRA_setStatus(mraID, 'Complete')
-  
-  # update the Risk Category (sets MRA level, and in Matter Properties)
-  #MRA_UpdateRiskCategory(s, event)
-  riskRating = lbl_MRA_RiskCategory.Content
-  cuAnApprovalUser = isUserAnApprovalUser(userToCheck = _tikitUser)
-  
-  # if current user IS the Matter Fee Earner (new - started 7th Aug 24)
-  if _tikitUser == lbl_FERef.Content:
-    if riskRating == 'High':
-      if canApproveSelf(userToCheck = _tikitUser) == True:
-        #MessageBox.Show("hello 1 - current user is the FE and CAN approve self, so auto-approving", "DEBUGGING - Louis check")
-        # by-pass 'send to HOD' and 'auto-approve' item
-        autoApproved = HOD_Approves_Item(myOV_ID = mraID, 
-                                        myEntRef = _tikitEntity, 
-                                         myMatNo = _tikitMatter, 
-                                       myMRADesc = mraName)                           
-        # note the above function also triggers the confirmation email (via Action/Trigger: 'HOD_Approved_MRA') 
-      else:
-        # Risk Rating is HIGH - and current user IS the Matter Fee Earner, but CANNOT approve own matters
-        # Trigger 'Request HOD Approval' email
-        hodEmails = getUsersApproversEmail(forUser = _tikitUser)
-      
-        # generate SQL to trigger email to HOD (CC in FE)
-        insert_into_MRAEvents(userRef = _tikitUser, triggerText = 'Submit_MRA_HighRisk', ov_ID = mraID, 
-                              emailTo = hodEmails, emailCC = feEmail, toUserName = feName, 
-                              ourRef = ourRef, matterDesc = matDesc, clientName = clName, 
-                              addtl1 = mraName, addtl2 = riskRating)
-        
-    else:
-      # Risk Rating is NOT High - and current user IS the Matter Fee Earner
-      # Needs to trigger 'Submit_MRA_Standard' confirmation email
-      insert_into_MRAEvents(userRef = _tikitUser, triggerText = 'Submit_MRA', ov_ID = mraID, 
-                            emailTo = feEmail, emailCC = '', toUserName = feName, 
-                            ourRef = ourRef, matterDesc = matDesc, clientName = clName, 
-                            addtl1 = mraName, addtl2 = riskRating)
+  if outcome == OUTCOME_SUBMIT_STD:
+    # Standard risk + FE submitting
+    insert_into_MRAEvents(
+      userRef=_tikitUser, triggerText='Submit_MRA', ov_ID=mraID,
+      emailTo=feEmail, emailCC='', toUserName=feName,
+      ourRef=ourRef, matterDesc=matDesc, clientName=clName,
+      addtl1=mraName, addtl2=riskRatingStr
+    )
+    return
 
-  else:
-    # Current user is NOT the Fee Earner - check if current user is an 'Approval' user
-    if riskRating == 'High':
-      if canUserApproveFeeEarner(UserToCheck = _tikitUser, FeeEarner = lbl_FERef.Content) == True:
-        # by-pass 'send to HOD' and 'auto-approve' item
-        #MessageBox.Show("hello 1 - Risk Rating is high, and current user can approve fee earner, so auto-approving item", "DEBUGGING - Louis check")
-        autoApproved = HOD_Approves_Item(myOV_ID = mraID, 
-                                        myEntRef = _tikitEntity, 
-                                         myMatNo = _tikitMatter, 
-                                       myMRADesc = mraName)
-        # note the above function also triggers the confirmation email (via Action/Trigger: 'HOD_Approved_MRA') 
-      else:
-        # Risk Rating is High - and current user cannot approve the matter Fee Earner - so email HOD for approval
-        # Get name and email of current user for the email trigger
-        hodEmails = getUsersApproversEmail(forUser = lbl_FERef.Content)
-        emailToAddr = runSQL("SELECT STRING_AGG(EMailExternal, '; ') FROM Users WHERE Code IN ('{0}', '{1}')".format(_tikitUser, lbl_FERef.Content), False, '', '')
-        emailToAddr = "{0}; {1}".format(emailToAddr, hodEmails)
-        emailToName = runSQL("SELECT ISNULL(Forename, FullName) FROM Users WHERE Code = '{0}'".format(_tikitUser), False, '', '')
-        # now insert item into 'events' table to trigger email
-        insert_into_MRAEvents(userRef = _tikitUser, triggerText = 'Submit_MRA_HighRisk', ov_ID = mraID, 
-                              emailTo = emailToAddr, emailCC = feEmail, toUserName = emailToName, 
-                              ourRef = ourRef, matterDesc = matDesc, clientName = clName, 
-                              addtl1 = mraName, addtl2 = riskRating)
+  if outcome == OUTCOME_ON_BEHALF:
+    # Standard risk + someone else submitting
+    emailToAddr = get_user_email(_tikitUser)
+    emailToName = get_user_name(_tikitUser)
+    insert_into_MRAEvents(
+      userRef=_tikitUser, triggerText='Submit_MRA_onBehalfOf', ov_ID=mraID,
+      emailTo=emailToAddr, emailCC=feEmail, toUserName=emailToName,
+      ourRef=ourRef, matterDesc=matDesc, clientName=clName,
+      addtl1=mraName, addtl2=riskRatingStr
+    )
+    return
 
-        #! I keep forgetting to pull-down current code, and use the below, but should be using above
-        # Current user is not the Fee Earner and cannot 'Approve' this Fee Earner
-        #MessageBox.Show("You are not authorised to Submit this MRA on the Fee Earners behalf!", "Submit MRA - High Risk")
-        #return
-        
-    else:
-      # Risk Rating is NOT High - and current user is NOT the matter Fee Earner
-      # Get name and email of current user for the email trigger
-      emailToAddr = runSQL("SELECT EMailExternal FROM Users WHERE Code = '{0}'".format(_tikitUser), False, '', '')
-      emailToName = runSQL("SELECT ISNULL(Forename, FullName) FROM Users WHERE Code = '{0}'".format(_tikitUser), False, '', '')
-      # now insert item into 'events' table to trigger email
-      insert_into_MRAEvents(userRef = _tikitUser, triggerText = 'Submit_MRA_onBehalfOf', ov_ID = mraID, 
-                            emailTo = emailToAddr, emailCC = feEmail, toUserName = emailToName, 
-                            ourRef = ourRef, matterDesc = matDesc, clientName = clName, 
-                            addtl1 = mraName, addtl2 = riskRating)
+  raise Exception("Unknown submit outcome: " + str(outcome))
+
+
+def btn_MRA_Submit_Click(s, event):
+  # This function will return back to the 'Overview' screen and save the MRA in a 'Complete' state
+  # (1: Saves All Q&A back to MRAv2_MatterDetails; 2: Updates status to 'Complete'/'Complete - Pending Approval' 
+  #  in MRAv2_MatterHeader; 3: Triggers task centre emails based on rules)
+
+  # first check all questions have an answer; if not, show message and exit without saving
+  ok, msg = validate_all_answered()
+  if not ok:
+    MessageBox.Show(msg, "Cannot Submit", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+    return
+
+  # save details to DB
+  save_matterdetails_to_db(store_unanswered=False)  # or True; your choice
+
+  # get necessary details for email triggers (we have these on screen, so no need for extra SQL calls;
+  # from the forms' Header details (groupbox)
+  feEmail = tb_FE_Email.Text
+  feName = tb_FE_Forename.Text
+  matDesc = tb_MatterDesc.Text
+  matDesc = matDesc.replace("'", "''")
+  clName = tb_ClientName.Text
+  clName = clName.replace("'", "''")
+  mraName = lbl_MRA_Name.Content
+  mraName = mraName.replace("'", "''")
+  ourRef = tb_OurRef.Text
+  # from the 'Edit MRA' tab
+  mraID = lbl_MRA_ID.Content
+  riskRating = lbl_MRA_RiskCategory.Content      # = Low | Medium | High
+  riskRatingID = lbl_MRA_RiskCategoryID.Content  # = 1 | 2 | 3 (based on above mapping in MRA_RecalcTotalScore)
+
+  # and execute the applicable path based on the rules (see helper functions above to determine outcome, and then execute that outcome)
+  outcome = decide_submit_outcome()
+  execute_submit_outcome(outcome, mraID, mraName, ourRef, matDesc, clName, feEmail, feName, riskRating)
+
+  # need to udpate Status and Risk Category in both the Overview table and the Matter Properties table; we'll use the same function for both, which takes care of the different SQL needed for each
+  updateHeaderSQL = """UPDATE Usr_MRAv2_MatterHeader SET RiskRating = {riskRating}, 
+                              Status = 'Complete', SubmittedBy = '{subBy}', SubmittedDate = GETDATE() 
+                       WHERE mraID = {mraID} AND EntityRef = '{entRef}' AND MatterNo = {matNo}
+                    """.format(riskRating=riskRatingID, subBy=_tikitUser,
+                               mraID=mraID, entRef=_tikitEntity, matNo=_tikitMatter)
+
+  # execute header update
+  runSQL(updateHeaderSQL, useAltResolver=False)
+  # note: no longer using separate 'MRA_setStatus' function here as we also need to update RiskRating at the same time, 
+  # and it's more efficient to do in one SQL statement. The only other thing that function did was to put the new status
+  # in the 'lbl_MRA_Status' label, but since we're going back to the overview immediately after, there's no need to update
+  #  that label here (and risk category is already updated on the label in case we need it for email triggers) 
 
   # update main 'Risk Status' label on 'Overview' tab
   setMasterRiskStatus(s, event)
@@ -2937,7 +3118,7 @@ def add_CorrectiveAction(defaultCorrectiveActionText = ''):
   # This function will add a new Corrective Action (if one doesn't already exist)
   
   # first, get details to allow us to generate SQL
-  mFEref = lbl_FERef.Content         #_tikitResolver.Resolve("[SQL: SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '" + _tikitEntity + "' AND Number = " + str(_tikitMatter) + "]")
+  mFEref = tb_FERef.Text         #_tikitResolver.Resolve("[SQL: SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '" + _tikitEntity + "' AND Number = " + str(_tikitMatter) + "]")
   # NB: I'm now wondering if 'Fee Earner' as shown on the Matter Audit screen in P4W is actually meant to show 'Reviewer' (person conducting File Review / adding Corrective Action)
   #     As Fee Earner already noted on Matter, it doesn't make sense that they need to be selected again on this screen (unless it's just lazyness on Advanced's part, with regard to reports)
   #     But... maybe it does need to be FE beause of report, in which case we may want another field to store 'Reviewer' in our 'Overview' table
@@ -3176,26 +3357,25 @@ def getUsersApproversEmail(forUser):
   return hodEmail
 
 
-def HOD_Approves_Item(myOV_ID, myEntRef, myMatNo, myMRADesc):
+def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
   # This is a generic function to 'approve' an item where we pass in the parameters (better for re-use, instead of copying and pasting)
   # This assumes current user is HOD/Approver - addresses email to Matter Fee Earner, and copies in 'current user'
-
   errorCount = 0
   errorMessage = ""
   
-  # get / form input variables
-  tmpOurRef = myEntRef[0:3] + myEntRef[11:15] + '/' + str(myMatNo)
-  tmpToUserName = runSQL(codeToRun="SELECT ISNULL(Forename, FullName) FROM Users WHERE Code = (SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '{0}' AND Number = {1})".format(myEntRef, myMatNo), apostropheHandle=1)
-  tmpMatDesc = runSQL(codeToRun="SELECT Description FROM Matters WHERE EntityRef = '{0}' AND Number = {1}".format(myEntRef, myMatNo), apostropheHandle=1)
-  tmpClName = runSQL(codeToRun="SELECT LegalName FROM Entities WHERE Code = '{0}'".format(myEntRef), apostropheHandle=1)
-  tmpEmailTo = runSQL("SELECT EMailExternal FROM Users WHERE Code = (SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '{0}' AND Number = {1})".format(myEntRef, myMatNo))
+  # get / form input variables (at global header level, so accessible anywhere)
+  tmpOurRef = tb_OurRef.Text
+  tmpToUserName = tb_FE_Forename.Text
+  tmpMatDesc = tb_MatterDesc.Text
+  tmpClName = tb_ClientName.Text
+  tmpEmailTo = tb_FE_Email.Text
   tmpEmailCC = runSQL("SELECT EMailExternal FROM Users WHERE Code = '{0}'".format(_tikitUser))
   tmpAddtl1 = myMRADesc.replace("'", "''")
   tmpAddtl2 = "High"
 
-
   # generate SQL to approve
-  approveSQL = "UPDATE Usr_MRA_Overview SET ApprovedByHOD = 'Y' WHERE ID = {0}".format(myOV_ID)
+  approveSQL = """UPDATE Usr_MRAv2_MatterHeader SET ApprovedByHOD = 'Y' 
+                  WHERE mraID = {mraID} AND EntityRef = '{entRef}' AND MatterNo = {matNo}""".format(mraID=my_mraID, entRef=myEntRef, matNo=myMatNo)
   try:
     _tikitResolver.Resolve("[SQL: {0}]".format(approveSQL))
   except:
@@ -3204,27 +3384,20 @@ def HOD_Approves_Item(myOV_ID, myEntRef, myMatNo, myMRADesc):
   
   # get SQL to Unlock matter
   #unlockCode = "EXEC TW_LockHandler '" + myEntRef + "', " + str(myMatNo) + ", 'LockedByRiskDept', 'UnLock'"
-  lockID = runSQL("SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept'")
-  countMatterLocksSQL = "SELECT COUNT(EntityRef) FROM EntityMatterLocks WHERE EntityRef = '{0}' AND MatterNo = {1} AND LockID = {2}".format(myEntRef, myMatNo, lockID)
-  countMatterLocks = runSQL(countMatterLocksSQL, False, '', '')
-  
-  if int(countMatterLocks) != 0:
-    unlockCode = "DELETE FROM EntityMatterLocks WHERE EntityRef = '{0}' AND MatterNo = {1} AND LockID = {2}".format(myEntRef, myMatNo, lockID)
-    try:
-      _tikitResolver.Resolve("[SQL: {0}]".format(unlockCode))
-    except:
-      errorCount -= 1
-      errorMessage = " - couldn't unlock the selected matter\n" + str(unlockCode)
-
-
+  unlockCode = "EXEC TW_LockHandler '{entRef}', {matNo}, 'LockedByRiskDept', 'UnLock'".format(entRef=myEntRef, matNo=myMatNo)
+  # run unlock code
+  runSQL(codeToRun=unlockCode, showError=True, 
+         errorMsgText="There was an error unlocking the matter, after approval. Please check the matter is unlocked and if not, unlock manually using the following SQL:\n{0}".format(unlockCode), errorMsgTitle="Error: Unlocking Matter after Approval...")
+ 
+  # now insert a record into MRA Events table to trigger email to FE
   tc_Trigger = """INSERT INTO Usr_MRA_Events 
-                  (Date, UserRef, ActionTrigger, OV_ID, EmailTo, EmailCC, ToUserName, 
+                  (Date, UserRef, ActionTrigger, mraID, EmailTo, EmailCC, ToUserName, 
                   OurRef, MatterDesc, ClientName, Addtl1, Addtl2, FullEntityRef, Matter_No) 
-                  VALUES(GETDATE(), '{userRef}', 'HOD_Approved_MRA', {ovID}, '{emailTo}', '{emailCC}', '{emailToUName}', 
+                  VALUES(GETDATE(), '{userRef}', 'HOD_Approved_MRA', {mraID}, '{emailTo}', '{emailCC}', '{emailToUName}', 
                   '{ourRef}', '{matDesc}', '{clName}', '{addtl1}', '{addtl2}', '{entRef}', {matNo})""".format(
-                    userRef=_tikitUser, ovID=myOV_ID, emailTo=tmpEmailTo, emailCC=tmpEmailCC, 
+                    userRef=_tikitUser, mraID=my_mraID, emailTo=tmpEmailTo, emailCC=tmpEmailCC, 
                     emailToUName=tmpToUserName, ourRef=tmpOurRef, matDesc=tmpMatDesc, clName=tmpClName, 
-                    addtl1=tmpAddtl1, addtl2=tmpAddtl2, entRef=_tikitEntity, matNo=_tikitMatter)
+                    addtl1=tmpAddtl1, addtl2=tmpAddtl2, entRef=myEntRef, matNo=myMatNo)
   try:
     _tikitResolver.Resolve("[SQL: {0}]".format(tc_Trigger))
   except:
@@ -3235,55 +3408,55 @@ def HOD_Approves_Item(myOV_ID, myEntRef, myMatNo, myMRADesc):
     MessageBox.Show("The following error(s) were encountered:\n" + errorMessage + "\n\nPlease screenshot this message and send to IT.Support@thackraywilliams.com to investigate", "Error: Approve High-Risk Matter...")
     return errorCount
   else:
-    createNewMRA_BasedOnCurrent(idItemToCopy=myOV_ID,
-                                  nameToCopy=myMRADesc, 
-                                      entRef=_tikitEntity, matNo=_tikitMatter)
+    createNewMRA_BasedOnCurrent(idItemToCopy=my_mraID, entRef=myEntRef, matNo=myMatNo)
     MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nA copy of the MRA has been made, to be completed by the Fee Earner within 4 weeks", "Approve High-Risk Matter...")
     return 1
   return 0
 
 
-def createNewMRA_BasedOnCurrent(idItemToCopy, nameToCopy, entRef, matNo):
-  # this function will duplicate the active MRA
-  
-  # create better name than previous version (now we will abbreviated 'MRA Type', and state (copy of [ID]))
-  # firstly get the 'typeID' of the MRA to copy (although, I think this function is only used once, so could just update calling procedure to pass this??)
-  nextNum = get_NextMRAFR_NumberForMatter(ovID=idItemToCopy)
+def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
+  # this function will duplicate the MRA specified by 'idItemToCopy' (which is the mraID of the MRA to copy),
+  # and link the new MRA to the same matter (using entRef and matNo) and copy across the selected Answers used in the original MRA
+  # - set status to 'Draft' and score to 0, and expiry date to 4 weeks from today.
+  #! Returns mraID of newly added/duplicated row, or -1 if error creating new MRA header row, or -2 if error copying details across
 
-  # get input variables
-  tmpsql = "SELECT REPLACE(TypeName, 'Matter Risk Assessment', 'NMRA') FROM Usr_MRA_TemplateTypes WHERE TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0})".format(idItemToCopy)
-  MRAtype = runSQL(tmpsql, False, '', '')
-  finalName = "{0} - {1} (copy of {2})".format(MRAtype, nextNum, idItemToCopy)
-  finalName = finalName.replace("'", "''")
-  #finalName = finalName.replace("Matter Risk Assessment", "NMRA")
-  
-  # generate SQL to copy high-level (Overview)
-  insertOV_SQL = """INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded) 
-                    SELECT '{0}', {1}, TypeID, DATEADD(WEEK, 4, ExpiryDate), '{2}', Score, RiskRating, 'N', 
-                    GETDATE() FROM Usr_MRA_Overview WHERE ID = {3}""".format(entRef, matNo, finalName, idItemToCopy)
-  #MessageBox.Show("Do you see this message?\n\nSQL to use (initial copy of MRA):\n" + str(insertOV_SQL), "DEBUGGING: New Test Message")
-  
+  # generate new Name (concatenating Template Name with next number in brackets, based on count of existing MRAs with same Template for the same matter +1):
+  newNameSQL = """SELECT CONCAT(TD.Name, ' (', 
+                            CONVERT(nvarchar, (
+                                SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
+                                WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
+                          ')')
+                  FROM Usr_MRAv2_TemplateDetails TD 
+                  WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)  
+
+  newName = runSQL(newNameSQL)
+
+  # create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
+  newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader(EntityRef, MatterNo, TemplateID, Name, Score, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
+                       OUTPUT Usr_MRAv2_MatterHeader.mraID 
+                       SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', 0, RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
+                       GETDATE(), (SELECT COUNT(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE ID = {idItemToCopy}  
+                    """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
+
   try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(insertOV_SQL))
+    newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
   except:
-    MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(insertOV_SQL), "Error: Duplicate selected item...")
-    return
-    
-  # now get row ID of items added
-  rowID = runSQL("SELECT TOP 1 ID FROM Usr_MRA_Overview WHERE LocalName = '{0}' AND EntityRef = '{1}' AND MatterNo = {2} ORDER BY DateAdded DESC".format(finalName, entRef, matNo), False, "", "")
+    MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
+    return -1
 
-  if int(rowID) > 0:
-    insertQ_SQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, CorrActionID) 
-                      SELECT '{0}', {1}, {2}, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, QGroupID, Null 
-                      FROM Usr_MRA_Detail WHERE OV_ID = {3}""".format(entRef, matNo, rowID, idItemToCopy)
-    
-    try:
-      _tikitResolver.Resolve("[SQL: {0}]".format(insertQ_SQL))
-    except:
-      MessageBox.Show("An error occurred copying the Questions, using SQL:\n" + str(insertQ_SQL), "Error: Duplicate selected item - Copying Questions...")
-  return
+  # finally, copy across the Questions and Answers from the previous MRA (except for any free text answers, which we will reset to blank) - we can link them to the new MRA using the returned mraID from above, which is why we needed to use 'OUTPUT' in the SQL above to return the new mraID
+  copyDetailSQL = """INSERT INTO Usr_MRAv2_MatterDetails (EntityRef, MatterNo, mraID, QuestionID, AnswerID, Score, Comments, DisplayOrder, QuestionGroup, EmailComment) 
+                     SELECT EntityRef, MatterNo, {NEWmraID}, QuestionID, AnswerID, Score, Comments, DisplayOrder, QuestionGroup, EmailComment
+                     FROM Usr_MRAv2_MatterDetails WHERE mraID = {idToCopy}""".format(NEWmraID=newMRAID, idToCopy=idItemToCopy)
 
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(copyDetailSQL))
+  except:
+    MessageBox.Show("There was an error copying the MRA details, using SQL:\n" + str(copyDetailSQL), "Error: Duplicate selected item...")
+    return -2
+  return newMRAID
 
+ 
 def test_dgItem_DeleteSelected(dgControl, tableToUpdate, primaryKeyColName, displayOrderColName, keyColumns, selectedColumns, 
                                typeFilterColName='', typeFilterVal=0, childDeletes=None):
   # Louis' version of the function to deleted an item from a DataGrid
@@ -3461,23 +3634,7 @@ def dg_MRAFR_ReSaveEmailToCase(s, event):
   return
 
 
-def get_NextMRAFR_NumberForMatter(ovID = 0):
-  # This new function was added 20/05/2025 as there are a couple of occurences where we need to get the next
-  # MRA/FR number for a given TypeID (testing against current Entity/Matter record)
 
-  # if passed ID is empty, exit and alert user
-  if ovID == 0:
-    MessageBox.Show("You need to pass an ID to this function!", "Error: get_NextMRAFR_NumberForMatter...")
-    return 0
-  
-  # else we carry on abd get the TypeID
-  tmpTypeID = runSQL("SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0} AND EntityRef = '{1}' AND MatterNo = {2}".format(ovID, _tikitEntity, _tikitMatter), False, '', '')
-
-  NextNum_sql = """[SQL: SELECT COUNT(TypeID) + 1 FROM Usr_MRA_Overview MRAO 
-                         WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} 
-                          AND TypeID = {2}]""".format(_tikitEntity, _tikitMatter, tmpTypeID)
-  NextNum = runSQL(NextNum_sql, False, '', '')
-  return NextNum
 
 
 
@@ -3489,15 +3646,17 @@ ti_Main = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_Main')
 ti_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA')
 ti_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_FR')
 
-lbl_FERef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FERef')
-lbl_FE_Forename = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FE_Forename')
-lbl_FE_Email = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FE_Email')
+tb_FERef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FERef')
+tb_FE_Forename = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FE_Forename')
+tb_FE_Email = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FE_Email')
 #lbl_HOD_Email = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_HOD_Email')
-lbl_MatterDesc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MatterDesc')
-lbl_CaseTypeRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_CaseTypeRef')
-lbl_CaseType = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_CaseType')
-lbl_OurRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_OurRef')
-lbl_ClientName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ClientName')
+tb_MatterDesc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MatterDesc')
+tb_CaseTypeRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CaseTypeRef')
+tb_CaseType = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CaseType')
+tb_OurRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_OurRef')
+tb_ClientName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ClientName')
+tb_CurrentUserName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrentUserName')
+tb_CurrentUserCode = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrentUserCode')
 
 ## O V E R V I E W   - TAB ##
 dg_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAFR')
@@ -3509,13 +3668,13 @@ btn_AddNew_MRA.Click += dg_MRAFR_AddNewMRA
 btn_AddNew_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_FR')
 btn_AddNew_FR.Click += dg_MRAFR_AddNewFR
 btn_CopySelected_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelected_MRAFR')
-btn_CopySelected_MRAFR.Click += dg_MRAFR_CopySelected
+btn_CopySelected_MRAFR.Click += btn_CopySelected_MRAFR_Click
 btn_View_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_View_MRAFR')
 btn_View_MRAFR.Click += dg_MRAFR_ViewSelected
 btn_Edit_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Edit_MRAFR')
-btn_Edit_MRAFR.Click += dg_MRAFR_EditSelected
+btn_Edit_MRAFR.Click += btn_Edit_MRAFR_Click
 btn_HOD_Approval_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_HOD_Approval_MRA')
-btn_HOD_Approval_MRA.Click += btn_MRA_HOD_Approve
+btn_HOD_Approval_MRA.Click += btn_HOD_Approval_MRA_Click
 btn_DeleteSelected_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelected_MRAFR')
 btn_DeleteSelected_MRAFR.Click += dg_MRAFR_DeleteSelected
 #btn_DeleteSelected_MRAFR.Click += lambda s, event: (test_dgItem_DeleteSelected(childDeletes = [{'table': 'Usr_MRA_Detail','foreignKey': 'OV_ID','conditions': {'EntityRef': _tikitEntity,'MatterNo': _tikitMatter}}], dgControl=dg_MRAFR, tableToUpdate='Usr_MRA_Overview', primaryKeyColName='ID', displayOrderColName='', keyColumns={'EntityRef': _tikitEntity, 'MatterNo': _tikitMatter}, selectedColumns={'ID': 'ID', 'Name': 'Desc'}, typeFilterColName='', typeFilterVal=0), dg_MRAFR_Refresh(s, event))

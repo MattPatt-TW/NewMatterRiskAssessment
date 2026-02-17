@@ -7,30 +7,94 @@
     d:DesignHeight="750" d:DesignWidth="1400" Height="auto" Width="auto"  
     Background="#FFEFF3FC" Name="RiskMatterV2">
 
-  <Label x:Name="lbl_FormHeader" Content="Matter Risk Assessment and File Reviews..." Height="32" Canvas.Left="10" Canvas.Top="10" Width="380" FontWeight="Bold" Foreground="#FF6150BE" FontSize="16" FontFamily="Jazmin"/>
-  <GroupBox Header="Matter Info" Foreground="Gray" BorderBrush="Gray" Canvas.Left="553" Height="66" Canvas.Top="2" Width="637" FontSize="10">
-    <StackPanel Orientation="Vertical">
-      <StackPanel Orientation="Horizontal">
-        <Label Content="Client:" Width="68" Foreground="Gray" HorizontalContentAlignment="Right" />
-        <Label x:Name="lbl_OurRef" Tag="SQL: SELECT LEFT('[matters.entityref]', 3) + RIGHT('[matters.entityref]', 4) + '/' + CONVERT(nvarchar, '[matters.number]')" Content="TES0080/1" Width="Auto" Foreground="Red" FontWeight="Bold" />
-        <Label x:Name="lbl_ClientName" Tag="SQL: SELECT '[client.legalname]'" Content="Example Client Name" MaxWidth="401" Foreground="Red" FontWeight="Bold"  />
-        <Label Content="Fee Earner:" Foreground="Gray"  HorizontalContentAlignment="Right" />
-        <Label x:Name="lbl_FERef" Tag="SQL: SELECT '[matters.FeeEarnerRef]'" Content="FE Ref" Foreground="Red" FontWeight="Bold"  />
-        <Label Tag="SQL: SELECT FullName FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Content="NAME" Foreground="Red" FontWeight="Bold"  />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal">
-        <Label Content="Matter Desc:" Width="68" Foreground="Gray" HorizontalContentAlignment="Right" />
-        <Label x:Name="lbl_MatterDesc" Tag="SQL: SELECT [SQLLIT:[matters.Description]]" Content="Matter Description" MaxWidth="401" Foreground="Red" FontWeight="Bold"  />
-        <Label Content="Case Type:" Foreground="Gray" HorizontalContentAlignment="Right"  />
-        <Label x:Name="lbl_CaseTypeRef" Tag="SQL: SELECT '[matters.casetyperef]'" Content="CT Ref"  Foreground="Red" FontWeight="Bold"  />
-        <Label x:Name="lbl_CaseType" Tag="SQL: SELECT Description FROM CaseTypes WHERE Code = '[matters.casetyperef]'" Content="Case Type Desc" Foreground="Red" FontWeight="Bold"  />
-        <Label x:Name="lbl_FE_Forename" Tag="SQL: SELECT Forename FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
-        <Label x:Name="lbl_FE_Email" Tag="SQL: SELECT EMailExternal FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
-        <!--<Label x:Name="lbl_HOD_Email" Tag="SQL: SELECT email_Addresses FROM Usr_HODs WHERE ID = (SELECT CaseTypeGroupRef FROM CaseTypes WHERE Code = (SELECT CaseTypeRef FROM Matters WHERE EntityRef = '[matters.entityref]' AND Number = '[matters.number]'))" Visibility="Collapsed"/>-->
-        <!-- #FFEFF3FC (blue) | #FF2B1B42 (dark TW purple) -->
+  <Label x:Name="lbl_FormHeader" Content="Matter Risk Assessment and File Reviews..." Height="32" Canvas.Left="10" Canvas.Top="10" FontWeight="Bold" Foreground="#FF6150BE" FontSize="16" FontFamily="Jazmin"/>
+  <GroupBox Header="Matter Info" Foreground="Gray" BorderBrush="Gray" Canvas.Left="354" Height="66" Canvas.Top="2" FontSize="10">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition  />
+        <RowDefinition  />
+      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="70" />
+        <ColumnDefinition MaxWidth="200" />
+        <ColumnDefinition Width="60" />
+        <ColumnDefinition Width="*" />
+
+        <ColumnDefinition Width="120" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <TextBlock Grid.Row="0" Grid.Column="0"
+                 Text="Client:" Foreground="Gray" TextAlignment="Right" VerticalAlignment="Center"/>
+
+      <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+        <TextBlock x:Name="tb_OurRef" 
+                   Tag="SQL: SELECT LEFT('[matters.entityref]', 3) + RIGHT('[matters.entityref]', 4) + '/' + CONVERT(nvarchar, '[matters.number]')" 
+                   Text="TES0080/1" Width="Auto" Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+
+        <TextBlock x:Name="tb_ClientName" 
+                   Tag="SQL: SELECT '[client.legalname]'" 
+                   Text="Example Client Name" MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="Red" FontWeight="Bold"  />
+
       </StackPanel>
 
-    </StackPanel>
+      
+      <TextBlock Grid.Row="0" Grid.Column="2" 
+                 Text="Fee Earner:" Foreground="Gray"  TextAlignment="Right" VerticalAlignment="Center"/>
+      <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal"  >
+        <TextBlock x:Name="tb_FERef" 
+                   Tag="SQL: SELECT '[matters.FeeEarnerRef]'" 
+                   Text="FE Ref" Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+
+        <TextBlock Tag="SQL: SELECT FullName FROM Users WHERE Code = '[matters.FeeEarnerRef]'" 
+                   Text="NAME" Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+
+      </StackPanel>
+
+      <TextBlock Grid.Row="1" Grid.Column="0"
+                 Text="Matter Desc:" Foreground="Gray" TextAlignment="Right" VerticalAlignment="Center"/>
+      <TextBlock Grid.Row="1" Grid.Column="1" x:Name="tb_MatterDesc" 
+                 Tag="SQL: SELECT [SQLLIT:[matters.Description]]" 
+                 Text="Matter Description" Foreground="Red" FontWeight="Bold"  VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Padding="4,0"/>
+      
+      <TextBlock Grid.Row="1" Grid.Column="2"
+                 Text="Case Type:" Foreground="Gray" TextAlignment="Right" VerticalAlignment="Center" />
+
+      <StackPanel Grid.Row="1" Grid.Column="3"  Orientation="Horizontal" >
+        <TextBlock x:Name="tb_CaseTypeRef" 
+                   Tag="SQL: SELECT '[matters.casetyperef]'" 
+                   Text="CT Ref"  Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0" />
+
+        <TextBlock x:Name="tb_CaseType" 
+                   Tag="SQL: SELECT Description FROM CaseTypes WHERE Code = '[matters.casetyperef]'" 
+                   Text="Case Type Desc" Foreground="Red" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+      </StackPanel>
+
+      <TextBlock Grid.Row="0" Grid.Column="4"
+                  Text="Current User:" TextAlignment="Right" VerticalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="5" >
+        <TextBlock x:Name="tb_CurrentUserCode" Text="Code" 
+                   Tag="SQL: SELECT '[CurrentUser.Code]'"
+                   TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
+        <TextBlock x:Name="tb_CurrentUserName" Text="Name" 
+                   Tag="SQL: SELECT '[CurrentUser.FullName]'"
+                   TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
+      </StackPanel>
+
+      <TextBlock Grid.Row="1" Grid.Column="4"
+                  Text="Can Approve High Risk:" TextAlignment="Right" VerticalAlignment="Center"/>
+      <TextBlock Grid.Row="1" Grid.Column="5" Padding="4,0"
+                  Text="False|True" TextAlignment="Left" VerticalAlignment="Center"/>
+
+
+      <TextBlock Grid.Row="1" Grid.Column="8"  x:Name="tb_FE_Forename" 
+                 Tag="SQL: SELECT Forename FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
+      <TextBlock Grid.Row="1" Grid.Column="8" x:Name="tb_FE_Email" 
+                 Tag="SQL: SELECT EMailExternal FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
+
+    </Grid>
+    
+    
   </GroupBox>
 
 
