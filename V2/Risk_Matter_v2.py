@@ -34,7 +34,7 @@ UserIsHod = False
 UserSelfApproves = False
 UserIsAnApprovalUser = False
 UserCanReviewFiles = False
-RiskAndITUsers = ['MP', 'AF1', 'LD1', 'AH1', 'EP1']
+RiskAndITUsers = ['MP', 'LD1', 'AH1', 'JM1', 'AF1']
 
 # for newer structure of MRA
 MRA_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
@@ -79,18 +79,13 @@ def myOnLoadEvent(s, event):
   
   # put current user details into fields on Corrective Actions area
   tb_CurrUser.Text = _tikitUser
-  tb_CurrUserName.Text = _tikitResolver.Resolve("[SQL: SELECT FullName FROM Users WHERE Code = '" + _tikitUser + "']")
+  tb_CurrUserName.Text = _tikitResolver.Resolve("[SQL: SELECT FullName FROM Users WHERE Code = '{0}']".format(_tikitUser))
   # NB: Tag="SQL: SELECT '[curentuser.code]'" didn't work on XAML (hence above)
   # Tag="SQL: SELECT '[currentuser.fullname]'"
   
   # set current risk status
   setMasterRiskStatus(s, event)
   
-  
-  btn_AddNew_FR.IsEnabled = False
-  if UserCanReviewFiles:
-    btn_AddNew_FR.IsEnabled = True
-
   # as only IT or Risk should be able to delete, hide the 'delete' button for everyone else:
   if _tikitUser not in RiskAndITUsers:
     sep_Delete.Visibility = Visibility.Collapsed
@@ -340,7 +335,7 @@ def MRA_setStatus(idToUpdate, newStatus):
 class MRAFR(object):
   def __init__(self, mymraID, myTemplateID, myName, myExpiryDate, myScore, myRiskR, 
                myAppByHOD, myQCount, myQOS, myStatus, mySubbedBy, mySubbedOn, 
-               myScoreTriggerMed, myScoreTriggerHigh, myFRReviewer):
+               myScoreTriggerMed, myScoreTriggerHigh, myFRReviewer, myType):
     self.mraID = mymraID
     self.Name = myName
     self.Status = myStatus
@@ -368,7 +363,7 @@ class MRAFR(object):
     self.ScoreTriggerHigh = myScoreTriggerHigh
     self.TemplateID = myTemplateID
     self.Score = myScore
-    self.Type = 'Matter Risk Assessment'
+    self.Type = myType
     return
     
   def __getitem__(self, index):
@@ -411,61 +406,126 @@ def dg_MRAFR_Refresh(s, event):
   # This funtion populates the main Matter Risk Assessment & File Review data grid 
 
   # SQL to populate datagrid
-  getTableSQL = """WITH MatterHeader AS (
-                          SELECT MH.mraID, MH.Name, MH.Status, MH.ApprovedByHOD, MH.DateAdded,
-                                MH.ExpiryDate, MH.SubmittedBy, MH.SubmittedDate, MH.TemplateID
-                          FROM Usr_MRAv2_MatterHeader MH
-                          WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo  = {matNo}
-                      ),
-                      AnsweredQuestions AS (
-                          SELECT MD.mraID, MD.QuestionID, MD.AnswerID, MD.Score
-                          FROM Usr_MRAv2_MatterDetails MD
-                          WHERE MD.EntityRef = '{entRef}' AND MD.MatterNo  = {matNo}
-                      ),
-                      TemplateStructure AS (
-                          SELECT T.TemplateID, T.QuestionID
-                          FROM Usr_MRAv2_Templates T
-                          INNER JOIN MatterHeader MH ON T.TemplateID = MH.TemplateID
-                      ),
-                      AnswerAgg AS (
-                          SELECT mraID,
-                                SUM(ISNULL(Score,0))                  AS Score,
-                                COUNT(*)                              AS AnswerCount,
-                                COUNT(DISTINCT QuestionID)            AS AnsweredQuestionCount
-                          FROM AnsweredQuestions
-                          GROUP BY mraID
-                      ),
-                      TemplateAgg AS (
-                          SELECT TemplateID,
-                                COUNT(DISTINCT QuestionID)            AS QCount
-                          FROM TemplateStructure
-                          GROUP BY TemplateID
-                      ),
-                      TemplateHeader AS (
-                          SELECT TD.TemplateID,
-                                MAX(TD.ScoreMediumTrigger) AS ScoreTriggerMed,
-                                MAX(TD.ScoreHighTrigger)   AS ScoreTriggerHigh
-                          FROM Usr_MRAv2_TemplateDetails TD
-                          GROUP BY TD.TemplateID
-                      )
-                  SELECT '00-mraID' = MH.mraID, '01-TemplateID' = MH.TemplateID, 
-                         '02-Name' = MH.Name, '03-ExpiryDate' = MH.ExpiryDate,
-                         '04-Score' = ISNULL(AA.Score, 0),
-                         '05-RiskRating' = CASE WHEN ISNULL(AA.Score, 0) < TH.ScoreTriggerMed THEN 1 
-                                                WHEN ISNULL(AA.Score, 0) >= TH.ScoreTriggerHigh THEN 3
-                                                ELSE 2 END,
-                          '06-ApprovedByHOD' = MH.ApprovedByHOD,
-                          '07-QCount' = TA.QCount,
-                          '08-OS Count' = TA.QCount - ISNULL(AA.AnswerCount, 0),
-                          '09-Status' = MH.Status,
-                          '10-SubmittedBy' = MH.SubmittedBy, '11-SubmittedDate' = MH.SubmittedDate, 
-                          '12-ScoreTriggerMed' = TH.ScoreTriggerMed, '13-ScoreTriggerHigh' = TH.ScoreTriggerHigh, 
-                          '14-DateAdded' = MH.DateAdded
-                  FROM MatterHeader MH
-                    LEFT JOIN AnswerAgg      AA ON AA.mraID      = MH.mraID
-                    LEFT JOIN TemplateAgg    TA ON TA.TemplateID = MH.TemplateID
-                    LEFT JOIN TemplateHeader TH ON TH.TemplateID = MH.TemplateID
-                  ORDER BY MH.DateAdded DESC;""".format(entRef=_tikitEntity, matNo=_tikitMatter)
+  getTableSQL = """WITH
+                  /* =========================
+                    MRAv2 branch
+                    ========================= */
+                  MatterHeader AS (
+                      SELECT MH.mraID, MH.Name, MH.Status, MH.ApprovedByHOD, MH.DateAdded,
+                            MH.ExpiryDate, MH.SubmittedBy, MH.SubmittedDate, MH.TemplateID
+                      FROM Usr_MRAv2_MatterHeader MH  
+                      WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo}
+                  ),
+                  AnsweredQuestions AS (
+                      SELECT MD.mraID, MD.QuestionID, MD.AnswerID, MD.Score
+                      FROM Usr_MRAv2_MatterDetails MD
+                      WHERE MD.EntityRef = '{entRef}' AND MD.MatterNo = {matNo}
+                  ),
+                  TemplateStructure AS (
+                      SELECT T.TemplateID, T.QuestionID
+                      FROM Usr_MRAv2_Templates T
+                      INNER JOIN MatterHeader MH ON T.TemplateID = MH.TemplateID
+                  ),
+                  AnswerAgg AS (
+                      SELECT mraID,
+                            SUM(ISNULL(Score,0)) AS Score,
+                            COUNT(*)             AS AnswerCount,
+                            COUNT(DISTINCT QuestionID) AS AnsweredQuestionCount
+                      FROM AnsweredQuestions
+                      GROUP BY mraID
+                  ),
+                  TemplateAgg AS (
+                      SELECT TemplateID,
+                            COUNT(DISTINCT QuestionID) AS QCount
+                      FROM TemplateStructure
+                      GROUP BY TemplateID
+                  ),
+                  TemplateHeader AS (
+                      SELECT TD.TemplateID,
+                            MAX(TD.ScoreMediumTrigger) AS ScoreTriggerMed,
+                            MAX(TD.ScoreHighTrigger)   AS ScoreTriggerHigh
+                      FROM Usr_MRAv2_TemplateDetails TD
+                      GROUP BY TD.TemplateID
+                  ),
+
+                  MRAv2_Result AS (
+                      SELECT
+                          '00-mraID'            = MH.mraID,
+                          '01-TemplateID'       = MH.TemplateID,
+                          '02-Name'             = MH.Name,
+                          '03-ExpiryDate'       = MH.ExpiryDate,
+                          '04-Score'            = ISNULL(AA.Score, 0),
+                          '05-RiskRating'       = CASE WHEN ISNULL(AA.Score, 0) < TH.ScoreTriggerMed THEN 1
+                                                      WHEN ISNULL(AA.Score, 0) >= TH.ScoreTriggerHigh THEN 3
+                                                      ELSE 2 END,
+                          '06-ApprovedByHOD'    = MH.ApprovedByHOD,
+                          '07-QCount'           = TA.QCount,
+                          '08-OS Count'         = TA.QCount - ISNULL(AA.AnswerCount, 0),
+                          '09-Status'           = MH.Status,
+                          '10-SubmittedBy'      = ISNULL(CONCAT('(', U.Code, ') ', U.FullName), ''),
+                          '11-SubmittedDate'    = MH.SubmittedDate,
+                          '12-ScoreTriggerMed'  = TH.ScoreTriggerMed,
+                          '13-ScoreTriggerHigh' = TH.ScoreTriggerHigh,
+                          '14-DateAdded'        = MH.DateAdded,
+                          '15-FR Reviewer'      = CAST(NULL AS varchar(100)),  
+                          '16-Type'             = 'Matter Risk Assessment'
+                      FROM MatterHeader MH
+                      LEFT JOIN AnswerAgg      AA ON AA.mraID      = MH.mraID
+                      LEFT JOIN TemplateAgg    TA ON TA.TemplateID = MH.TemplateID
+                      LEFT JOIN TemplateHeader TH ON TH.TemplateID = MH.TemplateID
+                      LEFT OUTER JOIN Users     U ON MH.SubmittedBy = U.Code
+                  ),
+
+                  /* =========================
+                    File Review branch
+                    ========================= */
+                  FR_Header AS (
+                      SELECT MRAO.ID, MRAO.TypeID, TT.TypeName,
+                          MRAO.ExpiryDate, MRAO.Score, MRAO.RiskRating,
+                          MRAO.ApprovedByHOD, MRAO.Status, MRAO.SubmittedBy,
+                          MRAO.SubmittedDate, MRAO.DateAdded, MRAO.FR_Reviewer,
+                          MRAO.EntityRef, MRAO.MatterNo
+                      FROM Usr_MRA_Overview MRAO
+                      LEFT JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID
+                      WHERE MRAO.EntityRef = '{entRef}' AND MRAO.MatterNo = {matNo}
+                        AND TT.Is_MRA = 'N'
+                  ),
+                  FR_DetailAgg AS (
+                      SELECT D.OV_ID, QCount   = COUNT(*),
+                          OSCount  = SUM(CASE WHEN D.SelectedAnswerID = -1 THEN 1 ELSE 0 END)
+                      FROM Usr_MRA_Detail D
+                      WHERE D.EntityRef = '{entRef}' AND D.MatterNo = {matNo}
+                      GROUP BY D.OV_ID
+                  ),
+                  FR_Result AS (
+                      SELECT '00-mraID'         = H.ID,
+                          '01-TemplateID'       = H.TypeID,
+                          '02-Name'             = H.TypeName,
+                          '03-ExpiryDate'       = H.ExpiryDate,
+                          '04-Score'            = H.Score,
+                          '05-RiskRating'       = H.RiskRating,
+                          '06-ApprovedByHOD'    = H.ApprovedByHOD,
+                          '07-QCount'           = ISNULL(A.QCount, 0),
+                          '08-OS Count'         = ISNULL(A.OSCount, 0),
+                          '09-Status'           = ISNULL(H.Status, 'Draft'),
+                          '10-SubmittedBy'      = ISNULL(CONCAT('(', U.Code, ') ', U.FullName), ''),
+                          '11-SubmittedDate'    = H.SubmittedDate,
+                          '12-ScoreTriggerMed'  = 0,
+                          '13-ScoreTriggerHigh' = 0,
+                          '14-DateAdded'        = H.DateAdded,
+                          '15-FR Reviewer'      = ISNULL(CONCAT('(', UR.Code, ') ', UR.FullName), 'N/A'), 
+                          '16-Type'             = 'File Review'
+                      FROM FR_Header H
+                      LEFT JOIN FR_DetailAgg A ON A.OV_ID = H.ID
+                      LEFT JOIN Users U        ON H.SubmittedBy  = U.Code
+                      LEFT JOIN Users UR       ON H.FR_Reviewer  = UR.Code
+                  )
+                  SELECT *
+                  FROM MRAv2_Result
+                  UNION ALL
+                  SELECT *
+                  FROM FR_Result
+                  ORDER BY [14-DateAdded] DESC;""".format(entRef=_tikitEntity, matNo=_tikitMatter)
   
   tmpText = "'Matter Risk Assessment(s)' or 'File Review(s)'"
     
@@ -494,12 +554,13 @@ def dg_MRAFR_Refresh(s, event):
           iScoreTrigMed = 0 if dr.IsDBNull(12) else dr.GetValue(12)
           iScoreTrigHigh = 0 if dr.IsDBNull(13) else dr.GetValue(13)
           iDateAdded = 0 if dr.IsDBNull(14) else dr.GetValue(14)
-          #iFRR = '' if dr.IsDBNull(15) else dr.GetString(15)
+          iFRR = '' if dr.IsDBNull(15) else dr.GetString(15)
+          iType = '' if dr.IsDBNull(16) else dr.GetString(16)
 
           tmpItem.append(MRAFR(mymraID=imraID, myTemplateID=iTemplateID, myName=iName, myExpiryDate=iExpiry, myScore=iScore, 
                                myRiskR=iRiskR, myAppByHOD=iAppByHOD, myQCount=iQCount, myQOS=iOSQs, 
                                myStatus=iStatus, mySubbedBy=iSubBy, mySubbedOn=iSubOn, 
-                               myScoreTriggerMed=iScoreTrigMed, myScoreTriggerHigh=iScoreTrigHigh, myFRReviewer=''))
+                               myScoreTriggerMed=iScoreTrigMed, myScoreTriggerHigh=iScoreTrigHigh, myFRReviewer=iFRR, myType=iType))
     dr.Close()
   
   #close db connection
@@ -515,13 +576,40 @@ def dg_MRAFR_Refresh(s, event):
     btn_Edit_MRAFR.IsEnabled = True
     btn_DeleteSelected_MRAFR.IsEnabled = True
   else:
-    tb_NoMRAFR.Text = "No {0}'s currently exist on this matter - please click the '+ New: ...' button to create new".format(tmpText)
+    tb_NoMRAFR.Text = "No {0}'s currently exist on this matter - please click the '+ New' button to create new".format(tmpText)
     tb_NoMRAFR.Visibility = Visibility.Visible
     dg_MRAFR.Visibility = Visibility.Hidden
     btn_CopySelected_MRAFR.IsEnabled = False
     btn_View_MRAFR.IsEnabled = False
     btn_Edit_MRAFR.IsEnabled = False
     btn_DeleteSelected_MRAFR.IsEnabled = False
+  return
+
+
+def dg_MRAFR_Refresh_and_Reselect(mraIDToReselect=None):
+  # This function will refresh the MRA/FR datagrid but attempt to keep the same item selected (if it still exists)
+
+  tmpSelectedID = mraIDToReselect
+  if tmpSelectedID is None and dg_MRAFR.SelectedItem is not None:
+    tmpSelectedID = getattr(dg_MRAFR.SelectedItem, 'mraID', None) or dg_MRAFR.SelectedItem['mraID']
+  
+  dg_MRAFR_Refresh(None, None)
+
+  if tmpSelectedID is None:
+    return
+
+  def do_select():
+    # ensure containers exist
+    dg_MRAFR.UpdateLayout()
+    dg_MRAFR.Focus()
+
+    dg_MRAFR.SelectedValue = tmpSelectedID
+    dg_MRAFR.UpdateLayout()
+
+    if dg_MRAFR.SelectedItem is not None:
+      dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
+  
+  dg_MRAFR.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, Action(do_select))
   return
 
 
@@ -561,17 +649,30 @@ def dg_MRAFR_SelectionChanged(s, event):
   return
 
 class TemplateOption(object):
-  def __init__(self, template_id, name):
+  def __init__(self, template_id, name, validity_days, iType, iQCount):
       self.TemplateID = template_id
       self.Name = name
+      self.ValidityDays = validity_days
+      self.Type = iType
+      self.QCount = iQCount
 
 def load_templates_for_case_type(matterCaseType):
-  sql = """SELECT TD.TemplateID, TD.Name
-           FROM Usr_MRAv2_TemplateDetails TD
-               JOIN Usr_MRAv2_CaseTypeDefaults CTD ON TD.TemplateID = CTD.TemplateID
-           WHERE CTD.CaseTypesCode = {CaseType}
-           ORDER BY TD.Name
-        """.format(CaseType=matterCaseType)
+  sql = """SELECT NewMRA.ID, NewMRA.Name, NewMRA.iLockDays, NewMRA.Type, NewMRA.QCount FROM (
+              SELECT 'ID' = TD.TemplateID, 'Name' = TD.Name, 
+                  'iLockDays' = TD.DaysUntil_IncompleteLock, 
+                  'Type' = 'MRA', 
+                  'QCount' = (SELECT COUNT(QuestionID) FROM Usr_MRAv2_Templates WHERE TemplateID = TD.TemplateID)
+              FROM Usr_MRAv2_TemplateDetails TD
+                JOIN Usr_MRAv2_CaseTypeDefaults CTD ON TD.TemplateID = CTD.TemplateID
+              WHERE CTD.CaseTypesCode = {CaseType}
+              UNION ALL
+              SELECT 'ID' = TT.TypeID, 'Name' = TT.TypeName, 
+                  'iLockDays' = 60, 'Type' = 'FileReview', 
+                  'QCount' = (SELECT COUNT(ID) FROM Usr_MRA_TemplateQs WHERE TypeID = TT.TypeID)
+              FROM Usr_MRA_TemplateTypes TT 
+                JOIN Usr_MRA_CaseType_Defaults CTD ON TT.TypeID = CTD.TemplateID
+              WHERE TT.Is_MRA = 'N' AND CTD.TypeName = 'File Review' AND CTD.CaseTypeID = {CaseType}
+              ) AS NewMRA""".format(CaseType=matterCaseType)
 
   items = ObservableCollection[object]()
   # standard P4W 'execute' SQL pattern
@@ -582,7 +683,10 @@ def load_templates_for_case_type(matterCaseType):
       while dr.Read():
         template_id = 0 if dr.IsDBNull(0) else dr.GetValue(0)
         name = '' if dr.IsDBNull(1) else dr.GetString(1)
-        items.Add(TemplateOption(template_id, name))
+        validity_days = 0 if dr.IsDBNull(2) else dr.GetValue(2)
+        iType = '' if dr.IsDBNull(3) else dr.GetString(3)
+        iQCount = 0 if dr.IsDBNull(4) else dr.GetValue(4)
+        items.Add(TemplateOption(template_id, name, validity_days, iType, iQCount))
     dr.Close()
   _tikitDbAccess.Close()
 
@@ -607,6 +711,7 @@ def btnNew_Click(sender, args):
 def TemplateButton_Click(sender, args):
   # Because we used AddHandler on icTemplates, sender may be the ItemsControl.
   # args.OriginalSource should be the actual Button (or something inside it).
+  global UserCanReviewFiles
 
   btn = args.OriginalSource
   # Sometimes OriginalSource is a TextBlock inside the Button; walk up to Button
@@ -616,15 +721,29 @@ def TemplateButton_Click(sender, args):
   if btn is None:
     return
 
-  template_id = btn.Tag
-  try:
-    template_id = int(template_id)
-  except:
-    pass
+  opt = btn.Tag  # <-- TemplateOption
+  template_id = opt.TemplateID
+  tName = opt.Name
+  validity_days = opt.ValidityDays
+  iType = opt.Type
+  iQCount = opt.QCount
 
-  # Call your existing create/new function
-  #MRA_AddNew(template_id)
-  MessageBox.Show("You clicked to add a new MRA with TemplateID: {0}".format(template_id), "DEBUG: Add new MRA")
+  # if no questions on this template, alert user and exit
+  if iQCount == 0:
+    MessageBox.Show("The template '{0}' doesn't have any questions associated with it, so you can't create a new {1} using this template.\n\nPlease contact your system administrator to resolve this.".format(tName, iType), "Error: No Questions on Template")
+    return
+
+  # Choose behaviour based on type
+  if iType == "MRA":
+    AddNew_MRA(templateID=template_id, templateName=tName, templateValidityDays=validity_days)
+    #MessageBox.Show("You clicked to add a new MRA ({0}) with TemplateID: {1}".format(tName, template_id), "DEBUG: Add new MRA")
+    
+    #MRA_AddNew(template_id, validity_days)  # whatever signature you need
+  elif iType == "FileReview":
+    if UserCanReviewFiles:
+      AddNew_FileReview(templateID=template_id, templateName=tName, templateValidityDays=validity_days)
+    else:
+      MessageBox.Show("Your user account doesn't have permissions to create new File Reviews. Please contact your system administrator.", "Permission Denied: Create File Review")
 
   # Close popup
   popTemplates.IsOpen = False
@@ -638,223 +757,96 @@ def popTemplates_Closed(sender, args):
     btnNew.IsChecked = False
 
 # - END OF 'ADD NEW' Button controls #
+def AddNew_MRA(templateID, templateName, templateValidityDays):
+  # This function will add a new row to the 'Matter Risk Assessment' data grid
 
+  sql = """WITH MainTemplates AS (
+                  SELECT TD.TemplateID, TD.Name
+                  FROM Usr_MRAv2_TemplateDetails TD
+                  WHERE TD.TemplateID = {templateID}
+                  ), 
+                ExistingMatterRows AS (
+                  SELECT MH.TemplateID, MH.mraID 
+                  FROM Usr_MRAv2_MatterHeader MH
+                  WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo}
+                  )
+            INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, mraID, Name, Status, ApprovedByHOD, DateAdded, TemplateID, ExpiryDate)
+            OUTPUT inserted.mraID 
+            SELECT '{entRef}', {matNo}, (SELECT ISNULL(MAX(mraID), 0) + 1 FROM Usr_MRAv2_MatterHeader), 
+                CONCAT(MT.Name, ' (', CONVERT(NVARCHAR, COUNT(EMR.mraID) + 1), ')'), 
+                'Draft', 'N', GETDATE(), {templateID}, DATEADD(DAY, {validityDays}, GETDATE())
+            FROM MainTemplates MT
+                LEFT OUTER JOIN ExistingMatterRows EMR ON MT.TemplateID = EMR.TemplateID
+            GROUP BY MT.Name""".format(entRef=_tikitEntity, matNo=_tikitMatter, templateID=templateID, validityDays=templateValidityDays)
 
-def dg_MRAFR_AddNewMRA(s, event):
-  # This function will add a new row to the 'Matter Risk Assessments' data drid
-  mra_TemplateType = 0
-  tmpOV_ID = 0
-  tmpName = ''
-  tmpNameMsg = ''
-  countOfTemplates = 0
-  templateExpiryDays = 0
-  mCaseType = 0
-  templatesForCaseType = ''
-  xTemplates = []
-  msgBoxTitle = "Add New Matter Risk Assessment..."
-  countAdded = 0
-  
-  #############################################################################################################
-  # before adding a new one, we need to first validate against our rules (can only add where there's either NO current MRA, or where Status = 'Complete' and the Risk Status = 'High')
-  # NEEDS TO BE FINISHED
-  
-  # get count of MRAs
-  # I think this is going to get problematic tryin to automate this, as whilst logic seems simple enough, when you consider there could be multiple MRAs on a matter
-  # we would then need to also check dates too.
-  # For now, I'm just going to add a 'please confirm' message/warning and hope this is sufficient
-  
-  preAddMsg = "Please note that you should only continue if:\n- there are no Matter Risk Assessments currently on this matter; or\n- your previous MRA was rated as 'High Risk' and has been approved by your HOD, but the system hasn't auto-added a new MRA.\n\nAre you sure you wish to continue?"
-  userConfirmation = MessageBox.Show(preAddMsg, "Add new 'New Matter Risk Assessment' confirmation...", MessageBoxButtons.YesNo)  
-  
-  if userConfirmation == DialogResult.No:
-    return
-  
-  ##########################################################################
-  
-  
-  # get CaseType for Matter
-  mCaseType = runSQL("SELECT CaseTypeRef FROM Matters WHERE EntityRef = '{0}' AND Number = {1}".format(_tikitEntity, _tikitMatter))
+  #try:
+  newMRAid = runSQL(codeToRun=sql, useAlternativeResolver=True, 
+                    errorMsgText="There was an error adding new item to overview table", 
+                    errorMsgTitle="Error: Add New MRA...", showError=True, returnType='Int')
+  #except Exception as e:
+  #  MessageBox.Show("There was an error adding new item to overview table, using SQL:\n{0}\n\nError details:\n{1}".format(sql, str(e)), "Error: Add New MRA...")
+  #  return
+  MessageBox.Show("SQL to add new MRA:\n{0}\n\nReturned new MRA ID: {1}".format(sql, newMRAid), "DEBUG: Add New MRA - SQL and Result")
 
-  # get count of MRA Templates against this Case Type AND get a text string of all template IDs
-  countOfTemplates = runSQL("SELECT COUNT(TemplateID) FROM Usr_MRA_CaseType_Defaults WHERE CaseTypeID = {0} AND TypeName = 'Matter Risk Assessment'".format(mCaseType))
-  templatesForCaseType = runSQL("SELECT STRING_AGG(TemplateID, '|') FROM Usr_MRA_CaseType_Defaults WHERE CaseTypeID = {0} AND TypeName = 'Matter Risk Assessment'".format(mCaseType))
-
-  # determine what to do based on count of templates found
-  if int(countOfTemplates) == 0:
-    # nothing to add so quit function now
-    MessageBox.Show("Cannot add as there doesn't appear to be any Matter Risk Assessment templates setup for this matters' Case Type ({0} - {1})!".format(mCaseType, tb_CaseType.Text), msgBoxTitle)
-    return
-  elif int(countOfTemplates) == 1:
-    # only 1 so add the template ID to our list and disable prompt asking to confirm to add
-    xTemplates.append(templatesForCaseType)
-    promptForConfirmation = False
-  elif int(countOfTemplates) > 1:
-    # more than one exists, so split our IDs out into an interable list, and enable 'prompt' to get user to confirm each one to add
-    xTemplates = templatesForCaseType.split("|")
-    promptForConfirmation = True
-
-  # loop over the template IDs in our list
-  for x in xTemplates:
-    if int(x) > 0:
-      # if 'prompt' is switched on, get name of MRA and display message asking user to confirm
-      if promptForConfirmation == True:
-        # get name to display in message to user (to confirm adding)
-        tmpNameMsg = runSQL("SELECT TT.TypeName FROM Usr_MRA_TemplateTypes TT WHERE TypeID = {0}".format(x), False, '', '')
-        
-        myResult = MessageBox.Show("Multiple Matter Risk Assessment templates have been assigned for this matters' case type.\n\nPlease confirm you'd like to add: '{0}'?".format(tmpNameMsg), "Add new Matter Risk Assessment (multiple exist)...", MessageBoxButtons.YesNo)
-      else:
-        # prompt is switched-off so set 'result' to 'yes'
-        myResult = DialogResult.Yes
-      
-      # if ok to continue adding
-      if myResult == DialogResult.Yes:
-        # create a name to use for 'local name' (needed for getting ID of added row later, so make unique with date)
-        #! NEED TO ADJUST THIS HERE TO GET COUNT FOR CURRENT MRA TYPE (AS COULD BE MULTIPLE TYPES)
-        # x = templateID from 'TemplateTypes' table - so need to get name or use this ID to count how many exist currently on matter...
-        mraNextNum_sql = """[SQL: SELECT COUNT(TypeID) + 1 FROM Usr_MRA_Overview MRAO 
-                                  WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} 
-                                  AND TypeID = {2}]""".format(_tikitEntity, _tikitMatter, x)
-        mraNextNum = int(runSQL(mraNextNum_sql, False, '', ''))
-        nameSQL = """SELECT REPLACE(TT.TypeName, 'Matter Risk Assessment', 'NMRA') + ' - ' + CONVERT(nvarchar, {1}) 
-                     FROM Usr_MRA_TemplateTypes TT WHERE TypeID = {0}""".format(x, mraNextNum)
-        tmpName = runSQL(nameSQL, False, '', '')
-    
-        # get the expiry days (we use this to set the expiry date of added MRA accordingly)
-        expirySQL = "SELECT TT.ValidityPeriodDays FROM Usr_MRA_TemplateTypes TT WHERE TypeID = {0}".format(x)
-        templateExpiryDays = runSQL(expirySQL, False, '', '')
-    
-        # insert record in MRA table with values previously obtained
-        insSQL = """INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded) 
-                    VALUES('{0}', {1}, {2}, DATEADD(day, {3}, GETDATE()), '{4}', 0, 0, 'N', GETDATE())""".format(_tikitEntity, _tikitMatter, x, templateExpiryDays, tmpName)
-        try:
-          _tikitResolver.Resolve("[SQL: " + insSQL + "]")
-        except:
-          # if there was an error inserting row, alert user and break loop (eg: move to next 'x')
-          MessageBox.Show("There was an error inserting a new Matter Risk Assessment onto the Overview list.\n\nSQL Used: {0}".format(insSQL), "Error: " + msgBoxTitle)
-          break
-    
-        # get ID of row just added
-        tmpSQL = """SELECT TOP 1 ISNULL(ID, 0) FROM Usr_MRA_Overview WHERE EntityRef = '{0}' AND MatterNo = {1} 
-                    AND TypeID = {2} AND LocalName = '{3}' ORDER BY DateAdded DESC""".format(_tikitEntity, _tikitMatter, x, tmpName)
-        tmpOV_ID = runSQL(tmpSQL, True, "There was an error getting the new item ID of item added to the Overview list", "Error: " + msgBoxTitle)
-    
-        if int(tmpOV_ID) > 0:
-          # finally add the questions to the Details table
-          tmpSQL = """INSERT INTO Usr_MRA_Detail(EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder, CorrActionID, QGroupID) 
-                      SELECT '{0}', {1}, {2}, QuestionID, AnswerList, -1, 0, DisplayOrder, 0, QGroupID FROM Usr_MRA_TemplateQs WHERE TypeID = {3}""".format(_tikitEntity, _tikitMatter, tmpOV_ID, x)
-          try:
-            _tikitResolver.Resolve("[SQL: " + tmpSQL + "]")
-            countAdded += 1
-          except:
-            MessageBox.Show("There was an error adding the Questions for the Matter Risk Assessment", "Error: " + msgBoxTitle)
-
-  if countAdded > 0:
-    # refresh data grid and select last item
-    dg_MRAFR_Refresh(s, event)
-    #dg_MRAFR.Focus()
-    #dg_MRAFR.SelectedIndex = (dg_MRAFR.Items.Count - 1)  
-    if countAdded == 1:
-      # simple way to do this is to first iterate over DG and select correct row (don't assume it's the last row!)
-      # and then call the 'dg_MRAFR_EditSelected' function to go to the detail screen
-      itemSelected = False
-      for x in dg_MRAFR.Items:
-        if x['Desc'] == tmpName:
-          dg_MRAFR.SelectedItem = x
-          itemSelected = True
-          # and scroll into view
-          dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
-          break
-    
-      if itemSelected == True:
-        # now call the edit function to go to detail screen
-        dg_MRAFR_EditSelected(s, event)
-      else:
-        MessageBox.Show("There was an error selecting the new Matter Risk Assessment item in the DataGrid", "Error: " + msgBoxTitle)
-    else:
-      MessageBox.Show("Multiple Matter Risk Assessments have been added.\n\nPlease manually select the one to edit, and click the 'Edit Selected' button.", msgBoxTitle)
-
+  if int(newMRAid) > 0:
+    dg_MRAFR_Refresh_and_Reselect(mraIDToReselect=newMRAid)
+  #MessageBox.Show("You clicked to add a new MRA with TemplateID: {0}".format(templateID), "DEBUG: Add new MRA")
   return
   
-  
-def dg_MRAFR_AddNewFR(s, event):
+def AddNew_FileReview(templateID, templateName, templateValidityDays):
   # This function will add a new row to the 'Matter Risk Assessment / File Review' data grid
-  # ! Linked to XAML control.event: btn_AddNew_FR.Click
+  #! In porocess of being re-written / updated (whilst we're not changing any underlying code on 
+  #!  file review process, we can afford to smarten up some of this code as it's looking a bit jank
+  #!  (with far too many SQL calls!))
+  
+  newHeaderID_sql = """WITH MainTemplates AS (
+                            SELECT TT.TypeID, TT.TypeName
+                            FROM Usr_MRA_TemplateTypes TT
+                            WHERE TT.TypeID = {templateID}
+                            ), 
+                          ExistingMatterRows AS (
+                            SELECT MRAO.TypeID, MRAO.ID 
+                            FROM Usr_MRA_Overview MRAO
+                            WHERE MRAO.EntityRef = '{entRef}' AND MRAO.MatterNo = {matNo}
+                            )
+                        INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded, FR_Reviewer, Status)
+                         OUTPUT inserted.ID
+                        SELECT '{entRef}', {matNo}, {templateID}, DATEADD(DAY, {validityDays}, GETDATE()), 
+                          CONCAT(MT.TypeName, ' (', CONVERT(NVARCHAR, COUNT(EMR.ID) + 1), ')'),
+                          0, 0, 'N', GETDATE(), '{cUser}', 'Draft'
+                        FROM MainTemplates MT
+                          LEFT OUTER JOIN ExistingMatterRows EMR ON MT.TypeID = EMR.TypeID
+                        GROUP BY MT.TypeName""".format(templateID=templateID, entRef=_tikitEntity, 
+                                                       matNo=_tikitMatter, validityDays=templateValidityDays, cUser=_tikitUser)
 
-  # First need to lookup case type on matter to see which template we need
-  tmpSQL = "[SQL: SELECT TOP 1 TemplateID FROM Usr_MRA_CaseType_Defaults WHERE CaseTypeID = {0} AND TypeName = 'File Review']".format(tb_CaseTypeRef.Text)
-  try:
-    templateID_forMatterCaseType = _tikitResolver.Resolve(tmpSQL)
-    #MessageBox.Show(templateID_forMatterCaseType)
-  except:
-    MessageBox.Show("Error trying to get TemplateID for Matter Case Type, most likely because a File Review type hasn't been set against this matters Case Type. \nSQL used:\n" + str(tmpSQL), "Error: Add New File Review...")
-    #templateID_forMatterCaseType = -1
+  #try:
+  newHeaderID = runSQL(codeToRun=newHeaderID_sql, useAlternativeResolver=True,
+                       errorMsgText="There was an error adding new item to overview table", 
+                       errorMsgTitle="Error: Add New File Review...", showError=True, returnType='Int')
+  #except Exception as e:
+  #  MessageBox.Show("There was an error adding new item to overview table, using SQL:\n{0}\n\nError details:\n{1}".format(newHeaderID_sql, str(e)), "Error: Add New File Review...")
+  #  return
+
+  if int(newHeaderID) < 0:
+    MessageBox.Show("There was an error adding new item to overview table, using SQL:\n{0}".format(newHeaderID_sql), "Error: Add New File Review...")
     return
   
-  # Otherwise, proceed to add new Overview item
-
-  # lookup 'Name' to use (needed for INSERT later)
-  # firstly, get the count of current FRs on this matter (to use in the name)
-  frNewNum_sql =  """[SQL: SELECT COUNT(MRAO.EntityRef) + 1 FROM Usr_MRA_Overview MRAO 
-                      JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID 
-                      WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} AND TT.Is_MRA = 'N']""".format(_tikitEntity, _tikitMatter)
-  frNewNum = int(_tikitResolver.Resolve(frNewNum_sql))
-  #FR_TemplateName = _tikitResolver.Resolve("[SQL: SELECT TOP 1 REPLACE(TypeName, 'File Review', 'FR') + ' - ' + CONVERT(VARCHAR(12), GETDATE(), 103) FROM Usr_MRA_TemplateTypes WHERE TypeID = {0}]".format(templateID_forMatterCaseType))
-  FR_TemplateName = _tikitResolver.Resolve("[SQL: SELECT TOP 1 REPLACE(TypeName, 'File Review', 'FR') + ' - ' + CONVERT(NVARCHAR, {1}) FROM Usr_MRA_TemplateTypes WHERE TypeID = {0}]".format(templateID_forMatterCaseType, frNewNum))
-
-  insertSQL = """[SQL: INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, ExpiryDate, LocalName, Score, RiskRating, ApprovedByHOD, DateAdded, FR_Reviewer, Status) 
-                    VALUES ('{0}', {1}, {2}, GETDATE(), '{3}', 0, 0, 'N', GETDATE(), '{4}', 'Draft')]""".format(_tikitEntity, _tikitMatter, templateID_forMatterCaseType, FR_TemplateName, tb_CurrUser.Text)
-  try:
-    _tikitResolver.Resolve(insertSQL)
-  except:
-    MessageBox.Show("There was an error adding new item to overview table, using SQL:\n{0}".format(insertSQL), "Error: Add New File Review...")
-    return
-
-  # NEED TO GET ID OF ROW JUST ADDED
-  newItemID_SQL = """[SQL: SELECT TOP 1 ID FROM Usr_MRA_Overview WHERE EntityRef = '{0}' AND MatterNo = {1} AND LocalName = '{2}'  
-                     ORDER BY DateAdded DESC]""".format(_tikitEntity, _tikitMatter, FR_TemplateName)
-  try:
-    newItemID = _tikitResolver.Resolve(newItemID_SQL)
-  except:
-    MessageBox.Show("There was an error getting the new item ID of item added to overview table, using SQL:\n{0}".format(insertSQL), "Error: Add New File Review...")
-    return
-
   # finally add the Questions (to the Details table)
-  insert_Qs_SQL = """[SQL: INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder)  
-                            SELECT '{0}', {1}, {2}, ID, AnswerList, -1, 0, DisplayOrder FROM Usr_MRA_TemplateQs 
-                            WHERE TypeID = {3}]""".format(_tikitEntity, _tikitMatter, newItemID, templateID_forMatterCaseType)
+  insert_Qs_SQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder)  
+                     SELECT '{0}', {1}, {2}, ID, AnswerList, -1, 0, DisplayOrder FROM Usr_MRA_TemplateQs 
+                     WHERE TypeID = {3}""".format(_tikitEntity, _tikitMatter, newHeaderID, templateID)
   try:
-    _tikitResolver.Resolve(insert_Qs_SQL)
+    _tikitResolver.Resolve("[SQL: {0}]".format(insert_Qs_SQL))
   except:
-    MessageBox.Show("There was an error copying the Questions to the 'Details' table, using SQL:\n{0}".format(insertSQL), "Error: Add New File Review...")
+    MessageBox.Show("There was an error copying the Questions to the 'Details' table, using SQL:\n{0}".format(insert_Qs_SQL), "Error: Add New File Review...")
     return  
     
   # refresh data grid 
-  dg_MRAFR_Refresh(s, event)
-
-  # and select last item
-  #dg_MRAFR.Focus()
-  #dg_MRAFR.SelectedIndex = (dg_MRAFR.Items.Count - 1)  
-  ## ^ why do this? Ideally should go stright into the Detail screen for the new item added
-
-  # simple way to do this is to first iterate over DG and select correct row (don't assume it's the last row!)
-  # and then call the 'dg_MRAFR_EditSelected' function to go to the detail screen
-  itemSelected = False
-  for x in dg_MRAFR.Items:
-    if x['Desc'] == FR_TemplateName:
-      dg_MRAFR.SelectedItem = x
-      itemSelected = True
-      # and scroll into view
-      dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
-      break
-  
-  if itemSelected == True:
-    # now call the edit function to go to detail screen
-    dg_MRAFR_EditSelected(s, event)
-  else:
-    MessageBox.Show("There was an error selecting the new File Review item in the DataGrid", "Error: Add New File Review...")
-  
+  dg_MRAFR_Refresh_and_Reselect(mraIDToReselect=newHeaderID)
   return
-  
+
+
+
 def btn_CopySelected_MRAFR_Click(s, event):
   # This function will DUPLICATE the currently selected item (including the questions), AFTER confirmation from user
   #! Note: 17/02/2026: Been re-written to use 'createNewMRA_BasedOnCurrent' function instead as simpler 
@@ -872,19 +864,18 @@ def btn_CopySelected_MRAFR_Click(s, event):
     return
   
   idItemToCopy = dg_MRAFR.SelectedItem['mraID']
+  # if Type is FileReview, then use function to copy File Review instead of MRA (NB: we may want to re-visit this in future as currently this will allow copying of File Reviews, but we may want to restrict this just to MRA?
+  if 'File Review' in dg_MRAFR.SelectedItem['Type']:
+    newID = createNewFR_BasedOnCurrent(idItemToCopy=idItemToCopy, entRef=_tikitEntity, matNo=_tikitMatter)  
+  
+    if int(newID) > 0:
+      dg_MRAFR_Refresh_and_Reselect(mraIDToReselect=newID)
 
-  newMRAid = createNewMRA_BasedOnCurrent(idItemToCopy=idItemToCopy, entRef=_tikitEntity, matNo=_tikitMatter)
+  else:
+    newMRAid = createNewMRA_BasedOnCurrent(idItemToCopy=idItemToCopy, entRef=_tikitEntity, matNo=_tikitMatter)
 
-  if int(newMRAid) > 0:
-    # refresh main list
-    dg_MRAFR_Refresh(s, event)
-    # and select newly added item
-    for x in dg_MRAFR.Items:
-      if x['mraID'] == newMRAid:
-        dg_MRAFR.SelectedItem = x
-        # and scroll into view
-        dg_MRAFR.ScrollIntoView(dg_MRAFR.SelectedItem)
-        break
+    if int(newMRAid) > 0:
+      dg_MRAFR_Refresh_and_Reselect(mraIDToReselect=newMRAid)
 
   return  
 
@@ -898,65 +889,13 @@ def dg_MRAFR_ViewSelected(s, event):
     return  
 
   tmpType = dg_MRAFR.SelectedItem['Type']
-  tmpName = dg_MRAFR.SelectedItem['Name']
-  tmpID = dg_MRAFR.SelectedItem['mraID']
-  tmpStatus = dg_MRAFR.SelectedItem['Status']
-  #MessageBox.Show("tmpType: " + str(tmpType) + "\ntmpName: " + str(tmpName) + "\ntmpID: " + str(tmpID), "DEBUG: Test Selected Values")
   
   if 'File Review' in tmpType:
     # is a FR...
-    lbl_FR_Name.Content = tmpName
-    lbl_FR_ID.Content = tmpID    
-    
-    # refresh File Review datagrid
-    refresh_FR(s, event)
-    
-    # set 'view' mode option
-    opt_ViewModeFR.IsChecked = True
-    # disable 'Submit' button
-    btn_FR_Submit.IsEnabled = False
-    # disable Answer Option buttons
-    opt_Yes.IsEnabled = False
-    opt_No.IsEnabled = False
-    opt_NA.IsEnabled = False
-
-    # hide 'auto go to next question' and display FR tab
-    chk_FR_AutoSelectNext.Visibility = Visibility.Hidden
-    ti_FR.Visibility = Visibility.Visible
-    ti_FR.IsSelected = True
+    LOAD_EDIT_FR_PAGE(readOnly=True)
   else:
     # is a MRA... first need to load up the 'Questions' tab and then select the tab
-    lbl_MRA_Name.Text = tmpName
-    lbl_MRA_ID.Content = tmpID
-    lbl_MRA_Status.Content = tmpStatus
-  
-    #! MRA_UpdateTotalScore(s, event)
-    #! populate_MRA_QGroups(s, event)
-    #! refresh_MRA(s, event)
-    
-      
-    # show / hide 'Save' buttons accordingly
-    #! btn_BackToOverview.Visibility = Visibility.Visible
-    btn_MRA_Submit.Visibility = Visibility.Collapsed
-    btn_MRA_SaveAsDraft.Visibility = Visibility.Collapsed
-    #btn_MRA_SaveAnswer.IsEnabled = False
-    chk_MRA_AutoSelectNext.IsEnabled = False
-    lbl_TimeEntered.Content = ''
-    populate_MRA_DaysUntilLocked(s, event)
-    
-    dg_MRA.Columns[8].Visibility = Visibility.Hidden
-    dg_MRA.Columns[9].Visibility = Visibility.Hidden
-    stk_RiskInfo.Visibility = Visibility.Hidden
-    
-    # also - if current user is a Risk user (eg: has risk key), display additional columns (ALSO NEED TO ADD TOTAL SCORE)
-    if _tikitUser in RiskAndITUsers:
-      dg_MRA.Columns[8].Visibility = Visibility.Visible
-      dg_MRA.Columns[9].Visibility = Visibility.Visible
-      stk_RiskInfo.Visibility = Visibility.Visible
-    
-    grp_MRA_SelectedQuestionArea.IsEnabled = False
-    ti_MRA.Visibility = Visibility.Visible
-    ti_MRA.IsSelected = True
+    LOAD_EDIT_MRA_PAGE(readOnly=True)
     
   ti_Main.Visibility = Visibility.Collapsed
   return
@@ -977,8 +916,6 @@ def btn_Edit_MRAFR_Click(s, event):
     return
   
   tmpType = dg_MRAFR.SelectedItem['Type']
-  tmpName = dg_MRAFR.SelectedItem['Name']
-  tmpID = dg_MRAFR.SelectedItem['mraID']
   #MessageBox.Show("tmpType: " + str(tmpType) + "\ntmpName: " + str(tmpName) + "\ntmpID: " + str(tmpID), "DEBUG: Test Selected Values")
   
   if 'Matter Risk Assessment' in tmpType:
@@ -988,16 +925,89 @@ def btn_Edit_MRAFR_Click(s, event):
         return
 
   if 'File Review' in tmpType:
-    if UserCanReviewFiles == False:
-      MessageBox.Show("Only the Fee Earner's HOD, or the Fee Earners' Approver(s) can edit!", "Error: Edit selected item...")
-      return
-    # is a FR...
-    lbl_FR_Name.Content = tmpName
-    lbl_FR_ID.Content = tmpID
-    lbl_TimeEnteredFR.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
+    LOAD_EDIT_FR_PAGE(readOnly=False)
+  else:
+    LOAD_EDIT_MRA_PAGE(readOnly=False)
+    
+  ti_Main.Visibility = Visibility.Collapsed
+  return
 
-    # refresh File Review datagrid
-    refresh_FR(s, event)
+
+def LOAD_EDIT_MRA_PAGE(readOnly=False):
+  # is a MRA... first need to load up the 'Questions' tab and then select the tab
+  lbl_MRA_Name.Content = dg_MRAFR.SelectedItem['Name']
+  lbl_MRA_ID.Content = dg_MRAFR.SelectedItem['mraID']
+  lbl_ScoreTrigger_High.Content = dg_MRAFR.SelectedItem['ScoreTriggerHigh']
+  lbl_ScoreTrigger_Medium.Content = dg_MRAFR.SelectedItem['ScoreTriggerMedium']
+  lbl_MRA_TemplateID.Content = dg_MRAFR.SelectedItem['TemplateID']
+  lbl_MRA_Status.Content = dg_MRAFR.SelectedItem['Status']
+
+  # get answerlist in memory for this template
+  MRA_load_Answers_toMemory()
+  # load questions and answers for this MRA into datagrid
+  MRA_load_Questions_DataGrid()
+
+  # do we need to update score as well (did on old version but may want to check)
+  #MRA_RecalcTotalScore()
+  
+  if readOnly == True:
+    # if we're just viewing, then disable all answer options and hide 'Save' buttons
+    btn_MRA_BackToOverview.Visibility = Visibility.Visible
+    btn_MRA_Submit.Visibility = Visibility.Collapsed
+    btn_MRA_SaveAsDraft.Visibility = Visibility.Collapsed
+    #btn_MRA_SaveAnswer.IsEnabled = False
+    lbl_TimeEntered.Content = ''
+    grp_MRA_SelectedQuestionArea.IsEnabled = False
+  else:
+    # in 'Edit' mode, so show / hide 'Save' buttons accordingly
+    btn_MRA_BackToOverview.Visibility = Visibility.Collapsed
+    btn_MRA_Submit.Visibility = Visibility.Visible
+    btn_MRA_SaveAsDraft.Visibility = Visibility.Visible
+    #btn_MRA_SaveAnswer.IsEnabled = True
+    chk_MRA_AutoSelectNext.IsEnabled = True
+    lbl_TimeEntered.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
+    grp_MRA_SelectedQuestionArea.IsEnabled = True
+
+  # also - if current user is a Risk user (eg: has risk key), display additional columns (score / email comment)
+  if _tikitUser in RiskAndITUsers:
+    dg_MRA.Columns[7].Visibility = Visibility.Visible   # Email comment column
+    dg_MRA.Columns[5].Visibility = Visibility.Visible   # Score column
+    stk_RiskInfo.Visibility = Visibility.Visible
+  else:
+    dg_MRA.Columns[7].Visibility = Visibility.Collapsed
+    dg_MRA.Columns[5].Visibility = Visibility.Collapsed
+    stk_RiskInfo.Visibility = Visibility.Collapsed
+
+  populate_MRA_DaysUntilLocked(expiryDate=dg_MRAFR.SelectedItem['Expiry'])
+  ti_MRA.Visibility = Visibility.Visible
+  ti_MRA.IsSelected = True
+
+
+def LOAD_EDIT_FR_PAGE(readOnly=False):
+
+  global UserCanReviewFiles
+  if UserCanReviewFiles == False:
+    MessageBox.Show("Only the Fee Earner's HOD, or the Fee Earners' Approver(s) can edit!", "Error: Edit selected item...")
+    return
+  
+  # is a FR...
+  lbl_FR_Name.Content = dg_MRAFR.SelectedItem['Name']
+  lbl_FR_ID.Content = dg_MRAFR.SelectedItem['mraID']
+  
+  # refresh File Review datagrid
+  refresh_FR(None, None)
+
+  if readOnly == True:
+    # set 'view' mode option
+    opt_EditModeFR.IsChecked = False
+    # enable Submit button
+    btn_FR_Submit.IsEnabled = False 
+    # enable Answer Option buttons
+    opt_Yes.IsEnabled = False
+    opt_No.IsEnabled = False
+    opt_NA.IsEnabled = False
+    lbl_TimeEnteredFR.Content = ''
+  else:
     # set 'edit' mode option    
     opt_EditModeFR.IsChecked = True
     # enable Submit button
@@ -1006,44 +1016,13 @@ def btn_Edit_MRAFR_Click(s, event):
     opt_Yes.IsEnabled = True
     opt_No.IsEnabled = True
     opt_NA.IsEnabled = True
+    lbl_TimeEnteredFR.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
 
-    #dg_FR.IsEnabled = True
-    # show the 'auto go to next Question' and go to FR tab
-    chk_FR_AutoSelectNext.Visibility = Visibility.Visible
-    ti_FR.Visibility = Visibility.Visible
-    ti_FR.IsSelected = True
-  else:
-    # is a MRA... first need to load up the 'Questions' tab and then select the tab
-    lbl_MRA_Name.Content = tmpName
-    lbl_MRA_ID.Content = tmpID
-    lbl_ScoreTrigger_High.Content = dg_MRAFR.SelectedItem['ScoreTriggerHigh']
-    lbl_ScoreTrigger_Medium.Content = dg_MRAFR.SelectedItem['ScoreTriggerMedium']
-    lbl_MRA_TemplateID.Content = dg_MRAFR.SelectedItem['TemplateID']
-    lbl_MRA_Status.Content = dg_MRAFR.SelectedItem['Status']
-
-    # get answerlist in memory for this template
-    MRA_load_Answers_toMemory()
-    # load questions and answers for this MRA into datagrid
-    MRA_load_Questions_DataGrid()
-
-    # do we need to update score as well (did on old version but may want to check)
-    #MRA_RecalcTotalScore()
-    
-    # show / hide 'Save' buttons accordingly
-    btn_MRA_BackToOverview.Visibility = Visibility.Collapsed
-    btn_MRA_Submit.Visibility = Visibility.Visible
-    btn_MRA_SaveAsDraft.Visibility = Visibility.Visible
-    #btn_MRA_SaveAnswer.IsEnabled = True
-    chk_MRA_AutoSelectNext.IsEnabled = True
-    lbl_TimeEntered.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
-    populate_MRA_DaysUntilLocked(s, event)
-    
-    grp_MRA_SelectedQuestionArea.IsEnabled = True
-    ti_MRA.Visibility = Visibility.Visible
-    ti_MRA.IsSelected = True
-    
-  ti_Main.Visibility = Visibility.Collapsed
-  return
+  #dg_FR.IsEnabled = True
+  # show the 'auto go to next Question' and go to FR tab
+  chk_FR_AutoSelectNext.Visibility = Visibility.Visible
+  ti_FR.Visibility = Visibility.Visible
+  ti_FR.IsSelected = True
 
 
 def btn_HOD_Approval_MRA_Click(s, event):
@@ -1143,30 +1122,45 @@ def dg_MRAFR_DeleteSelected(s, event):
     MessageBox.Show("Nothing selected to delete!", "Error: Delete Selected Matter Risk Assessment...")
     return
 
+  # let's first ask for confirmation before blindly deleting the item (and associated questions)
+  result = MessageBox.Show("Are you sure you want to delete the selected item and its associated questions?", "Confirm Delete", MessageBoxButtons.YesNo)
+  if result != DialogResult.Yes:
+    return
+
   # First get the ID, as we'll also want to delete questions using this ID
   tmpID = dg_MRAFR.SelectedItem['mraID'] 
   if 'File Review' in dg_MRAFR.SelectedItem['Type']:
     tmpType = 'File Review'
+    deleteSQL = "DELETE FROM Usr_MRA_Overview WHERE ID = {id} AND EntityRef = '{entRef}' AND MatterNo = {matNo}".format(id=tmpID, entRef=_tikitEntity, matNo=_tikitMatter)
+    questionsTable = 'Usr_MRA_Detail'
+    questionsIDfield = 'OV_ID'
   else:
     tmpType = 'Matter Risk Assessment'
+    deleteSQL = "DELETE FROM Usr_MRAv2_MatterHeader WHERE mraID = {id} AND EntityRef = '{entRef}' AND MatterNo = {matNo}".format(id=tmpID, entRef=_tikitEntity, matNo=_tikitMatter)
+    questionsTable = 'Usr_MRAv2_MatterDetails'
+    questionsIDfield = 'mraID'
 
-  # Call generic function to do main delete
-  #tmpNewFocusRow = dgItem_DeleteSelected_M(dg_MRAFR, 'Usr_MRA_Overview', '', 'ID', '', 'Desc', int(lbl_MRAFR_ID.Content), _tikitEntity, _tikitMatter)
-  tmpNewFocusRow = dgItem_DeleteSelected_M(dg_MRAFR, 'Usr_MRA_Overview', '', 'ID', '', 'Desc', '', _tikitEntity, _tikitMatter)
-  if tmpNewFocusRow > -1:
-    dg_MRAFR_Refresh(s, event)
-    dg_MRAFR.Focus()
-    dg_MRAFR.SelectedIndex = tmpNewFocusRow
-    
-    # now to delete all questions associated with this this ID
-    countQs = _tikitResolver.Resolve("[SQL: SELECT COUNT(ID) FROM Usr_MRA_Detail WHERE OV_ID = " + str(tmpID) + " AND EntityRef = '" + _tikitEntity + "' AND MatterNo = " + str(_tikitMatter) + "]")
-    
-    if int(countQs) > 0:
-      deleteQ_SQL = "[SQL: DELETE FROM Usr_MRA_Detail WHERE OV_ID = " + str(tmpID) + " AND EntityRef = '" + _tikitEntity + "' AND MatterNo = " + str(_tikitMatter) + "]"
-      try:
-        _tikitResolver.Resolve(deleteQ_SQL)
-      except:
-        MessageBox.Show("There was an error deleting the questions attached to this item. \nUsing SQL:\n" + deleteQ_SQL, "Error: Deleting selected " + tmpType + "...")
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteSQL))
+  except Exception as e:
+    MessageBox.Show("There was an error deleting the selected item, using SQL:\n{0}\n\nError details:\n{1}".format(deleteSQL, str(e)), "Error: Delete Selected {2}...".format(tmpType))
+    return
+  
+  # if we get here, we have deleted the 'header' row, so now need to delete any Questions associated to this item 
+  deleteQ_sql = """DELETE FROM {questionsTable} 
+                    WHERE {questionsIDfield} = {id} 
+                    AND EntityRef = '{entRef}' AND MatterNo = {matNo}""".format(questionsTable=questionsTable, 
+                                                                                questionsIDfield=questionsIDfield, 
+                                                                                id=tmpID, 
+                                                                                entRef=_tikitEntity, 
+                                                                                matNo=_tikitMatter)
+
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteQ_sql))
+    MessageBox.Show("Selected {0} and associated Questions have been deleted successfully.".format(tmpType), "Delete successful")
+  except Exception as e:
+    MessageBox.Show("There was an error deleting the associated Questions for the selected item, using SQL:\n{0}\n\nError details:\n{1}".format(deleteQ_sql, str(e)), "Error: Delete Questions for Selected {2}...".format(tmpType))
+    return
   return
 
 
@@ -2201,19 +2195,6 @@ def MRA_BackToOverview():
   return
 
 
-def MRA_save_answers_to_db(vm):
-
-  if vm is None:
-    return
-  
-  # 1) flatten vm rows into a list that we can intert into Usr_MRAv2_MatterDetails; we only want to insert rows
-  #  for questions that have an answer selected (we can ignore unanswered questions, as they will just show as
-  #  blank in the datagrid, and we don't want to overwrite any existing answers with blanks)
-
-
-  # 2) we'll do this in a transaction, deleting existing records for this matter+mraID and then re-inserting
-  #  all selected answers (for simplicity - as opposed to trying to match and update/insert as needed)
-
 def flatten_matter_rows(store_unanswered=True):
   # Returns list[dict] ready for INSERT into Usr_MRAv2_MatterDetails.
   # Uses current on-screen order (MRA_QUESTIONS_LIST), so grouping won't break order.
@@ -2533,18 +2514,28 @@ def insert_into_MRAEvents(userRef, triggerText, ov_ID, emailTo, emailCC, toUserN
               VALUES(GETDATE(), '{0}', '{1}', {2}, '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', {12})""".format(userRef, triggerText, 
                       ov_ID, emailTo, emailCC, toUserName, ourRef, matterDesc, clientName, addtl1, addtl2, _tikitEntity, _tikitMatter)
 
-  runSQL(tmpSQL, True, "There was an error attempting to add a row to the Usr_MRA_Events table. \nConfirmation email may not be received\n\nSQL Used:\n{0}".format(tmpSQL), "ERROR: Attempting to save to 'Events' table...")
-  return
+  #runSQL(tmpSQL, True, "There was an error attempting to add a row to the Usr_MRA_Events table. \nConfirmation email may not be received\n\nSQL Used:\n{0}".format(tmpSQL), "ERROR: Attempting to save to 'Events' table...")
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(tmpSQL))
+    return True
+  except Exception as e:
+    return False
 
 
-def populate_MRA_DaysUntilLocked(s, event):
+def populate_MRA_DaysUntilLocked(expiryDate=None):
   # This function will populate the 'you only have x days to complete' message and controls whether it needs to be seen or not
   # Added a 'minus 1' to days following change to number of days)
-  
+  #MessageBox.Show("populate_MRA_DaysUntilLocked called with expiryDate={0}".format(expiryDate))
+
   # need to lookup current status (if complete, hide label and 'Save' buttons (and make 'back to overview' visible))
   if lbl_MRA_Status.Content == 'Draft':
-    daysTilLock = runSQL("SELECT DATEDIFF(DAY, GETDATE(), ExpiryDate) - 1 FROM Usr_MRA_Overview WHERE ID = {0}".format(lbl_MRA_ID.Content), False, '', '')
-    tb_DaysUntilLocked.Text = str(daysTilLock) + " day(s)"
+    if expiryDate is not None:
+      newExp = getSQLDate(expiryDate)
+      #MessageBox.Show("Calculated newExp as {0}".format(newExp))
+      daysTilLock = runSQL("SELECT DATEDIFF(DAY, GETDATE(), '{expDate}') - 1".format(expDate=newExp))
+    else:
+      daysTilLock = "N/A"
+    tb_DaysUntilLocked.Text = "{0} day(s)".format(daysTilLock)
     tb_DaysUntilLocked.Visibility = Visibility.Visible
     tb_MatterWillBeLockedMsg.Visibility = Visibility.Visible
   else:
@@ -3244,56 +3235,8 @@ def add_CorrectiveAction(defaultCorrectiveActionText = ''):
 
 
 # # # # #   G E N E R I C   F U N C T I O N S   # # # # #
-
-def dgItem_DeleteSelected_M(dgControl, tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, dgNameDescColName, mra_TypeID, entityRef, matterNo):
-  # This function will DELETE a row from a given table (but asks for confirmation first).
-  # NB: This version has been modified further (than our original version of this 're-usable' function). Specifically, on NMRA, we don't have 'sqlOrderColName'
-  #     and so our actual code does not run!  In future, it would be desirable to re-write the 'generic' version of this function so that it's not reliant on 'sqlOrderCol'
-  newIndexPos = -1
-
-  if dgControl.SelectedIndex > -1:
-    # Get seleted ID and details
-    sel_ID = dgControl.SelectedItem[dgIDcolName]
-    sel_order = '' if len(dgOrderColName) == 0 else dgControl.SelectedItem[dgOrderColName]
-    sel_Name = dgControl.SelectedItem[dgNameDescColName]
-    currentPos = dgControl.SelectedIndex
-    
-    if int(sel_ID) > 0:
-      msg = "Are you sure you want to delete the following item:\n{0}?".format(sel_Name)
-  
-      # Confirm with user before deletion
-      myResult = MessageBox.Show(msg, 'Delete item...', MessageBoxButtons.YesNo)
-  
-      if myResult == DialogResult.Yes:
-        # Form the SQL to delete row and execute the SQL 
-        Delete_SQL = "[SQL: DELETE FROM {0} WHERE ID = {1} AND EntityRef = '{2}' AND MatterNo = {3}]".format(tableToUpdate, sel_ID, entityRef, matterNo)
-        try:
-          _tikitResolver.Resolve(Delete_SQL)
-        except:
-          MessageBox.Show("There was an error trying to delete item, using SQL:\n" + Delete_SQL, "Error: Delete Selected...")
-        
-        # if supplied 'DislayOrder' column, then also update the 'DisplayOrder' for all other items
-        if len(sqlOrderColName) > 0:
-          # Form the SQL to update any current items with a higher DISPLAY ORDER and execute the SQL 
-          UPDATE_SQL = "[SQL: UPDATE {0} SET {1} = ({1} - 1) WHERE {1} > {2}".format(tableToUpdate, sqlOrderColName, sel_order)
-
-          #UPDATE_SQL = "[SQL: UPDATE " + str(tableToUpdate) + " SET " + str(sqlOrderColName) + " = (" + str(sqlOrderColName) + " - 1) "
-          #UPDATE_SQL += "WHERE " + str(sqlOrderColName) + " > " + str(sel_order) 
-          
-          if int(mra_TypeID) > 0:
-            UPDATE_SQL += " AND TypeID = {0}".format(mra_TypeID)
-          
-          UPDATE_SQL += "]"
-          try:
-            _tikitResolver.Resolve(UPDATE_SQL)
-          except:
-            MessageBox.Show("There was an error trying to update the DisplayOrder for other items, using SQL:\n" + sql_MoveUp, "Error: Delete Selected (updating DisplayOrder)...")
-      
-        newIndexPos = (currentPos - 1) if (currentPos - 1) > -1 else 0
-  return newIndexPos
-
-
-def runSQL(codeToRun, showError = False, errorMsgText = '', errorMsgTitle = '', apostropheHandle = 0):
+def runSQL(codeToRun, showError = False, errorMsgText = '', errorMsgTitle = '', apostropheHandle = 0, 
+           useAlternativeResolver = False, returnType = 'Int'):
   # This function is written to handle and check inputted SQL code, and will return the result of the SQL code.
   # It first checks the length and wrapping of the code, then attempts to execute the SQL, it has an option apostrophe handler.
   # codeToRun     = Full SQL of code to run. No need to wrap in '[SQL: code_Here]' as we can do that here
@@ -3301,7 +3244,8 @@ def runSQL(codeToRun, showError = False, errorMsgText = '', errorMsgTitle = '', 
   # errorMsgText  = Text to display in the body of the message box upon error (note: actual SQL will automatically be included, so no need to re-supply that)
   # errorMsgTitle = Text to display in the title bar of the message box upon error
   # apostropheHandle = Toggle to escape apostrophes for the returned values
-    
+  # useAlternativeResolver = Toggle to use an alternative resolver for the SQL execution
+
   # Note: calling procedure can use like we do with '_tikitResolver()', that is: 
   # - tmpValue = runSQL("SELECT YEAR()", False, '', '')   # to capture value into a variable, or:
   # - runSQL("INSERT INTO x () VALUES()", False, '', '')  # to just run the SQL without saving to variable
@@ -3317,18 +3261,62 @@ def runSQL(codeToRun, showError = False, errorMsgText = '', errorMsgTitle = '', 
   else:
     fCodeToRun = "[SQL: {0}]".format(codeToRun)
   
-  # try to execute the SQL
-  try:
-    tmpValue = _tikitResolver.Resolve(fCodeToRun)
-    if apostropheHandle == 1:
-      tmpValue = tmpValue.replace("'", "''")
-    return tmpValue
-  except:
-    # there was an error... check to see if opted to show message or not...
-    if showError == True:
-      MessageBox.Show(str(errorMsgText) + "\nSQL used:\n" + str(codeToRun), errorMsgTitle)
-    return ''
+  if useAlternativeResolver == False:
+    # try to execute the SQL using standard 'tikitResolver.Resolve'
+    try:
+      tmpValue = _tikitResolver.Resolve(fCodeToRun)
+      if apostropheHandle == 1:
+        tmpValue = tmpValue.replace("'", "''")
+      return tmpValue
+    except:
+      # there was an error... check to see if opted to show message or not...
+      if showError == True:
+        MessageBox.Show(str(errorMsgText) + "\nSQL used:\n" + str(codeToRun), errorMsgTitle)
+      return ''
+  else:
+    # use longer method
+    try:
+      _tikitDbAccess.Open(codeToRun)
+      if _tikitDbAccess._dr is not None:
+        dr = _tikitDbAccess._dr
+        if dr.HasRows:
+          while dr.Read():
 
+            if returnType == 'String':
+              # return the first column as a string
+              tmpValue = dr.GetString(0) if not dr.IsDBNull(0) else ''
+
+            elif returnType == 'Int':
+              # return the first column as an integer
+              tmpValue = dr.GetValue(0) if not dr.IsDBNull(0) else 0
+              
+            #elif returnType == 'DataReader':
+            #  # return the DataReader object itself
+            #  return dr
+        else:
+          if returnType == 'String':
+            # if no rows returned, return an empty string
+            tmpValue = ''
+          elif returnType == 'Int':
+            # if no rows returned, return 0
+            tmpValue = 0
+        dr.Close()
+      _tikitDbAccess.Close()
+
+      return tmpValue
+  
+    except Exception as e:
+      # if there was an error with the CTE supplied, we'll get to here, so update outputs accordingly
+      if showError == True:
+        MessageBox.Show("{0}\nSQL used:\n{1}\nException:{2}".format(errorMsgText, codeToRun, str(e)), errorMsgTitle)
+
+      if returnType == 'Int':
+        return 0
+      else:
+        return "Error"
+
+
+    
 
 def isUserAnApprovalUser(userToCheck):
   # This is a new function to replace the 'isActiveUserHOD()' function (from 7th August 2024) as we have now created an 'WhoApprovesMe' 
@@ -3456,7 +3444,7 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
   tmpMatDesc = tb_MatterDesc.Text
   tmpClName = tb_ClientName.Text
   tmpEmailTo = tb_FE_Email.Text
-  tmpEmailCC = runSQL("SELECT EMailExternal FROM Users WHERE Code = '{0}'".format(_tikitUser))
+  tmpEmailCC = get_user_email(_tikitUser)
   tmpAddtl1 = myMRADesc.replace("'", "''")
   tmpAddtl2 = "High"
 
@@ -3467,7 +3455,7 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
     _tikitResolver.Resolve("[SQL: {0}]".format(approveSQL))
   except:
     errorCount -= 1
-    errorMessage = " - couldn't mark the selected item as approved\n" + str(approveSQL)
+    errorMessage += " - couldn't mark the selected item as approved\n" + str(approveSQL)
   
   # get SQL to Unlock matter
   #unlockCode = "EXEC TW_LockHandler '" + myEntRef + "', " + str(myMatNo) + ", 'LockedByRiskDept', 'UnLock'"
@@ -3477,19 +3465,12 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
          errorMsgText="There was an error unlocking the matter, after approval. Please check the matter is unlocked and if not, unlock manually using the following SQL:\n{0}".format(unlockCode), errorMsgTitle="Error: Unlocking Matter after Approval...")
  
   # now insert a record into MRA Events table to trigger email to FE
-  tc_Trigger = """INSERT INTO Usr_MRA_Events 
-                  (Date, UserRef, ActionTrigger, mraID, EmailTo, EmailCC, ToUserName, 
-                  OurRef, MatterDesc, ClientName, Addtl1, Addtl2, FullEntityRef, Matter_No) 
-                  VALUES(GETDATE(), '{userRef}', 'HOD_Approved_MRA', {mraID}, '{emailTo}', '{emailCC}', '{emailToUName}', 
-                  '{ourRef}', '{matDesc}', '{clName}', '{addtl1}', '{addtl2}', '{entRef}', {matNo})""".format(
-                    userRef=_tikitUser, mraID=my_mraID, emailTo=tmpEmailTo, emailCC=tmpEmailCC, 
-                    emailToUName=tmpToUserName, ourRef=tmpOurRef, matDesc=tmpMatDesc, clName=tmpClName, 
-                    addtl1=tmpAddtl1, addtl2=tmpAddtl2, entRef=myEntRef, matNo=myMatNo)
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(tc_Trigger))
-  except:
+  if insert_into_MRAEvents(userRef=_tikitUser, triggerText='HOD_Approved_MRA', ov_ID=my_mraID, 
+                           emailTo=tmpEmailTo, emailCC=tmpEmailCC, toUserName=tmpToUserName, 
+                           ourRef=tmpOurRef, matterDesc=tmpMatDesc, clientName=tmpClName, 
+                           addtl1=tmpAddtl1, addtl2=tmpAddtl2, entRef=myEntRef, matNo=myMatNo) == False:
     errorCount -= 1
-    errorMessage = " - couldn't send the 'HOD Approved' Task Centre confirmation email to FE\n" + str(tc_Trigger) 
+    errorMessage += " - couldn't send the 'HOD Approved' Task Centre confirmation email to FE\n"
 
   if errorCount < 0:
     MessageBox.Show("The following error(s) were encountered:\n" + errorMessage + "\n\nPlease screenshot this message and send to IT.Support@thackraywilliams.com to investigate", "Error: Approve High-Risk Matter...")
@@ -3543,139 +3524,47 @@ def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
     return -2
   return newMRAID
 
- 
-def test_dgItem_DeleteSelected(dgControl, tableToUpdate, primaryKeyColName, displayOrderColName, keyColumns, selectedColumns, 
-                               typeFilterColName='', typeFilterVal=0, childDeletes=None):
-  # Louis' version of the function to deleted an item from a DataGrid
-  # Deletes the selected row from the given table, updates display order if applicable,
-  # and optionally deletes associated child records.
 
-  # Parameters:
-  # -----------
-  # dgControl : DataGrid
-  #     The DataGrid control containing the items.
-  # tableToUpdate : str
-  #     The name of the database table to delete from.
-  # primaryKeyColName : str
-  #     The name of the primary key column in the table.
-  # displayOrderColName : str
-  #     The name of the 'order' column if applicable (pass '' or None if not applicable).
-  # keyColumns : dict
-  #     Dictionary of additional key columns and their values to filter the delete.
-  #     Example: {'EntityRef': 'ABC123', 'MatterNo': '1001'}
-  # selectedColumns : dict
-  #     A dictionary mapping logical names ('ID', 'Order', 'Name') to actual DataGrid column names.
-  # typeFilterColName : str, optional
-  #     The name of a type filter column, if applicable.
-  # typeFilterVal : int, optional
-  #     The value for the type filter column if applicable.
-  # childDeletes : list of dict, optional
-  #     A list of dictionaries, each specifying a child delete operation.
-  #     Each dict could have:
-  #     {
-  #       'table': 'Usr_MRA_Detail',
-  #       'foreignKey': 'OV_ID',
-  #       'conditions': {'EntityRef': 'XYZ', 'MatterNo': 123}
-  #     }
+def createNewFR_BasedOnCurrent(idItemToCopy, entRef, matNo):
+  # this function will duplicate the File Review specified by 'idItemToCopy' (which is the ID of the File Review to copy),
+  # and link the new File Review to the same matter (using entRef and matNo) and copy across the selected Answers used in the original File Review
+  # - set status to 'Draft' and expiry date to 4 weeks from today.
 
-  # Returns:
-  # --------
-  # int
-  #     The new index to select after deletion, or -1 if no deletion occurred.
+  # generate new Name (concatenating Template Name with next number in brackets, based on count of existing MRAs with same Template for the same matter +1):
+  newNameSQL = """SELECT CONCAT(TT.TypeName, ' (', 
+                            CONVERT(nvarchar, (
+                                SELECT ISNULL(COUNT(MRAO.TypeID), 0) + 1 FROM Usr_MRA_Overview MRAO 
+                                WHERE MRAO.EntityRef = '{entRef}' AND MRAO.MatterNo = {matNo} AND MRAO.TypeID = TT.TypeID)),
+                          ')')
+                  FROM Usr_MRA_TemplateTypes TT
+                  WHERE TT.TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {mraID})""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)  
 
-  newIndexPos = -1
-    
-  # Check if a row is selected
-  if dgControl.SelectedIndex == -1:
-    MessageBox.Show("Nothing selected to delete!", "Error: Delete Selected...")
-    return newIndexPos
+  newName = runSQL(newNameSQL)
 
-  # Retrieve required values from the selected item
-  sel_ID = dgControl.SelectedItem[selectedColumns['ID']]
-  sel_Name = dgControl.SelectedItem[selectedColumns['Name']] if 'Name' in selectedColumns else ''
-  sel_order = dgControl.SelectedItem[selectedColumns['Order']] if displayOrderColName and 'Order' in selectedColumns else ''
-  currentPos = dgControl.SelectedIndex
+  # create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
+  newHeaderRowSQL = """INSERT INTO Usr_MRA_Overview (EntityRef, MatterNo, TypeID, LocalName, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, Status) 
+                       OUTPUT INSERTED.ID 
+                       SELECT '{entRef}', {matNo}, TypeID, '{passedName}', RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
+                       GETDATE(), 'Draft' FROM Usr_MRA_Overview WHERE ID = {idItemToCopy} 
+                    """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
 
-  if int(sel_ID) <= 0:
-    # Invalid ID, nothing to delete
-    return newIndexPos
-
-  # Confirm deletion with the user
-  msg = "Are you sure you want to delete the following items:\n" + str(sel_Name) + "?"
-  myResult = MessageBox.Show(msg, 'Delete item...', MessageBoxButtons.YesNo)
-  if myResult != DialogResult.Yes:
-    return newIndexPos
-
-  # Build the WHERE clause for the main delete
-  conditions = ["{} = {}".format(primaryKeyColName, sel_ID)]
-  for colName, colValue in keyColumns.items():
-    if isinstance(colValue, str):
-      conditions.append("{} = '{}'".format(colName, colValue))
-    else:
-      conditions.append("{} = {}".format(colName, colValue))
-
-  if typeFilterColName and typeFilterVal > 0:
-    conditions.append("{} = {}".format(typeFilterColName, typeFilterVal))
-
-  where_clause = " AND ".join(conditions)
-
-  # Delete main record
-  delete_sql = "[SQL: DELETE FROM {} WHERE {}]".format(tableToUpdate, where_clause)
   try:
-    _tikitResolver.Resolve(delete_sql)
+    newID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
   except:
-    MessageBox.Show("Error deleting the selected item using SQL:\n" + delete_sql, 
-                    "Error: Delete Selected...")
-    return newIndexPos
+    MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
+    return -1
 
-  # If we have a display order column, update the order of remaining items
-  if displayOrderColName and sel_order != '':
-    update_conditions = []
-    for colName, colValue in keyColumns.items():
-      if isinstance(colValue, str):
-        update_conditions.append("{} = '{}'".format(colName, colValue))
-      else:
-        update_conditions.append("{} = {}".format(colName, colValue))
-        
-      if typeFilterColName and typeFilterVal > 0:
-        update_conditions.append("{} = {}".format(typeFilterColName, typeFilterVal))
+  # finally, copy across the Questions and Answers from the previous MRA (except for any free text answers, which we will reset to blank) - we can link them to the new MRA using the returned mraID from above, which is why we needed to use 'OUTPUT' in the SQL above to return the new mraID
+  copyDetailSQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, Notes, DisplayOrder, QGroupID, EmailComment) 
+                     SELECT EntityRef, MatterNo, {newID}, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, Notes, DisplayOrder, QGroupID, EmailComment
+                     FROM Usr_MRA_Detail WHERE OV_ID = {idToCopy}""".format(newID=newID, idToCopy=idItemToCopy)
 
-      update_where = " AND " + " AND ".join(update_conditions) if update_conditions else ""
-      update_sql = "[SQL: UPDATE {} SET {} = ({} - 1) WHERE {} > {}{}]".format(
-          tableToUpdate, displayOrderColName, displayOrderColName, displayOrderColName, sel_order, update_where)
-      try:
-        _tikitResolver.Resolve(update_sql)
-      except:
-        MessageBox.Show("Error updating DisplayOrder using SQL:\n" + update_sql, 
-                        "Error: Delete Selected (updating DisplayOrder)...")
-
-  # If child deletes are specified, handle them here
-  if childDeletes:
-    for childDelete in childDeletes:
-      cTable = childDelete.get('table')
-      cForeignKey = childDelete.get('foreignKey')
-      cConditions = childDelete.get('conditions', {})
-
-      # Build WHERE clause for child table
-      child_conds = ["{} = {}".format(cForeignKey, sel_ID)]
-      for cName, cVal in cConditions.items():
-        if isinstance(cVal, str):
-          child_conds.append("{} = '{}'".format(cName, cVal))
-        else:
-          child_conds.append("{} = {}".format(cName, cVal))
- 
-      child_where = " AND ".join(child_conds)
-      child_delete_sql = "[SQL: DELETE FROM {} WHERE {}]".format(cTable, child_where)
-            
-      try:
-        _tikitResolver.Resolve(child_delete_sql)
-      except:
-        MessageBox.Show("Error deleting child records using SQL:\n" + child_delete_sql,
-                        "Error: Deleting associated records...")
-
-  # Determine new index position
-  newIndexPos = (currentPos - 1) if (currentPos - 1) > -1 else 0
-  return 
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(copyDetailSQL))
+  except:
+    MessageBox.Show("There was an error copying the MRA details, using SQL:\n" + str(copyDetailSQL), "Error: Duplicate selected item...")
+    return -2
+  return newID
 
 # # # # #   END OF:   G E N E R I C   F U N C T I O N S   # # # # #
 
@@ -3751,6 +3640,7 @@ dg_MRAFR.SelectionChanged += dg_MRAFR_SelectionChanged
 lbl_MRAFR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_ID')
 lbl_MRAFR_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_Name')
 
+# Note: 'New' button is now wired as a 'template', so 
 btnNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btnNew')
 btnNew.Click += btnNew_Click
 popTemplates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'popTemplates')
@@ -3759,10 +3649,6 @@ icTemplates = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'icTemplates')
 btnCancel = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btnCancel')
 btnCancel.Click += CancelPopup_Click
 
-btn_AddNew_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_MRA')
-btn_AddNew_MRA.Click += dg_MRAFR_AddNewMRA
-btn_AddNew_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNew_FR')
-btn_AddNew_FR.Click += dg_MRAFR_AddNewFR
 btn_CopySelected_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelected_MRAFR')
 btn_CopySelected_MRAFR.Click += btn_CopySelected_MRAFR_Click
 btn_View_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_View_MRAFR')

@@ -81,9 +81,9 @@
                    TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
       </StackPanel>
 
-      <TextBlock Grid.Row="1" Grid.Column="4"
+      <TextBlock Grid.Row="1" Grid.Column="4"  Visibility="Collapsed"
                   Text="Can Approve High Risk:" TextAlignment="Right" VerticalAlignment="Center"/>
-      <TextBlock Grid.Row="1" Grid.Column="5" Padding="4,0"
+      <TextBlock Grid.Row="1" Grid.Column="5" Padding="4,0" Visibility="Collapsed"
                   Text="False|True" TextAlignment="Left" VerticalAlignment="Center"/>
 
 
@@ -228,10 +228,20 @@
                             <ItemsControl.ItemTemplate>
                               <DataTemplate>
                                 <!-- Show Name, keep TemplateID in Tag -->
-                                <Button Content="{Binding Name}"
-                                        Tag="{Binding TemplateID}"
+                                <Button Tag="{Binding}"
                                         Margin="0,0,0,6"
-                                        HorizontalAlignment="Stretch"/>
+                                        HorizontalAlignment="Stretch">
+                                  <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <TextBlock FontSize="11" Foreground="#666">
+                                        <Run Text="{Binding Type}"/>
+                                        <Run Text=" • Validity: "/>
+                                        <Run Text="{Binding ValidityDays}"/>
+                                        <Run Text=" days"/>
+                                    </TextBlock>
+                                  </StackPanel>
+
+                                </Button>
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>
@@ -302,6 +312,7 @@
 
               <TextBlock x:Name="tb_NoMRAFR" Text="No xxx exist on this matter - please click the '+ New: xxx' button to create new" TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Canvas.Left="91" Canvas.Top="75" Width="622" Height="85" Visibility="Hidden"/>
               <DataGrid x:Name="dg_MRAFR" Width="747" Height="227" Canvas.Top="67" Canvas.Left="3"
+                        SelectedValuePath="mraID"  IsSynchronizedWithCurrentItem="True"
                         AlternatingRowBackground="#FFAEDEB9" 
                         SelectionMode="Single" 
                         AutoGenerateColumns="False" 
@@ -352,8 +363,8 @@
 
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraID}"/>
-                  <DataGridTextColumn Header="Name" IsReadOnly="False" Width="Auto" 
-                                      Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                  <DataGridTextColumn Header="Name" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding Name}"/>
                   
                   <DataGridTextColumn Header="Status" IsReadOnly="True" Width="Auto" Binding="{Binding Status}"/>
                   <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="90" Binding="{Binding ExpiryDate, StringFormat=dd/MM/yyyy}"/>
@@ -797,16 +808,17 @@
               </DataGrid.GroupStyle>
 
               <DataGrid.Columns>
-
+                <!-- 1) Question Group-->
                 <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100"
                                     Binding="{Binding QuestionGroup}" Visibility="Collapsed"/>
 
-
+                <!-- 2) Order-->
                 <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" 
                                     Binding="{Binding QuestionOrder}"
                                     CellStyle="{StaticResource DGRightCell}"
                                     ElementStyle="{StaticResource DGRightTextBlock}"/>
 
+                <!-- 3) Question Text-->
                 <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="400" 
                                         HeaderStyle="{StaticResource CenterCol}"
                                         CellStyle="{StaticResource DGCellPadded}">
@@ -817,10 +829,11 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-
+                <!-- 4) Question ID-->
                 <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
                                     Binding="{Binding QuestionID}" Visibility="Collapsed"/>
 
+                <!-- 5) Selected Answer-->
                 <DataGridTemplateColumn Header="Your Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200"
                                         CellStyle="{StaticResource DGCellPadded}">
                   <DataGridTemplateColumn.CellTemplate>
@@ -830,7 +843,8 @@
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-
+  
+                <!-- 6) Score-->
                 <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" 
                                     Binding="{Binding SelectedAnswerScore}"
                                     HeaderStyle="{StaticResource TotalColumn}"
@@ -838,12 +852,14 @@
                                     ElementStyle="{StaticResource DGRightTextBlock}"
                                     Visibility="Collapsed"/>
 
+                <!-- 7) AnswerID-->
                 <DataGridTextColumn Header="SelectedAnswerID" IsReadOnly="True" Width="100"
                                     Binding="{Binding SelectedAnswerID}" 
                                     CellStyle="{StaticResource DGCellPadded}"
                                     ElementStyle="{StaticResource DGRightTextBlock}"
                                     Visibility="Collapsed"/>
 
+                <!-- 8) Email Comment-->
                 <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600"
                                         CellStyle="{StaticResource DGCellPadded}"
                                         Visibility="Collapsed">
@@ -855,6 +871,7 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
+                <!-- 9) Notes-->
                 <DataGridTemplateColumn Header="Notes" IsReadOnly="True" Width="300" Visibility="Visible">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
