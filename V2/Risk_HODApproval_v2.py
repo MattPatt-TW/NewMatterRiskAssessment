@@ -112,7 +112,7 @@ def populate_FeeEarnersList(s, event):
                                     WHEN '{0}' IN (SELECT HA.UserCode FROM Usr_HODapprovals HA WHERE HA.FeeEarnerCode = U.Code AND HA.Type = 'Holiday Cover') THEN '02) Holiday Cover' ELSE '' END, 
                     '10-MatterDesc' = M.Description, 
                     '11-EntName' = E.LegalName, 
-                    '12-FEEmail' = U.EMailExternal, 
+                    '12-FEEmail' = U.EMailExternal  
         FROM Usr_MRAv2_MatterHeader MH
           INNER JOIN Matters M ON MH.EntityRef = M.EntityRef AND MH.MatterNo = M.Number 
           LEFT OUTER JOIN Users U ON M.FeeEarnerRef = U.Code 
@@ -135,17 +135,19 @@ def populate_FeeEarnersList(s, event):
           iFE = '-' if dr.IsDBNull(0) else dr.GetString(0)
           iBranch = '-' if dr.IsDBNull(1) else dr.GetString(1)
           iOurRef = '' if dr.IsDBNull(2) else dr.GetString(2)
-          iMRAName = 0 if dr.IsDBNull(3) else dr.GetString(3)
+          iMRAName = '' if dr.IsDBNull(3) else dr.GetString(3)
           iMRAExpiry = 0 if dr.IsDBNull(4) else dr.GetValue(4)
           imraID = 0 if dr.IsDBNull(5) else dr.GetValue(5)
-          iEntRef = 0 if dr.IsDBNull(6) else dr.GetString(6)
+          iEntRef = '' if dr.IsDBNull(6) else dr.GetString(6)
           iMatNo = 0 if dr.IsDBNull(7) else dr.GetValue(7)
           iType = '' if dr.IsDBNull(9) else dr.GetString(9)
           iMatDesc = '' if dr.IsDBNull(10) else dr.GetString(10)
           iClName = '' if dr.IsDBNull(11) else dr.GetString(11)
           iFEEmail = '' if dr.IsDBNull(12) else dr.GetString(12)
           
-          myFEitems.append(UsersList(iFE, iBranch, iOurRef, iMRAName, iMRAExpiry, imraID, iEntRef, iMatNo, iType, iClName, iMatDesc, iFEEmail))
+          myFEitems.append(UsersList(myFEName=iFE, myBranch=iBranch, myOurRef=iOurRef, myMRAname=iMRAName, myMRAexp=iMRAExpiry, 
+                                     myMRAID=imraID, myEntRef=iEntRef, myMatNo=iMatNo, myType=iType, myClName=iClName, myMatDesc=iMatDesc, 
+                                     myFEEmail=iFEEmail))
       
     dr.Close()
   _tikitDbAccess.Close()
@@ -223,13 +225,13 @@ def refresh_Preview_MRA(s, event):
     return
 
   # otherwise an item is selected, so populate controls with data from selected DG item
-  tb_OurRef.Text = dg_FeeEarners.SelectedItem['OurRef']
-  tb_MRA_Name.Text =  dg_FeeEarners.SelectedItem['MRAName']
-  tb_MRA_ID.Text = dg_FeeEarners.SelectedItem['mraID']
-  tb_ClName.Text = dg_FeeEarners.SelectedItem['ClientName']
-  tb_MatDesc.Text = dg_FeeEarners.SelectedItem['MatDesc']
-  tb_FE_Name.Text = dg_FeeEarners.SelectedItem['FEName']
-  tb_FE_Email.Text = dg_FeeEarners.SelectedItem['FEEmail']
+  tb_OurRef.Text = str(dg_FeeEarners.SelectedItem['OurRef'])
+  tb_MRA_Name.Text =  str(dg_FeeEarners.SelectedItem['MRAName'])
+  tb_MRA_ID.Text = str(dg_FeeEarners.SelectedItem['mraID'])
+  tb_ClName.Text = str(dg_FeeEarners.SelectedItem['ClientName'])
+  tb_MatDesc.Text = str(dg_FeeEarners.SelectedItem['MatDesc'])
+  tb_FE_Name.Text = str(dg_FeeEarners.SelectedItem['FEName'])
+  tb_FE_Email.Text = str(dg_FeeEarners.SelectedItem['FEEmail'])
 
   #btn_ApproveHR.IsEnabled = True
   stk_SelectedMRAHeader_NoData.Visibility = Visibility.Collapsed
@@ -266,7 +268,7 @@ def refresh_Preview_MRA(s, event):
           iEC = '' if dr.IsDBNull(5) else dr.GetString(5)
           iScore = 0 if dr.IsDBNull(6) else dr.GetValue(6)
           
-          myItems.append(review_MRA(iDO, iQText, iAnswer, iNotes, iEC, iQGroup, iScore))
+          myItems.append(review_MRA(myOrder=iDO, myQuestion=iQText, myAnswerText=iAnswer, myFEnotes=iNotes, myEC=iEC, myGroup=iQGroup, myScore=iScore))
       
     dr.Close()
   _tikitDbAccess.Close()
@@ -407,12 +409,12 @@ def Approve_Button_Clicked(s, event):
   # clearly visible to HOD if Email is missing etc.
   # Then, we just reference those text boxes/variables here
 
-  tmpEmailTo = tb_FE_Email.Text
-  tmpEmailCC = cbo_User.SelectedItem['Email']
-  tmpToUserName = tb_FE_Name.Text
-  tmpMatDesc = tb_MatDesc.Text
-  tmpClName = tb_ClName.Text
-  tmpAddtl1 = tb_MRA_Name.Text
+  tmpEmailTo = str(tb_FE_Email.Text)
+  tmpEmailCC = str(cbo_User.SelectedItem['Email'])
+  tmpToUserName = str(tb_FE_Name.Text)
+  tmpMatDesc = str(tb_MatDesc.Text)
+  tmpClName = str(tb_ClName.Text)
+  tmpAddtl1 = str(tb_MRA_Name.Text)
   tmpAddtl2 = "High"
   
 
@@ -589,25 +591,6 @@ def setCurrentUser():
       cbo_User.SelectedIndex = pCount
       break
   return
-
-
-def get_NextMRAFR_NumberForMatter(ovID = 0, entityRef = '', matterNo = ''):
-  # This new function was added 20/05/2025 as there are a couple of occurences where we need to get the next
-  # MRA/FR number for a given TypeID (testing against current Entity/Matter record)
-
-  # if passed ID is empty, exit and alert user
-  if ovID == 0:
-    MessageBox.Show("You need to pass an ID to this function!", "Error: get_NextMRAFR_NumberForMatter...")
-    return 0
-  
-  # else we carry on abd get the TypeID
-  tmpTypeID = runSQL("SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0} AND EntityRef = '{1}' AND MatterNo = {2}".format(ovID, entityRef, matterNo), False, '', '')
-
-  NextNum_sql = """[SQL: SELECT COUNT(TypeID) + 1 FROM Usr_MRA_Overview MRAO 
-                         WHERE MRAO.EntityRef = '{0}' AND MRAO.MatterNo = {1} 
-                          AND TypeID = {2}]""".format(entityRef, matterNo, tmpTypeID)
-  NextNum = runSQL(NextNum_sql, False, '', '')
-  return NextNum
 
 
 ]]>
