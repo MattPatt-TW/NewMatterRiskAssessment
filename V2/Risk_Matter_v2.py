@@ -2398,13 +2398,13 @@ def execute_submit_outcome(outcome, mraID, mraName, ourRef, matDesc, clName, feE
 
   if outcome == OUTCOME_AUTO_APPROVE:
     # Auto-approve triggers its own email via HOD_Approves_Item
-    return HOD_Approves_Item(myOV_ID=mraID, myEntRef=_tikitEntity, myMatNo=_tikitMatter, myMRADesc=mraName)
+    return HOD_Approves_Item(my_mraID=mraID, myEntRef=_tikitEntity, myMatNo=_tikitMatter, myMRADesc=mraName)
 
   if outcome == OUTCOME_REQUEST_HOD:
     # High risk, not authorised to auto approve -> request HOD
     if current_user_is_fee_earner():
       # Email HOD, CC FE (your existing behaviour)
-      hodEmails = request_hod_email_to_for_fee_earner(_tikitUser, include_current_user=False)
+      hodEmails = request_hod_email_to_for_fee_earner(fee_earner_code=_tikitUser, include_current_user=False)
       insert_into_MRAEvents(
         userRef=_tikitUser, triggerText='Submit_MRA_HighRisk', ov_ID=mraID,
         emailTo=hodEmails, emailCC=feEmail, toUserName=feName,
@@ -2414,8 +2414,8 @@ def execute_submit_outcome(outcome, mraID, mraName, ourRef, matDesc, clName, feE
       return
 
     # Not FE: include current user + FE + HOD
-    emailToAddr = request_hod_email_to_for_fee_earner(tb_FERef.Text, include_current_user=True)
-    emailToName = get_user_name(_tikitUser)
+    emailToAddr = request_hod_email_to_for_fee_earner(fee_earner_code=tb_FERef.Text, include_current_user=True)
+    emailToName = get_user_name(code=_tikitUser)
     insert_into_MRAEvents(
       userRef=_tikitUser, triggerText='Submit_MRA_HighRisk', ov_ID=mraID,
       emailTo=emailToAddr, emailCC=feEmail, toUserName=emailToName,
@@ -2436,8 +2436,8 @@ def execute_submit_outcome(outcome, mraID, mraName, ourRef, matDesc, clName, feE
 
   if outcome == OUTCOME_ON_BEHALF:
     # Standard risk + someone else submitting
-    emailToAddr = get_user_email(_tikitUser)
-    emailToName = get_user_name(_tikitUser)
+    emailToAddr = get_user_email(code=_tikitUser)
+    emailToName = get_user_name(code=_tikitUser)
     insert_into_MRAEvents(
       userRef=_tikitUser, triggerText='Submit_MRA_onBehalfOf', ov_ID=mraID,
       emailTo=emailToAddr, emailCC=feEmail, toUserName=emailToName,
@@ -3468,7 +3468,7 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
   if insert_into_MRAEvents(userRef=_tikitUser, triggerText='HOD_Approved_MRA', ov_ID=my_mraID, 
                            emailTo=tmpEmailTo, emailCC=tmpEmailCC, toUserName=tmpToUserName, 
                            ourRef=tmpOurRef, matterDesc=tmpMatDesc, clientName=tmpClName, 
-                           addtl1=tmpAddtl1, addtl2=tmpAddtl2, entRef=myEntRef, matNo=myMatNo) == False:
+                           addtl1=tmpAddtl1, addtl2=tmpAddtl2) == False:
     errorCount -= 1
     errorMessage += " - couldn't send the 'HOD Approved' Task Centre confirmation email to FE\n"
 
