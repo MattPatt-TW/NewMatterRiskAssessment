@@ -88,7 +88,6 @@ def myOnLoadEvent(s, event):
   
   # as only IT or Risk should be able to delete, hide the 'delete' button for everyone else:
   if _tikitUser not in RiskAndITUsers:
-    sep_Delete.Visibility = Visibility.Collapsed
     btn_DeleteSelected_MRAFR.Visibility = Visibility.Collapsed
 
   # wire up new 'New' button popup
@@ -309,16 +308,9 @@ def setMasterRiskStatus(s, event):
   # This function sets the main label on the Overview sheet according to current matter Risk Status
   
   tmpSQL = "SELECT CASE RiskOpening WHEN 1 THEN 'Low' WHEN 2 THEN 'Medium' WHEN 3 THEN 'High' ELSE 'NotSet' END FROM Matters WHERE EntityRef = '{0}' AND Number = {1}".format(_tikitEntity, _tikitMatter) 
-  lbl_OV_RiskStatus.Content = runSQL(tmpSQL, False, '', '')
-  
-  # display or hide the 'advisory' text for High Risk matters as appropriate
-  #  (this just advises that for HighRisk matters, a new one is req each month)
-  if lbl_OV_RiskStatus.Content == 'High':
-    lbl_RiskScore_AdvisoryText.Visibility = Visibility.Visible
-  else:
-    lbl_RiskScore_AdvisoryText.Visibility = Visibility.Collapsed
+  tb_OV_RiskStatus.Text = runSQL(codeToRun=tmpSQL)
   return
-
+  
 
 def MRA_setStatus(idToUpdate, newStatus):
   # This function will set the status of the active MRA accordingly
@@ -570,7 +562,7 @@ def dg_MRAFR_Refresh(s, event):
   if dg_MRAFR.Items.Count > 0:
     dg_MRAFR.Visibility = Visibility.Visible
     tb_NoMRAFR.Text = ""
-    tb_NoMRAFR.Visibility = Visibility.Hidden
+    tb_NoMRAFR.Visibility = Visibility.Collapsed
     btn_CopySelected_MRAFR.IsEnabled = True
     btn_View_MRAFR.IsEnabled = True
     btn_Edit_MRAFR.IsEnabled = True
@@ -578,7 +570,7 @@ def dg_MRAFR_Refresh(s, event):
   else:
     tb_NoMRAFR.Text = "No {0}'s currently exist on this matter - please click the '+ New' button to create new".format(tmpText)
     tb_NoMRAFR.Visibility = Visibility.Visible
-    dg_MRAFR.Visibility = Visibility.Hidden
+    dg_MRAFR.Visibility = Visibility.Collapsed
     btn_CopySelected_MRAFR.IsEnabled = False
     btn_View_MRAFR.IsEnabled = False
     btn_Edit_MRAFR.IsEnabled = False
@@ -1267,12 +1259,12 @@ def dgCA_Overview_Refresh(s, event):
 
   if dgCA_Overview.Items.Count > 0:
     dgCA_Overview.Visibility = Visibility.Visible
-    tb_NoCAs.Visibility = Visibility.Hidden
+    tb_NoCAs.Visibility = Visibility.Collapsed
     #btn_Mark_CA_Complete.IsEnabled = True
     #btn_View_CA_onFR.IsEnabled = True
   else:
     tb_NoCAs.Visibility = Visibility.Visible
-    dgCA_Overview.Visibility = Visibility.Hidden
+    dgCA_Overview.Visibility = Visibility.Collapsed
   
   btn_Mark_CA_Complete.IsEnabled = False
   btn_View_CA_onFR.IsEnabled = False
@@ -2844,7 +2836,7 @@ def FR_SelectionChanged(s, event):
     lbl_FR_DGID.Content = dg_FR.SelectedItem['ID']
     lbl_FR_CurrVal.Content = dg_FR.SelectedItem['AText']
     lbl_CorrActionID.Content = dg_FR.SelectedItem['CorrActionID']
-    lbl_CorrAct_QText.Text = dg_FR.SelectedItem['Question']
+    tb_CorrAct_QText.Text = dg_FR.SelectedItem['Question']
     lbl_FR_CAtrigger.Content = dg_FR.SelectedItem['CAtrigger']
     chk_FR_AllowsNA.IsChecked = False if dg_FR.SelectedItem['AllowsNA'] == 'N' else True
     chk_FR_AllowsNotes.IsChecked = False if dg_FR.SelectedItem['AllowsComment'] == 'N' else True
@@ -2873,7 +2865,7 @@ def FR_SelectionChanged(s, event):
     lbl_FR_DGID.Content = ''
     lbl_FR_CurrVal.Content = ''
     lbl_CorrActionID.Content = ''
-    lbl_CorrAct_QText.Text =''
+    tb_CorrAct_QText.Text =''
     txt_CorractiveActionNeeded.Text = ''
     txt_CorractiveActionTaken.Text = ''
     chk_CorrectiveActionPassed.IsChecked = False
@@ -3664,10 +3656,8 @@ btn_DeleteSelected_MRAFR.Click += dg_MRAFR_DeleteSelected
 btn_RegenerateEmailForFile = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_RegenerateEmailForFile')
 btn_RegenerateEmailForFile.Click += dg_MRAFR_ReSaveEmailToCase
 
-lbl_OV_RiskStatus = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_OV_RiskStatus')
-lbl_RiskScore_AdvisoryText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_RiskScore_AdvisoryText')
+tb_OV_RiskStatus = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_OV_RiskStatus')
 tb_NoMRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRAFR')
-sep_Delete = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'sep_Delete')
 
 ## OVERVIEW - CORRECTIVE ACTIONS ##
 dgCA_Overview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dgCA_Overview')
@@ -3793,7 +3783,7 @@ txt_FR_QComment.LostFocus += FR_QComment_Save
 stk_CorrectiveActions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_CorrectiveActions')
 
 lbl_CorrActionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_CorrActionID')
-lbl_CorrAct_QText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_CorrAct_QText')
+tb_CorrAct_QText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CorrAct_QText')
 txt_CorractiveActionNeeded = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorractiveActionNeeded')
 txt_CorractiveActionNeeded.LostFocus += txt_CorractiveActionNeeded_LostFocus
 txt_CorractiveActionTaken = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorractiveActionTaken')
