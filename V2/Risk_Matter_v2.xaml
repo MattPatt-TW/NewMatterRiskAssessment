@@ -4,11 +4,39 @@
     mc:Ignorable="d"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="750" d:DesignWidth="1400" Height="auto" Width="auto"  
+    d:DesignHeight="740.719" d:DesignWidth="1400" Height="auto" Width="auto"  
     Background="#FFEFF1F1" Name="RiskMatterV2">
 
-  <!--FONT COLOUR: #FF6150BE --> 
-  
+  <!--FONT COLOUR: #FF6150BE -->
+  <StackPanel.Resources>
+    <Style x:Key="SegmentedChip" TargetType="RadioButton">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border CornerRadius="16" Padding="10,6" BorderThickness="1"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Background" Value="#A992C1"/>
+                <Setter Property="BorderBrush" Value="#2E1A47"/>
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="FontWeight" Value="Bold" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#CCC"/>
+      <Setter Property="Background" Value="#FFF"/>
+      <Setter Property="Foreground" Value="Black" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </StackPanel.Resources>
+
   <StackPanel Orientation="Horizontal" Background="#8B82B6"  Margin="4" >
     <TextBlock x:Name="lbl_FormHeader" Text="Matter Risk Assessment and File Reviews..." 
          FontWeight="Bold" Foreground="White" VerticalAlignment="Center"
@@ -34,13 +62,11 @@
                  Text="Client:" Foreground="White" TextAlignment="Right" VerticalAlignment="Center"/>
 
         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
-          <TextBlock x:Name="tb_OurRef" 
-                   Tag="SQL: SELECT LEFT('[matters.entityref]', 3) + RIGHT('[matters.entityref]', 4) + '/' + CONVERT(nvarchar, '[matters.number]')" 
-                   Text="TES0080/1" Width="Auto" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+          <TextBlock x:Name="tb_OurRef"  
+                      Text="TES0080/1" Width="Auto" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
 
           <TextBlock x:Name="tb_ClientName" 
-                   Tag="SQL: SELECT '[client.legalname]'" 
-                   Text="Example Client Name" MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="White" FontWeight="Bold"  />
+                     Text="Example Client Name" MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="White" FontWeight="Bold"  />
 
         </StackPanel>
 
@@ -48,49 +74,49 @@
         <TextBlock Grid.Row="0" Grid.Column="2" 
                  Text="Fee Earner:" Foreground="White"  TextAlignment="Right" VerticalAlignment="Center"/>
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal"  >
-          <TextBlock x:Name="tb_FERef" 
-                   Tag="SQL: SELECT '[matters.FeeEarnerRef]'" 
+          <TextBlock x:Name="tb_FERef"  
                    Text="FE Ref" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
 
-          <TextBlock Tag="SQL: SELECT FullName FROM Users WHERE Code = '[matters.FeeEarnerRef]'" 
-                   Text="NAME" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+          <TextBlock x:Name="tb_FEFullName" 
+                     Text="NAME" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
 
+          <TextBlock Grid.Row="1" Grid.Column="8"  x:Name="tb_FE_Forename" Visibility="Collapsed"/>
+          <TextBlock Grid.Row="1" Grid.Column="8" x:Name="tb_FE_Email"  Visibility="Collapsed"/>
         </StackPanel>
 
         <TextBlock Grid.Row="1" Grid.Column="0"
-                 Text="Matter Desc:" Foreground="White" TextAlignment="Right" VerticalAlignment="Center"/>
+                   Text="Matter Desc:" Foreground="White" TextAlignment="Right" VerticalAlignment="Center"/>
         <TextBlock Grid.Row="1" Grid.Column="1" x:Name="tb_MatterDesc" 
-                 Tag="SQL: SELECT [SQLLIT:[matters.Description]]" 
-                 Text="Matter Description" Foreground="White" FontWeight="Bold"  VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Padding="4,0"/>
+                   Text="Matter Description" Foreground="White" FontWeight="Bold"  VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Padding="4,0"/>
 
         <TextBlock Grid.Row="1" Grid.Column="2"
                  Text="Case Type:" Foreground="White" TextAlignment="Right" VerticalAlignment="Center" />
 
         <StackPanel Grid.Row="1" Grid.Column="3"  Orientation="Horizontal" >
           <TextBlock x:Name="tb_CaseTypeRef" 
-                   Tag="SQL: SELECT '[matters.casetyperef]'" 
-                   Text="CT Ref"  Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0" />
+                     Text="CT Ref"  Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0" />
 
           <TextBlock x:Name="tb_CaseType" 
-                   Tag="SQL: SELECT Description FROM CaseTypes WHERE Code = '[matters.casetyperef]'" 
-                   Text="Case Type Desc" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
+                     Text="Case Type Desc" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
         </StackPanel>
 
         <TextBlock Grid.Row="0" Grid.Column="4" Foreground="White"
-                  Text="Current User:" TextAlignment="Right" VerticalAlignment="Center"/>
+                   Text="Current User:" TextAlignment="Right" VerticalAlignment="Center"/>
+        
         <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="5" >
           <TextBlock x:Name="tb_CurrentUserCode" Text="Code" 
-                   Tag="SQL: SELECT '[CurrentUser.Code]'" Foreground="White" FontWeight="Bold"
-                   TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
+                      Foreground="White" FontWeight="Bold"
+                      TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
           <TextBlock x:Name="tb_CurrentUserName" Text="Name" Foreground="White" FontWeight="Bold"
-                   Tag="SQL: SELECT '[CurrentUser.FullName]'"
-                   TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
+                     TextAlignment="Left" VerticalAlignment="Center" Padding="4,0"/>
+          <TextBlock x:Name="tb_CurrentUserEmail" Text="Name" Foreground="White" FontWeight="Bold"
+                     TextAlignment="Left" VerticalAlignment="Center" Padding="4,0" Visibility="Collapsed"/>
         </StackPanel>
 
         <TextBlock Grid.Row="1" Grid.Column="4" Text="Risk Status:" Foreground="White" VerticalAlignment="Center" TextAlignment="Right"/>
         <TextBlock Grid.Row="1" Grid.Column="5" VerticalAlignment="Center"
-             x:Name="tb_OV_RiskStatus" Text="[Current Risk Status]" Foreground="White" FontWeight="Bold" Padding="4,0"
-             ToolTip="A 'High' status means that your HOD must approve the continuation of this matter, and requires a new Matter Risk Assessment to be completed every month."/>
+                   x:Name="tb_OV_RiskStatus" Text="[Current Risk Status]" Foreground="White" FontWeight="Bold" Padding="4,0"
+                   ToolTip="A 'High' status means that your HOD must approve the continuation of this matter, and requires a new Matter Risk Assessment to be completed every month."/>
 
         <TextBlock Grid.Row="1" Grid.Column="4"  Visibility="Collapsed"
                   Text="Can Approve High Risk:" TextAlignment="Right" VerticalAlignment="Center"/>
@@ -98,15 +124,11 @@
                   Text="False|True" TextAlignment="Left" VerticalAlignment="Center"/>
 
 
-        <TextBlock Grid.Row="1" Grid.Column="8"  x:Name="tb_FE_Forename" 
-                 Tag="SQL: SELECT Forename FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
-        <TextBlock Grid.Row="1" Grid.Column="8" x:Name="tb_FE_Email" 
-                 Tag="SQL: SELECT EMailExternal FROM Users WHERE Code = '[matters.FeeEarnerRef]'" Visibility="Collapsed"/>
-
       </Grid>
 
 
     </GroupBox>
+
   </StackPanel>
 
 
@@ -142,51 +164,124 @@
 
     <Label Content="Case Documents" Foreground="#FF6150BE" FontWeight="Bold" Grid.Column="2" HorizontalContentAlignment="Center" />
     <StackPanel Orientation="Vertical"  Grid.Column="2" Grid.Row="1" Grid.RowSpan="2">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Visibility="Visible"  Margin="0,0,0,6">
-        <RadioButton x:Name="opt_CaseDocs_Entity" GroupName="CaseDocs" Content="Entity" Foreground="#FF6150BE" />
-        <RadioButton x:Name="opt_CaseDocs_Matter" IsChecked="True" GroupName="CaseDocs" Content="Matter" Foreground="#FF6150BE" Margin="26,0,0,0"/>
-      </StackPanel>
+
+      
       <StackPanel Orientation="Horizontal" Margin="4,0,0,0" >
         <Label Content="Agenda/Folder:" Foreground="#FF6150BE" />
 
-        <ComboBox x:Name="cbo_AgendaName" Canvas.Left="113" Width="211" Height="26" VerticalContentAlignment="Center" >
+        <ComboBox x:Name="cbo_AgendaName" Width="211" Height="26" VerticalContentAlignment="Center" >
+          <!-- Collapsible group headers -->
+          <ComboBox.GroupStyle>
+            <GroupStyle>
+              <GroupStyle.ContainerStyle>
+                <Style TargetType="{x:Type GroupItem}">
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="{x:Type GroupItem}">
+                        <Expander IsExpanded="True" Margin="0,2,0,6">
+                          <Expander.Header>
+                            <StackPanel>
+                              <TextBlock Text="{Binding Name}"
+                                         FontWeight="SemiBold"
+                                         Margin="2,4,2,2" />
+                              <Separator Margin="0,0,0,2"/>
+                            </StackPanel>
+                          </Expander.Header>
+
+                          <!-- The grouped items render here -->
+                          <ItemsPresenter />
+                        </Expander>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+              </GroupStyle.ContainerStyle>
+            </GroupStyle>
+          </ComboBox.GroupStyle>
+
           <ComboBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding ALevel, Mode=TwoWay}" Width="Auto" Visibility="Collapsed"/>
                 <TextBlock Text="{Binding AgendaName, Mode=TwoWay}" Width="Auto"/>
-                <TextBlock Text="{Binding AgendaID, Mode=TwoWay}" Width="0"/>
-                <TextBlock Text="{Binding mIsDefault, Mode=TwoWay}" Width="0"/>
+                <TextBlock Text="{Binding AgendaID, Mode=TwoWay}" Width="0" Visibility="Collapsed"/>
+                <TextBlock Text="{Binding mIsDefault, Mode=TwoWay}" Width="0" Visibility="Collapsed"/>
               </StackPanel>
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
       </StackPanel>
 
-      <Label Content="Select document and click 'Open Selected' to view" Foreground="#FF6150BE" Margin="4,0,0,0"  />
-      <Button x:Name="btn_OpenCaseDoc" Content="Open Selected" Height="24" Width="106" IsEnabled="False" />
+      <TextBlock x:Name="tb_NoCaseDocsExist" Text="No documents in the selected 'Agenda / Folder'!" 
+           Foreground="Red" FontSize="16" FontWeight="Bold" Margin="8,4,8,2" TextWrapping="Wrap" Visibility="Collapsed"/>
 
-      <DataGrid x:Name="dg_CaseManagerDocs" Height="540"
+      <StackPanel Orientation="Vertical">
+        <StackPanel.Style>
+          <Style TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Visible" />
+
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding Visibility, ElementName=tb_NoCaseDocsExist}" Value="Visible">
+                <Setter Property="Visibility" Value="Collapsed" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </StackPanel.Style>
+        
+        <Label Content="Select document and click 'Open Selected' to view" Foreground="#FF6150BE" Margin="4,0,0,0"  />
+        <Button x:Name="btn_OpenCaseDoc" Content="Open Selected" Height="24" Width="106" IsEnabled="False" />
+
+
+        <DataGrid x:Name="dg_CaseManagerDocs" Height="560"
                 AlternatingRowBackground="#FFAEDEB9" AutoGenerateColumns="False" 
                 SelectionMode="Single" Margin="4,4,2,2" 
                 CanUserResizeRows="False" HeadersVisibility="Column">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="StepID" IsReadOnly="True"
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="StepID" IsReadOnly="True"
                               Binding="{Binding sID}" />
-          <DataGridTextColumn Header="Description" Width="260" IsReadOnly="True"
+            <DataGridTextColumn Header="Description" Width="260" IsReadOnly="True"
                               Binding="{Binding sDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-          <DataGridTextColumn Header="Date Created" Width="90" IsReadOnly="False" 
+            <DataGridTextColumn Header="Date Created" Width="90" IsReadOnly="False" 
                               Binding="{Binding sCreated, StringFormat=dd/MM/yyyy}" />
-          <DataGridTextColumn Header="DocPath" IsReadOnly="True" 
+            <DataGridTextColumn Header="DocPath" IsReadOnly="True" 
                               Binding="{Binding sDocPath}" Visibility="Hidden"/>
-        </DataGrid.Columns>
-      </DataGrid>
+          </DataGrid.Columns>
+        </DataGrid>
+      </StackPanel>
+      
 
     </StackPanel>
 
     <!--Old background colour: #FFEFF3FC
     New purple: FFB2A4D5-->
-    <TabControl x:Name="TC_Main" Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Background="#FFEFF1F1"   BorderBrush="#FF7E98EE" Margin="0,0,4.4,0">
+    <TabControl x:Name="TC_Main" Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Background="#FFEFF1F1"  Margin="0,0,4.4,0">
+      <TabControl.Resources>
+        <Style TargetType="{x:Type TabItem}">
+          <!-- set default colours for not selected -->
+          <Setter Property="Background" Value="#8B82B6" />
+          <Setter Property="BorderBrush" Value="#FF5E577C" />
+          <Setter Property="Foreground" Value="White" />
+
+          <Style.Triggers>
+            <!-- Triggers when tab is selected - set font colour to black -->
+            <Trigger Property="IsSelected" Value="True" >
+              <Setter Property="Foreground" Value="Black" />
+              
+              <!--<Setter Property="FontWeight" Value="Bold" />-->
+              <!--<Setter Property="BorderThickness" Value="10" />
+                            <Setter Property="BorderBrush" Value="Black" />-->
+            </Trigger>
+            <!-- Trigger to set header text to Black on MouseOver -->
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="Black"/>
+            </Trigger>
+          </Style.Triggers>
+        </Style>
+
+      </TabControl.Resources>
+      
       <TabItem Header="Overview" x:Name="ti_Main" Height="26" >
+        
         <StackPanel>
           <GroupBox Header="List of 'Matter Risk Assessment(s)' and 'File Review(s)'" 
                     BorderBrush="DarkGray" Foreground="#FF6150BE" Margin="2,0">
@@ -194,10 +289,10 @@
 
               <StackPanel Orientation="Horizontal" Margin="4">
                 
-                <ToggleButton x:Name="btnNew"  Width="60">
+                <ToggleButton x:Name="btnNew"  Margin="0,4">
                   <StackPanel Orientation="Horizontal">
                     <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                    <TextBlock Margin="3,4,3,4" Text="New..."  TextWrapping="Wrap" Width="Auto" TextAlignment="Center"/>
+                    <TextBlock Margin="3,4" Text="New..."  TextWrapping="Wrap" Width="Auto" TextAlignment="Center"/>
                   </StackPanel>
                 </ToggleButton>
 
@@ -209,8 +304,8 @@
                        AllowsTransparency="True"
                        PopupAnimation="Fade">
 
-                  <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="6"
-                          Background="White" Padding="10">
+                  <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
+                          Background="#FFF4F4BF" Padding="10">
                     <StackPanel MinWidth="260">
 
                       <TextBlock Text="Add from template"
@@ -252,52 +347,66 @@
                   </Border>
                 </Popup>
 
-                <Button x:Name="btn_CopySelected_MRAFR" Margin="6,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                    <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                <Border CornerRadius="8" BorderThickness="1" BorderBrush="DarkGray" Margin="20,0,0,0"
+                        Padding="4">
+                  <StackPanel Orientation="Horizontal" >
 
-                <Button x:Name="btn_View_MRAFR" Margin="6,0,0,0" >
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\View.png"/>
-                    <TextBlock Margin="3,4,0,4" Text="View Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                    <TextBlock Text="With selected:" TextWrapping="Wrap" Width="48" VerticalAlignment="Center" Margin="4,0,0,0"/>
 
-                <Button x:Name="btn_Edit_MRAFR" Margin="6,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
-                    <TextBlock Margin="3,4,0,4" Text="Edit Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                    <Button x:Name="btn_Edit_MRAFR" Margin="6,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+                        <TextBlock Margin="4" Text="Edit" Width="26"  TextWrapping="Wrap" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
-                <Button x:Name="btn_HOD_Approval_MRA" Margin="6,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
-                    <TextBlock Margin="3,4,0,4" Text="Approve MRA (HOD)" ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter" TextWrapping="Wrap" Width="64" TextAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                    <Button x:Name="btn_View_MRAFR" Margin="6,0,0,0" >
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\View.png"/>
+                        <TextBlock Margin="4" Text="View" Width="26"  TextWrapping="Wrap"  TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
-                <Button x:Name="btn_DeleteSelected_MRAFR" Background="#FFFFA7A7" Margin="24,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                    <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                    <Button x:Name="btn_CopySelected_MRAFR" Margin="6,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                        <TextBlock Margin="4" Text="Duplicate" TextWrapping="Wrap" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
 
-                <Button x:Name="btn_RegenerateEmailForFile" IsEnabled="False" Margin="24,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <!--<Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Email.png" />-->
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Save(floppy).png" />
-                    <TextBlock Text="Re-save email into case" TextWrapping="Wrap" TextAlignment="Center" Margin="3,4,0,4" Width="90"
+                    <Button x:Name="btn_HOD_Approval_MRA" Margin="12,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
+                        <TextBlock Margin="4" Text="Approve MRA (HOD)" 
+                                   ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter" 
+                                   TextWrapping="Wrap" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_DeleteSelected_MRAFR" Background="#FFFFA7A7" Margin="24,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="4" Text="Delete" TextWrapping="Wrap" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+
+                    <Button x:Name="btn_RegenerateEmailForFile" IsEnabled="False" Margin="24,0,2,0">
+                      <StackPanel Orientation="Horizontal">
+                        <!--<Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Email.png" />-->
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Save(floppy).png" />
+                        <TextBlock Text="Re-save email into case" TextWrapping="Wrap" TextAlignment="Center" Margin="4" 
                                ToolTip="Copies of the emails should be saved into the matter case automatically, however, you can click this to re-generate the email (note: no email is actually sent here, just a copy of it saved to the case)"/>
+                      </StackPanel>
+                    </Button>
+                    
                   </StackPanel>
-                </Button>
+                </Border>
+                
 
-                <StackPanel Orientation="Vertical" Margin="50,0,0,0">
+
+                <StackPanel Orientation="Vertical" Margin="50,0,0,0" Visibility="Collapsed">
                   <TextBlock Text="Group By:" />
                   <ComboBox x:Name="cbo_GroupMRAFR" />
                 </StackPanel>
@@ -322,35 +431,12 @@
                         AutoGenerateColumns="False" 
                         IsTextSearchEnabled="True"
                         CanUserResizeRows="False" HeadersVisibility="Column">
-                
-                <DataGrid.Resources>
-                  <Style x:Key="RightAligned" TargetType="DataGridCell">
-                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                  </Style>
-                  <Style x:Key="Center" TargetType="DataGridCell">
-                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                  </Style>
-                  <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="Green"/>
-                    <Setter Property="Foreground" Value="White"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="BorderBrush" Value="Wheat"/>
-                    <Setter Property="BorderThickness" Value="1"/>
-                    <Setter Property="Width" Value="Auto"/>
-                    <Setter Property="Padding" Value="2,0,2,0" />
-                  </Style>
-                  <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                    <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                    <Setter Property="BorderBrush" Value="Black"/>
-                    <Setter Property="BorderThickness" Value="1"/>
-                    <Setter Property="Width" Value="Auto"/>
-                    <Setter Property="FontWeight" Value="Bold"/>
-                  </Style>
-                </DataGrid.Resources>
 
-                <DataGrid.CellStyle>
+                <!-- Uncomment the following if you want the whole row highlighted yellow if status = Draft
+                     Moved to just the status column for now, as we actually loose visibility of selected row -->
+                <!--<DataGrid.CellStyle>
                   <Style TargetType="DataGridCell" >
-                    <!--set a default style to use when trigger below isn't triggered-->
+                    --><!--set a default style to use when trigger below isn't triggered--><!--
                     <Setter Property="Background" Value="{x:Null}" />
                     <Setter Property="Foreground" Value="Black" />
                     <Setter Property="FontWeight" Value="Normal" />
@@ -363,28 +449,71 @@
                       </DataTrigger>
                     </Style.Triggers>
                   </Style>
-                </DataGrid.CellStyle>
+                </DataGrid.CellStyle>-->
+                
+                <DataGrid.Resources>
+
+                  <!-- Reusable centered display style -->
+                  <Style x:Key="CenteredTextStyle" TargetType="TextBlock">
+                    <Setter Property="TextAlignment" Value="Center" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                  </Style>
+
+                  <!-- Status cell highlight -->
+                  <Style x:Key="StatusCellStyle" TargetType="DataGridCell">
+                    <Setter Property="Background" Value="{x:Null}" />
+                    <Setter Property="Foreground" Value="Black" />
+                    <Setter Property="FontWeight" Value="Normal" />
+
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Status}" Value="Draft">
+                        <Setter Property="Background" Value="Yellow" />
+                        <Setter Property="Foreground" Value="Red" />
+                        <Setter Property="FontWeight" Value="Bold" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+
+                </DataGrid.Resources>
 
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraID}"/>
                   <DataGridTextColumn Header="Name" IsReadOnly="True" Width="Auto" 
                                       Binding="{Binding Name}"/>
-                  
-                  <DataGridTextColumn Header="Status" IsReadOnly="True" Width="Auto" Binding="{Binding Status}"/>
-                  <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="90" Binding="{Binding ExpiryDate, StringFormat=dd/MM/yyyy}"/>
-                  <DataGridTextColumn Header="Risk Rating" IsReadOnly="True" Width="80" Binding="{Binding RiskRating}"/>
-                  <DataGridTextColumn Header="Approved by HOD" IsReadOnly="True" Width="110" Binding="{Binding AppByHOD}"/>
-                  <DataGridTextColumn Header="Q Count" IsReadOnly="True" Width="Auto" Binding="{Binding QCount}" Visibility="Visible"/>
-                  <DataGridTextColumn Header="Qs O/S" IsReadOnly="True" Width="Auto" Binding="{Binding QOutstanding}" Visibility="Visible"/>
-                  <DataGridTextColumn Header="FR Reviewer" IsReadOnly="True" Width="Auto" Binding="{Binding FRReviewer}" Visibility="Visible"/>
-                  <DataGridTextColumn Header="Submitted By" IsReadOnly="True" Width="Auto" Binding="{Binding SubbedBy}" Visibility="Visible"/>
-                  <DataGridTextColumn Header="Submitted On" IsReadOnly="True" Width="Auto" Binding="{Binding SubbedOn, StringFormat=dd/MM/yyyy}" Visibility="Visible"/>
+
+                  <DataGridTextColumn Header="Status" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding Status}" CellStyle="{StaticResource StatusCellStyle}" />
+
+                  <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="90" 
+                                      Binding="{Binding ExpiryDate, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-Not_Set-'}"/>
+
+                  <DataGridTextColumn Header="Risk Rating" IsReadOnly="True" Width="70" 
+                                      Binding="{Binding RiskRating}"
+                                      ElementStyle="{StaticResource CenteredTextStyle}" />
+
+                  <DataGridTextColumn Header="HOD Approved?" IsReadOnly="True" Width="100" 
+                                      Binding="{Binding AppByHOD}"
+                                      ElementStyle="{StaticResource CenteredTextStyle}" />
+
+                  <DataGridTextColumn Header="Q Count" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding QCount}" Visibility="Visible"
+                                      ElementStyle="{StaticResource CenteredTextStyle}" />
+
+                  <DataGridTextColumn Header="Qs O/S" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding QOutstanding}" Visibility="Visible"
+                                      ElementStyle="{StaticResource CenteredTextStyle}" />
+
+                  <DataGridTextColumn Header="FR Reviewer" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding FRReviewer}" Visibility="Visible"/>
+                  <DataGridTextColumn Header="Submitted By" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding SubbedBy}" Visibility="Visible"/>
+                  <DataGridTextColumn Header="Submitted On" IsReadOnly="True" Width="Auto" 
+                                      Binding="{Binding SubbedOn, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-'}" Visibility="Visible"/>
 
                   <DataGridTextColumn Header="Score Trig Med" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerMed}" Visibility="Collapsed"/>
                   <DataGridTextColumn Header="Score Trig High" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerHigh}" Visibility="Collapsed"/>
                   <DataGridTextColumn Header="TemplateID" IsReadOnly="True" Width="Auto" Binding="{Binding TemplateID}" Visibility="Collapsed"/>
                   <DataGridTextColumn Header="Score" IsReadOnly="True" Width="Auto" Binding="{Binding Score}" Visibility="Collapsed"/>
-
                   <DataGridTextColumn Header="Type" IsReadOnly="True" Width="Auto" Binding="{Binding Type}" Visibility="Collapsed"/>
                   
                 </DataGrid.Columns>
@@ -395,31 +524,6 @@
           <GroupBox Header="Corrective Actions raised from File Review(s) " 
                     Foreground="#FF6150BE" BorderBrush="DarkGray"  Height="303" Margin="2,4,2,0" >
 
-            <GroupBox.Resources>
-              <Style x:Key="SegmentedChip" TargetType="RadioButton">
-                <Setter Property="Template">
-                  <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                      <Border CornerRadius="16" Padding="10,6" BorderThickness="1"
-                              Background="{TemplateBinding Background}"
-                              BorderBrush="{TemplateBinding BorderBrush}">
-                        <ContentPresenter/>
-                      </Border>
-                      <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                          <Setter Property="Background" Value="#EEF6FF"/>
-                          <Setter Property="BorderBrush" Value="#3B82F6"/>
-                        </Trigger>
-                      </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                  </Setter.Value>
-                </Setter>
-                <Setter Property="BorderBrush" Value="#CCC"/>
-                <Setter Property="Background" Value="#FFF"/>
-              </Style>
-
-            </GroupBox.Resources>
-            
             <StackPanel>
 
               <StackPanel Orientation="Horizontal" Margin="4">
@@ -427,33 +531,24 @@
                 <TextBlock x:Name="tb_Current_CA" Foreground="Gray" VerticalAlignment="Center" Text="x" Margin="4,0,0,0"/>
                 <TextBlock x:Name="tb_Current_CA_Complete" Foreground="Black" VerticalAlignment="Center" Text="0" Visibility="Collapsed"/>
 
-                <Button x:Name="btn_Mark_CA_Complete" Margin="12,0,0,0" >
+                <Button x:Name="btn_Mark_CA_Complete" Margin="30,0,0,0" >
                   <TextBlock Text="Toggle 'Complete'" TextWrapping="Wrap" Width="60" TextAlignment="Center" ToolTip="If item is currently incomplete, clicking this will mark it as 'complete'. If item is currently 'complete', clicking this will mark it as 'incomplete' "/>
                 </Button>
 
-                <Button x:Name="btn_View_CA_onFR" Margin="12,0,0,0">
+                <Button x:Name="btn_View_CA_onFR" Margin="30,0,0,0">
                   <TextBlock Text="View on File Review" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
                 </Button>
 
-                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="12,0,0,0">
-                  <TextBlock Text="Current User" Foreground="Gray" />
-                  <StackPanel Orientation="Horizontal" >
-                    <TextBlock x:Name="tb_CurrUser" Text="XX" Foreground="Gray" />
-                    <Separator Visibility="Hidden" Width="4"/>
-                    <TextBlock x:Name="tb_CurrUserName" Text="XXXXXXXX" Foreground="Gray" />
-                  </StackPanel>
-                </StackPanel>
-
-                <Border CornerRadius="20" Padding="2,4" BorderThickness="1" BorderBrush="DarkGray" Margin="16,0,0,0">
+                <Border CornerRadius="20" Padding="2,4" BorderThickness="1" BorderBrush="DarkGray" Margin="60,0,0,0">
                   <StackPanel Orientation="Horizontal">
                     <Label Content="View:" Foreground="Gray" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" >
                       <RadioButton x:Name="opt_CA_ViewNotComplete" Content="Not Completed Only" Style="{StaticResource SegmentedChip}"
-                                    IsChecked="True" Margin="2,0,4,0" VerticalAlignment="Center"/>
+                                    IsChecked="True" Margin="2,0,2,0" VerticalAlignment="Center"/>
                       <RadioButton x:Name="opt_CA_ViewComplete" Content="Completed Only"  Style="{StaticResource SegmentedChip}"
-                                    Margin="4,0,4,0" VerticalAlignment="Center"/>
+                                    Margin="2,0,2,0" VerticalAlignment="Center"/>
                       <RadioButton x:Name="opt_CA_ViewAll" Content="All"  Style="{StaticResource SegmentedChip}"
-                                    Margin="4,0,4,0" VerticalAlignment="Center"/>
+                                    Margin="2,0,2,0" VerticalAlignment="Center"/>
                     </StackPanel>
                   </StackPanel>
                   
@@ -461,7 +556,7 @@
                 
 
 
-                <Button x:Name="btn_UpdateReviewerWithActionTaken" Width="110" Margin="16,0,0,0" 
+                <Button x:Name="btn_UpdateReviewerWithActionTaken" Width="110" Margin="86,0,0,0" 
                         ToolTip="Clicking this button will email the File Reviewer with a list of all Corrective Actions Taken on this matter, and requests them to click the 'Complete' checkbox" >
                   <TextBlock Text="Notify Reviewer Actions Complete" TextWrapping="Wrap" TextAlignment="Center"/>
                 </Button>
@@ -474,7 +569,7 @@
               <TextBlock x:Name="tb_CATaken" Width="Auto" Text="TEST" TextWrapping="Wrap" 
                          Foreground="Gray" Visibility="Collapsed" Canvas.Left="779" Canvas.Top="-80"/>
 
-              <DataGrid x:Name="dgCA_Overview" Height="234" Margin="4,0"
+              <DataGrid x:Name="dgCA_Overview" Height="226" Margin="4,0"
                         AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
                         CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column" >
 
@@ -489,31 +584,25 @@
                     <Setter Property="FontStyle" Value="Italic" />
                   </Style>
                   <Style x:Key="EditableColumn" TargetType="{x:Type DataGridColumnHeader}" >
-                    <Setter Property="Background" Value="Green"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="#FFD3C9FD"/>
+                    <Setter Property="Foreground" Value="Black"/>
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="BorderBrush" Value="Wheat"/>
+                    <Setter Property="BorderBrush" Value="#2E1A47"/>
                     <Setter Property="BorderThickness" Value="1"/>
                     <Setter Property="Width" Value="Auto"/>
                     <Setter Property="Padding" Value="2,0,2,0" />
                     <Setter Property="ToolTip" Value="this should be a note from the Matter Fee Earner stating the Action they have Taken for each item listed" />
                   </Style>
                   <Style x:Key="EditableColumn2" TargetType="{x:Type DataGridColumnHeader}" >
-                    <Setter Property="Background" Value="#FF005B80"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="#FFD3C9FD"/>
+                    <Setter Property="Foreground" Value="Black"/>
                     <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="BorderBrush" Value="Wheat"/>
+                    <Setter Property="BorderBrush" Value="#2E1A47"/>
                     <Setter Property="BorderThickness" Value="1"/>
                     <Setter Property="Width" Value="Auto"/>
                     <Setter Property="Padding" Value="4,0,4,0" />
                     <Setter Property="ToolTip" Value="this can only be ticked-off by the File Reviewer" />
                   </Style>
-                  <!--<Style x:Key="CentreAlignCheckBox" TargetType="{x:Type DataGridCell}" >
-                    -->
-                  <!--<Setter Property="VerticalAlignment" Value="Center" />-->
-                  <!--<Setter Property="Padding" Value="4,6" />-->
-                  <!--
-                  </Style>-->
                 </DataGrid.Resources>
 
                 <DataGrid.Columns>
@@ -572,40 +661,18 @@
                     </DataGridTextColumn.EditingElementStyle>
                   </DataGridTextColumn>
 
-                  <!--<DataGridTemplateColumn Header="Action Taken" Width="350"
-                                          HeaderStyle="{StaticResource EditableColumn}">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate>
-                        <TextBlock Text="{Binding CA_Taken}" VerticalAlignment="Top" TextWrapping="Wrap" Height="Auto" Padding="2,0,2,0"/>
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                      <DataTemplate>
-                        <TextBox Text="{Binding CA_Taken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                 VerticalAlignment="Top" TextWrapping="Wrap" Height="Auto" Padding="2,0,2,0"/>
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                  </DataGridTemplateColumn>-->
 
                   <DataGridCheckBoxColumn Header="Complete" Width="Auto" 
                                           Binding="{Binding CA_Complete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          HeaderStyle="{StaticResource EditableColumn2}" />
-                  <!--Hmm... testing having no 'CellTemplate' and this does then correctly trigger 'CellEditEnding' function and do update
-                             however, nothing is visible in cell when not in 'edit' mode! -->
-                  <!--<DataGridTemplateColumn Header="Complete" Width="Auto" 
-                                          HeaderStyle="{StaticResource EditableColumn}">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate>
-                        <CheckBox IsChecked="{Binding CA_Complete}" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                        <TextBlock Text="{Binding CA_CompleteYN}" TextAlignment="Center" VerticalAlignment="Center"/>
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                      <DataTemplate>
-                        <CheckBox IsChecked="{Binding CA_Complete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" HorizontalAlignment="Center" /> 
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                  </DataGridTemplateColumn>-->
+                                          HeaderStyle="{StaticResource EditableColumn2}" >
+                    <DataGridCheckBoxColumn.ElementStyle>
+                      <Style TargetType="CheckBox">
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="HorizontalAlignment" Value="Center" />
+                      </Style>
+                    </DataGridCheckBoxColumn.ElementStyle>
+                  </DataGridCheckBoxColumn>
+
 
                   <DataGridTemplateColumn Header="Due By" IsReadOnly="True" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
@@ -941,18 +1008,20 @@
                         Grid.Row="1" Grid.Column="2" Margin="4,6,4,0"
                         DataContext="{Binding ElementName=dg_MRA, Path=Items.CurrentItem}">
 
-              <GroupBox Header="Question:"  BorderBrush="Gray">
+              <Border CornerRadius="16" Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0">
                 <StackPanel Orientation="Vertical" >
                   <TextBlock Text="{Binding QuestionText}"
                              VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="340" 
-                             Margin="4,0,0,0" FontSize="22" />
+                             FontSize="22" />
 
                 </StackPanel>
-              </GroupBox>
+              </Border>
 
-              <GroupBox Header="Your Answer:" Margin="0,6,0,0" BorderBrush="Gray">
+              <Border CornerRadius="16" Margin="4,6,4,0" Padding="8" 
+                      Background="#FFF4F4BF" BorderBrush="#FF616110" BorderThickness="1">
                 <StackPanel>
 
+                  <TextBlock Text="Your Answer:" Foreground="#FF6150BE" FontWeight="Bold" VerticalAlignment="Center" TextAlignment="Left" Margin="0,4"/>
                   <ComboBox x:Name="cbo_MRA_SelectedComboAnswer"
                             Height="23" VerticalAlignment="Center" Visibility="Visible" 
                             ItemsSource="{Binding AvailableAnswers}"
@@ -1018,7 +1087,7 @@
 
                 </StackPanel>
 
-              </GroupBox>
+              </Border>
 
                 <StackPanel Orientation="Horizontal" Margin="0,70,0,0" Visibility="Collapsed" >
                   <Label Content="Time Entered:" Foreground="Gray" />
@@ -1038,15 +1107,33 @@
       </TabItem>
 
       <TabItem Header="File Review" x:Name="ti_FR">
-        <Canvas>
-          <StackPanel Orientation="Horizontal" Margin="4,4,0,4">
-            <Label Content="Name: " Foreground="#FF6150BE" VerticalContentAlignment="Center" />
-            <Label x:Name="lbl_FR_Name" Content="NAME" Width="230" VerticalContentAlignment="Center"/>
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="4">
+
+            <StackPanel Orientation="Vertical">
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                <TextBlock Text="Name (ID):" Foreground="#FF6150BE" VerticalAlignment="Center" />
+                <TextBlock x:Name="tb_FR_Name" Text="NAME" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" 
+                            MaxWidth="270" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                <TextBlock Text="(" Margin="4,0,0,0" />
+                <TextBlock x:Name="tb_FR_ID" Text="ID" VerticalAlignment="Center"/>
+                <TextBlock Text=")" />
+              </StackPanel>
+
+              <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                <TextBlock Text="Submitted By (on):"  TextAlignment="Center" Foreground="#FF6150BE" />
+                <TextBlock x:Name="tb_FR_SubmittedBy" Text=""  TextAlignment="Center" Margin="4,0"/>
+                <TextBlock Text="(" Margin="4,0,0,0" />
+                <TextBlock x:Name="tb_FR_SubmittedOn" Text="dd/mm/yyyy"  TextAlignment="Center" />
+                <TextBlock Text=")" />
+              </StackPanel>
+            </StackPanel>
+            
 
             <!-- Good example of how to change look of a control based on value of another XAML control
                  Here we are looking at the 'txt_FR_Status' text, and if 'Complete' auto-colour to green 
                  (else, default to 'red') -->
-            <Label BorderThickness="1" Padding="0" Margin="20,-2,0,0" Width="60" HorizontalContentAlignment="Center">
+            <Label BorderThickness="1" Padding="4,0" Margin="20,0,0,0" >
               <Label.Resources>
                 <Style TargetType="Label">
                   <Setter Property="BorderBrush" Value="#FF8F0707" />
@@ -1066,50 +1153,67 @@
 
               <StackPanel Orientation="Vertical" >
                 <TextBlock Text="Status:"  TextAlignment="Center" />
-                <TextBlock x:Name="txt_FR_Status" Text="???"  TextAlignment="Center" />
+                <TextBlock x:Name="tb_FR_Status" Text="???"  TextAlignment="Center" Margin="4,0"/>
               </StackPanel>
             </Label>
 
-            <Label BorderBrush="Black" BorderThickness="1" Padding="0" Margin="20,-2,4,0" VerticalContentAlignment="Center" Visibility="Visible">
+            
+            <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="20,0,4,0" VerticalContentAlignment="Center" Visibility="Visible">
               <StackPanel Orientation="Vertical"  >
                 <StackPanel Orientation="Horizontal" >
-                  <TextBlock Text="Total Questions:" TextAlignment="Right" Width="90" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalQs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,6,0"/>
+                  <TextBlock Text="Total Questions:" TextAlignment="Right" Width="86" Foreground="#FF6150BE" />
+                  <TextBlock x:Name="tb_TotalQs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" >
-                  <TextBlock Text="Total Answered:" TextAlignment="Right"  Width="90" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalAnswered_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,6,0"/>
+                  <TextBlock Text="Total Answered:" TextAlignment="Right"  Width="86" Foreground="#FF6150BE" />
+                  <TextBlock x:Name="tb_TotalAnswered_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
                 </StackPanel>
               </StackPanel>
             </Label>
 
-            <Label BorderBrush="Black" BorderThickness="1" Padding="0" Margin="4,-2,8,0" VerticalContentAlignment="Center" Visibility="Visible">
+            <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="4,0,0,0" VerticalContentAlignment="Center" Visibility="Visible">
               <StackPanel Orientation="Vertical"  >
                 <StackPanel Orientation="Horizontal" >
                   <TextBlock Text="Total Corrective Actions:" TextAlignment="Right" Width="130" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,6,0"/>
+                  <TextBlock x:Name="tb_TotalCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" >
                   <TextBlock Text="Total Outstanding:" TextAlignment="Right"  Width="130" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalOSCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,6,0"/>
+                  <TextBlock x:Name="tb_TotalOSCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
                 </StackPanel>
               </StackPanel>
             </Label>
 
             <Label x:Name="lbl_TimeEnteredFR" Foreground="Gray" Visibility="Collapsed"/>
-
             <ToggleButton x:Name="tog_TEST_CorrActions" Content="Show/Hide Corrective Actions Area" MaxWidth="204" Visibility="Collapsed"/>
-            <Button x:Name="btn_FR_BackToOverview"  Width="70" Margin="20,0,0,0" Padding="6,0,6,0">
+            
+            <Button x:Name="btn_FR_BackToOverview"  Width="70" Margin="20,0,0,0" >
               <TextBlock Text="Back to Overview" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
-            <Button x:Name="btn_FR_Submit" Margin="20,0,0,0" Padding="6,0,6,0" Width="100">
-              <TextBlock Text="Save and Send to Fee Earner" TextWrapping="Wrap" TextAlignment="Center" />
-            </Button>
-            <Label x:Name="lbl_FR_ID" Content="ID" VerticalContentAlignment="Center" Margin="20,0,10,0"/>
+            
+            <Button x:Name="btn_FR_Submit" Margin="20,0,0,0" Width="100">
+              <Button.Content>
+                <TextBlock Text="Save and Send to Fee Earner" TextWrapping="Wrap" TextAlignment="Center" />
+              </Button.Content>
+              <Button.Style>
+                <Style TargetType="Button">
+                  <Setter Property="Visibility" Value="Hidden"/>
 
-            <StackPanel Orientation="Vertical"  >
-              <RadioButton x:Name="opt_EditModeFR" Content="Edit Mode" GroupName="FR_MODE" IsEnabled="False"/>
-              <RadioButton x:Name="opt_ViewModeFR" Content="View Mode" GroupName="FR_MODE" IsEnabled="False"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsChecked, ElementName=opt_EditModeFR}" Value="True">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+
+                </Style>
+              </Button.Style>
+            </Button>
+            
+            
+
+            <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="10,0,0,0" >
+              <RadioButton x:Name="opt_EditModeFR" Content="Editing" GroupName="FR_MODE" IsEnabled="False" />
+              <RadioButton x:Name="opt_ViewModeFR" Content="Viewing" GroupName="FR_MODE" IsEnabled="False" />
             </StackPanel>
           </StackPanel>
 
@@ -1120,24 +1224,15 @@
                     SelectionMode="Single" 
                     AutoGenerateColumns="False" 
                     CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column"
-                    IsTextSearchEnabled="True" Canvas.Top="42" Height="328" Width="1010"  >
+                    IsTextSearchEnabled="True" Height="320"  >
 
             <!--Removed from above: AlternatingRowBackground="#FFAEDEB9"-->
             <DataGrid.CellStyle>
               <Style TargetType="{x:Type DataGridCell}">
                 <Style.Triggers>
-                  <!--<DataTrigger Binding="{Binding pvAnswerText}" Value="Yes">
-                    <Setter Property="Background" Value="{x:Null}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding pvAnswerText}" Value="N/A">
-                    <Setter Property="Background" Value="White" />
-                  </DataTrigger>-->
                   <DataTrigger Binding="{Binding fr_HasOSCA}" Value="Yes" >
                     <Setter Property="Background" Value="Coral" />
                   </DataTrigger>
-                  <!--<DataTrigger Binding="{Binding pvAnswerText}" Value="" >
-                    <Setter Property="Background" Value="White" />
-                  </DataTrigger>-->
                 </Style.Triggers>
               </Style>
             </DataGrid.CellStyle>
@@ -1170,21 +1265,6 @@
               </Style>
               <Style x:Key="Center" TargetType="DataGridCell">
                 <Setter Property="HorizontalAlignment" Value="Center"/>
-              </Style>
-              <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                <Setter Property="Background" Value="Green"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                <Setter Property="BorderBrush" Value="Wheat"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Width" Value="Auto"/>
-              </Style>
-              <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                <Setter Property="BorderBrush" Value="Black"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Width" Value="Auto"/>
-                <Setter Property="FontWeight" Value="Bold"/>
               </Style>
               <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -1235,7 +1315,7 @@
               <DataGridTemplateColumn Header="Order" IsReadOnly="True" Width="40">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding pvDO, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="2,0,2,0"/>
+                    <TextBlock Text="{Binding DisplayOrder, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="2,0,2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -1243,7 +1323,7 @@
               <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="630" HeaderStyle="{StaticResource CenterCol}">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding pvQuestion, Mode=TwoWay}" VerticalAlignment="Top" Height="Auto" TextWrapping="Wrap" Padding="2,0,2,0"/>
+                    <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" VerticalAlignment="Top" Height="Auto" TextWrapping="Wrap" Padding="2,0,2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -1251,190 +1331,242 @@
               <DataGridTemplateColumn Header="Your Answer" IsReadOnly="True" >
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding pvAnswerText}" VerticalAlignment="Center" TextAlignment="Center" Height="Auto" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedAnswer}" VerticalAlignment="Center" TextAlignment="Center" Height="Auto" TextWrapping="Wrap" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
-              <!--<DataGridTextColumn Header="Your Answer" Binding="{Binding pvAnswerText, Mode=TwoWay}" IsReadOnly="True" />-->
-              <!--<DataGridTemplateColumn Header="Your Answer"  HeaderStyle="{StaticResource EditableColumn}" Width="Auto" MinWidth="90">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    -->
-              <!--<ComboBox ItemsSource="{Binding pvSourceAnswers}" SelectedItem="{Binding pvAnswer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />-->
-              <!--
-                    <TextBlock Text="{Binding pvAnswerText, Mode=TwoWay}" TextAlignment="Center" VerticalAlignment="Center" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-                <DataGridTemplateColumn.CellEditingTemplate>
-                  <DataTemplate>
-                    <ComboBox ItemsSource="{Binding pvSourceAnswers}" 
-                              SelectedValue="{Binding pvAnswerText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                              IsDropDownOpen="True" VerticalAlignment="Center"/>
-                    -->
-              <!--SelectionChanged="FR_DG_AnswerChanged" this caused P4W to crash!-->
-              <!--x:Name="cbo_FR_DGAnswer" ContextMenuClosing="FR_DG_AnswerChanged" this caused crash too, so can't use these -->
-              <!--
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellEditingTemplate>
-              </DataGridTemplateColumn>-->
-
               <DataGridTextColumn Header="CorrActionID" IsReadOnly="True" Width="100" Visibility="Hidden"
                                   Binding="{Binding CorrActionID}" HeaderStyle="{StaticResource HiddenCol}" />
               <DataGridTextColumn Header="Corrective Action Needed" IsReadOnly="True" Width="Auto" Visibility="Hidden"
-                                  Binding="{Binding CorrActionNeeded}" HeaderStyle="{StaticResource HiddenCol}"  />
+                                  Binding="{Binding CorrActionText}" HeaderStyle="{StaticResource HiddenCol}"  />
               <DataGridTextColumn Header="Corrective Action Taken" IsReadOnly="True" Width="Auto" Visibility="Hidden"
                                   Binding="{Binding CorrActionTaken}" HeaderStyle="{StaticResource HiddenCol}" />
               <DataGridTextColumn Header="CA Complete" IsReadOnly="True" Width="Auto" Visibility="Hidden"
-                                  Binding="{Binding CorrActionComplete}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="Corrective Action Complete TF" IsReadOnly="True" Width="Auto" Visibility="Hidden"
-                                  Binding="{Binding CorrActionCompleteTF}" HeaderStyle="{StaticResource HiddenCol}" />
+                                  Binding="{Binding CorrActionCompleted}" HeaderStyle="{StaticResource HiddenCol}" />
+              
               <DataGridCheckBoxColumn Header="CA Complete?"
                                       Binding="{Binding CorrActionCompleteTF}" IsReadOnly="True" 
                                       HeaderStyle="{StaticResource HiddenCol}"/>
 
-              <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Visibility="Hidden" 
-                                  Binding="{Binding pvID}" HeaderStyle="{StaticResource HiddenCol}" />
-
+              
               <DataGridCheckBoxColumn Header="AllowsNA" IsReadOnly="True" Visibility="Hidden"
-                                      Binding="{Binding fr_AllowsNA}" />
+                                      Binding="{Binding AllowsNA}" />
               <DataGridTextColumn Header="CA Trigger" IsReadOnly="True" Visibility="Hidden"
-                                  Binding="{Binding fr_CAtrigger}" />
+                                  Binding="{Binding CAtrigger}" />
+
+              <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Hidden"
+                                  Binding="{Binding AllowsComment}" />
+              <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
+                                  Binding="{Binding UserComment}" />
               <DataGridTextColumn Header="Has OS CA" IsReadOnly="True" Visibility="Hidden"
                                   Binding="{Binding fr_HasOSCA}" />
-              <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Hidden"
-                                  Binding="{Binding fr_AllowsComment}" />
-              <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
-                                  Binding="{Binding fr_Comment}" />
-              <!--No longer using the columns below  -->
-              <!--<DataGridTextColumn Header="AnswerList" IsReadOnly="True" Width="100" 
-                                  Binding="{Binding pvAnswerList}" Visibility="Hidden"/>
-              <DataGridTextColumn Header="AnswerID" IsReadOnly="True" Width="100" Visibility="Hidden"
-                                  Binding="{Binding pvAnswer}" HeaderStyle="{StaticResource HiddenCol}" />-->
 
             </DataGrid.Columns>
 
           </DataGrid>
 
 
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="2,4,2,0" Height="270">
+            <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray"  Margin="8"
+                    Padding="8" HorizontalAlignment="Left">
+            
+              <StackPanel Orientation="Vertical"  >
+                <StackPanel.Resources>
+                  <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+                </StackPanel.Resources>
 
-          <StackPanel Orientation="Vertical" Canvas.Left="4" Canvas.Top="375" >
-            <StackPanel.Resources>
-              <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
-            </StackPanel.Resources>
-            <StackPanel Orientation="Horizontal" >
-              <TextBlock Foreground="#FF6150BE" Text="Selected Question:" FontWeight="Bold" VerticalAlignment="Top" Width="114" TextAlignment="Right"/>
-              <TextBlock x:Name="tb_CorrAct_QText" Text="-Q Text-" Foreground="#FF6150BE" FontWeight="Bold" FontSize="14" TextWrapping="Wrap" Height="58" Width="880" VerticalAlignment="Center" Padding="10,0,10,0"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal">
-              <Label Content="Your Answer:" Foreground="#FF6150BE" FontWeight="Bold" Width="114" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-              <RadioButton x:Name="opt_Yes" Content="Yes" VerticalContentAlignment="Center" Margin="10,0,0,0" GroupName="FRAnswer">
-                <RadioButton.Style>
-                  <Style TargetType="RadioButton">
-                    <Style.Triggers>
-                      <Trigger Property="IsChecked" Value="True" >
-                        <Setter Property="FontWeight" Value="Bold" />
-                      </Trigger>
-                    </Style.Triggers>
-                  </Style>
-                </RadioButton.Style>
-              </RadioButton>
+                <StackPanel Orientation="Vertical" >
+                  <TextBlock Foreground="#FF6150BE" Text="----- Selected Question -----" FontWeight="Bold" VerticalAlignment="Top" TextAlignment="Center"/>
+                  <TextBlock x:Name="tb_CorrAct_QText" Text="-Q Text-" Foreground="#FF6150BE" FontWeight="Bold" FontSize="14" 
+                             TextWrapping="Wrap" VerticalAlignment="Center" Margin="10,4"/>
+                </StackPanel>
 
-              <RadioButton x:Name="opt_No" Content="No" VerticalContentAlignment="Center" Margin="20,0,20,0" GroupName="FRAnswer">
-                <RadioButton.Style>
-                  <Style TargetType="RadioButton">
-                    <Style.Triggers>
-                      <Trigger Property="IsChecked" Value="True" >
-                        <Setter Property="FontWeight" Value="Bold" />
-                      </Trigger>
-                    </Style.Triggers>
-                  </Style>
-                </RadioButton.Style>
-              </RadioButton>
+                <Border CornerRadius="16" BorderBrush="#FF616110" BorderThickness="1" Padding="8"
+                        Background="#FFF4F4BF" HorizontalAlignment="Left">
 
-              <RadioButton x:Name="opt_NA" Content="N/A" VerticalContentAlignment="Center" GroupName="FRAnswer"
-                           Visibility="{Binding IsChecked, ElementName=chk_FR_AllowsNA, Converter={StaticResource BoolToVisConverter}}">
-                <RadioButton.Style>
-                  <Style TargetType="RadioButton">
-                    <Style.Triggers>
-                      <Trigger Property="IsChecked" Value="True" >
-                        <Setter Property="FontWeight" Value="Bold" />
-                      </Trigger>
-                    </Style.Triggers>
-                  </Style>
-                </RadioButton.Style>
-              </RadioButton>
+                  <StackPanel Orientation="Horizontal">
+                    <Label Content="Your Answer:" Foreground="#FF6150BE" FontWeight="Bold" 
+                           HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
 
-              <!--Need to set Visibility binding (so it only shows if question allows-->
-              <Label Content="Comments" Foreground="#FF6150BE" Margin="10,0,2,0" 
-                     Visibility="{Binding IsChecked, ElementName=chk_FR_AllowsNotes, Converter={StaticResource BoolToVisConverter}}"/>
-              <TextBox x:Name="txt_FR_QComment"  Width="400" MaxLength="8000" TextAlignment="Left" VerticalContentAlignment="Center"
-                       Visibility="{Binding IsChecked, ElementName=chk_FR_AllowsNotes, Converter={StaticResource BoolToVisConverter}}"
-                       ToolTip="Note: press the 'tab' key to save note (and go to next question if ticked)" />
+                    <StackPanel Orientation="Horizontal">
+                      <RadioButton x:Name="opt_Yes" Content="Yes" VerticalContentAlignment="Center"  
+                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
 
-              <CheckBox x:Name="chk_FR_AutoSelectNext" Content="?Automatically go to next Question" IsChecked="True" FlowDirection="RightToLeft" Height="23" VerticalContentAlignment="Center" Margin="30,0,0,0">
-                <CheckBox.Resources>
-                  <Style TargetType="{x:Type Path}">
-                    <Setter Property="FlowDirection" Value="LeftToRight" />
-                  </Style>
-                </CheckBox.Resources>
-              </CheckBox>
-              <StackPanel Orientation="Horizontal" Visibility="Collapsed" Margin="190,0,0,0">
-                <Label x:Name="lbl_FR_DGID" Content="Selected DG ID" />
-                <Label x:Name="lbl_FR_CurrVal" Content="Selected DG Value" />
+                      <RadioButton x:Name="opt_No" Content="No" VerticalContentAlignment="Center" Margin="2,0" 
+                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
 
-                <CheckBox x:Name="chk_FR_AllowsNA" IsChecked="True"/>
-                <Label x:Name="lbl_FR_CAtrigger" />
-                <CheckBox x:Name="chk_FR_AllowsNotes" IsChecked="True" />
+                      <RadioButton x:Name="opt_NA" Content="N/A" VerticalContentAlignment="Center" 
+                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
+                    </StackPanel>
+
+
+
+                    <!--Need to set Visibility binding (so it only shows if question allows-->
+                    <StackPanel x:Name="stk_UserComment" Orientation="Horizontal">
+                      <TextBlock Text="Comments" Foreground="#FF6150BE" Margin="16,0,2,0" VerticalAlignment="Center"/>
+                      <TextBox x:Name="txt_FR_QComment"  Width="540" MaxLength="8000" TextAlignment="Left" TextWrapping="Wrap"
+                                VerticalContentAlignment="Center"   MaxHeight="200" VerticalScrollBarVisibility="Auto"
+                                ToolTip="Note: press the 'tab' key to save note (and go to next question if ticked)"  />
+                    </StackPanel>
+
+
+                    <CheckBox x:Name="chk_FR_AutoSelectNext" IsChecked="True" 
+                          FlowDirection="RightToLeft"  VerticalContentAlignment="Center" Margin="10,0,0,0">
+                      <CheckBox.Resources>
+                        <Style TargetType="{x:Type Path}">
+                          <Setter Property="FlowDirection" Value="LeftToRight" />
+                        </Style>
+                      </CheckBox.Resources>
+                      <TextBlock Text="Auto move to next Question" Width="80" TextWrapping="Wrap" />
+                    </CheckBox>
+
+                    <StackPanel Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
+                      <Label x:Name="lbl_FR_DGID" Content="Selected DG ID" />
+                      <Label x:Name="lbl_FR_CurrVal" Content="Selected DG Value" />
+
+                      <CheckBox x:Name="chk_FR_AllowsNA" IsChecked="True"/>
+                      <Label x:Name="lbl_FR_CAtrigger" />
+                      <CheckBox x:Name="chk_FR_AllowsNotes" IsChecked="True" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+
+
+                <Border x:Name="stk_CorrectiveActions" 
+                        CornerRadius="16" Padding="8"
+                        BorderBrush="#FF616110" Background="#FFF4F4BF" BorderThickness="1"
+                        Margin="0,6,0,0">
+                  <StackPanel Orientation="Vertical">
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                      <TextBlock Text="Corrective Action for selected Question..." Foreground="#FF6150BE" FontWeight="Bold" />
+                      <TextBlock Text="(NB: Text boxes are restricted to a maximum of 300 characters each)" Margin="20,0,0,0" Foreground="Gray" FontWeight="Normal" />
+                    </StackPanel>
+
+                    <StackPanel  Orientation="Vertical" Visibility="Visible" Canvas.Top="400" Canvas.Left="4" Margin="0,2,0,0">
+
+                      <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Label Content="Corrective Action Needed:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+                        <TextBox x:Name="txt_CorractiveActionNeeded" FontWeight="Normal" MaxLength="300"
+                                 VerticalAlignment="Center"
+                                 MinHeight="23" Height="Auto" AcceptsReturn="True" TextWrapping="Wrap" Width="780" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Label Content="Corrective Action Taken:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+                        <TextBox x:Name="txt_CorractiveActionTaken" FontWeight="Normal"  MaxLength="300"
+                                 VerticalAlignment="Center"
+                                 MinHeight="23" Height="Auto" AcceptsReturn="True" TextWrapping="Wrap" Width="780" />
+                      </StackPanel>
+
+                      <StackPanel Orientation="Horizontal" Margin="0,6,0,6">
+                        <CheckBox x:Name="chk_CorrectiveActionPassed" Content="?Has Corrective Action been completed" 
+                                FontWeight="Normal" Foreground="#FF6150BE" FlowDirection="RightToLeft" 
+                                HorizontalAlignment="Left" Margin="12,6,0,0" Height="Auto" VerticalContentAlignment="Center">
+                          <CheckBox.Resources>
+                            <Style TargetType="{x:Type Path}">
+                              <Setter Property="FlowDirection" Value="LeftToRight" />
+                            </Style>
+                          </CheckBox.Resources>
+                        </CheckBox>
+
+                        <Button x:Name="btn_CorrAction_Save" Content="Save and go to next Question" Height="26" Padding="6,0,6,0" Margin="20,0,0,0"/>
+                        <Label x:Name="lbl_CorrActionID" Content="ID" FontWeight="Normal" Foreground="Gray" Visibility="Visible" Margin="470,0,0,0" />
+                      </StackPanel>
+
+                    </StackPanel>
+                    
+                  </StackPanel>
+
+                </Border>
+
               </StackPanel>
-            </StackPanel>
 
-            <GroupBox x:Name="stk_CorrectiveActions" BorderBrush="#FF7E98EE" Foreground="#FF6150BE" FontWeight="Bold" Margin="0,6,0,0">
-              <GroupBox.Header>
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Corrective Actions for selected Question..." />
-                  <TextBlock Text="(NB: Text boxes are restricted to a maximum of 300 characters each)" Margin="20,0,0,0" Foreground="Gray" FontWeight="Normal" />
-                </StackPanel>
-              </GroupBox.Header>
-              <StackPanel  Orientation="Vertical" Visibility="Visible" Canvas.Top="400" Canvas.Left="4" Margin="0,2,0,0">
+            
+            </Border>
+          </ScrollViewer>
 
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                  <Label Content="Corrective Action Needed:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                  <TextBox x:Name="txt_CorractiveActionNeeded" FontWeight="Normal" MaxLength="300"
-                           MinHeight="46" Height="Auto" MaxHeight="130" AcceptsReturn="True" TextWrapping="Wrap" Width="838" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                  <Label Content="Corrective Action Taken:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                  <TextBox x:Name="txt_CorractiveActionTaken" FontWeight="Normal"  MaxLength="300"
-                           MinHeight="46" Height="Auto" MaxHeight="130" AcceptsReturn="True" TextWrapping="Wrap" Width="838" />
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,6">
-                  <CheckBox x:Name="chk_CorrectiveActionPassed" Content="?Has Corrective Action been completed" FontWeight="Normal" Foreground="#FF6150BE" FlowDirection="RightToLeft" HorizontalAlignment="Left" Margin="12,6,0,0" Height="Auto" VerticalContentAlignment="Center">
-                    <CheckBox.Resources>
-                      <Style TargetType="{x:Type Path}">
-                        <Setter Property="FlowDirection" Value="LeftToRight" />
-                      </Style>
-                    </CheckBox.Resources>
-                  </CheckBox>
-
-                  <Button x:Name="btn_CorrAction_Save" Content="Save and go to next Question" Height="26" Padding="6,0,6,0" Margin="20,0,0,0"/>
-                  <Label x:Name="lbl_CorrActionID" Content="ID" FontWeight="Normal" Foreground="Gray" Visibility="Visible" Margin="520,0,0,0" Padding="2,6,2,4"/>
-                </StackPanel>
-
-              </StackPanel>
-            </GroupBox>
-
-
-          </StackPanel>
-
-
-        </Canvas>
+        </StackPanel>
 
       </TabItem>
     </TabControl>
 
   </Grid>
 
+  <StackPanel Orientation="Horizontal" Margin="0,40,0,0" HorizontalAlignment="Center" >
+    <Border Padding="6" CornerRadius="22" BorderThickness="1" BorderBrush="DarkGray" Visibility="Collapsed" >
+      <StackPanel Orientation="Horizontal" >
 
+        <TextBlock Text="TW Colour Palette"  VerticalAlignment="Center" TextWrapping="Wrap" Width=" 60" TextAlignment="Right"/>
+        <Border CornerRadius="16" Padding="8" Background="#A992C1" Margin="4,0,0,0" BorderBrush="#2E1A47" BorderThickness="1">
+          <TextBlock Text="Header" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#A992C1" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1">
+          <TextBlock Text="Header" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+        <Border CornerRadius="16" Padding="8" Background="#E5E5E5" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1" >
+          <TextBlock Text="Background" VerticalAlignment="Center" />
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#FFD3C9FD" Margin="4,0,0,0" BorderBrush="#2E1A47" BorderThickness="1">
+          <TextBlock Text="DataGrid Editable Column" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#2E1A47" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1">
+          <TextBlock Text="Header / Highlight" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#A992C1" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1">
+          <TextBlock Text="Header / Highlight" VerticalAlignment="Center" Foreground="#4A4A4A"/>
+        </Border>
+
+
+        <Border CornerRadius="16" Padding="8" Background="#FFFFFF" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1" >
+          <TextBlock Text="Text Colour / Background" VerticalAlignment="Center" Foreground="#4A4A4A"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#FFEFF1F1" Margin="4,0,0,0" BorderBrush="Black" BorderThickness="1" >
+          <TextBlock Text="Font colour on grey background" Foreground="#FF6150BE" />
+        </Border>
+
+
+      </StackPanel>
+    </Border>
+
+    <Border Padding="6" CornerRadius="22" BorderThickness="1" BorderBrush="DarkGray" HorizontalAlignment="Center" Margin="4,0,0,0" Visibility="Collapsed">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="Colour Pairs" TextWrapping="Wrap" Width="36" TextAlignment="Right" VerticalAlignment="Center"/>
+
+        <Border CornerRadius="16" Padding="8" Background="#FFEBB91A" Margin="4,0,0,0" BorderBrush="#FF795D02" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#FF58B940" Margin="4,0,0,0" BorderBrush="#FF306323" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="LightGray" Margin="4,0,0,0" BorderBrush="DarkGray" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="LightSalmon" Margin="4,0,0,0" BorderBrush="#FFD14949" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#FFE67F7F" Margin="4,0,0,0" BorderBrush="Red" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="Black"/>
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" Background="#A992C1" Margin="4,0,0,0" BorderBrush="#2E1A47" BorderThickness="1">
+          <TextBlock Text="Text" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+
+      </StackPanel>
+    </Border>
+
+  </StackPanel>
+
+  
 </StackPanel>

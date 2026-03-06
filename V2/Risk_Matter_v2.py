@@ -44,6 +44,15 @@ _preview_combo_syncing = False   # temp variable to avoid triggering 'SelectionC
 # dict to hold current matter answer/comment by QuestionID
 MRA_MATTER_SELECTIONS_BY_QID = {}   # qid -> {"AnswerID": int|None, "Comments": str}
 
+# for new structure of FileReview
+FR_CORRACTIONS_BY_QID = {}   # temp to store list of 'Corrective Actions' dicts for current TemplateID being previewed  
+FR_QUESTIONS_LIST = []   # temp to store list of 'File Review Question' dicts for current TemplateID being previewed
+FR_MATTER_SELECTIONS_BY_QID = {}   # qid -> {"AnswerID": int|None, "Comments": str}
+FR_SELECTIONS_BY_QID = {} 
+_fr_syncing_ui = False  # module-level flag so UI writes don't re-trigger updates
+# counter for added Corrective Action to ensure unique ID
+_FR_CA_TEMP_ID = -1
+
 UNSELECTED = -1
 
 # Standardised MRA Outcomes
@@ -69,6 +78,9 @@ def myOnLoadEvent(s, event):
   UserIsAnApprovalUser = isUserAnApprovalUser(userToCheck = _tikitUser)
   UserCanReviewFiles = canUserReviewFiles(userToCheck = _tikitUser)
 
+  # firstly, populate header area (matter info, fee earner, current user etc)
+  populate_XAML_Header_fields()
+
   # refresh main overview DataGrids
   dg_MRAFR_Refresh(s, event)
   dgCA_Overview_Refresh(s, event)
@@ -76,12 +88,6 @@ def myOnLoadEvent(s, event):
   # Hide MRA and FE tabs (user needs to select from 'Overview' list, and click 'Edit' or 'View' to then show details
   ti_MRA.Visibility = Visibility.Collapsed
   ti_FR.Visibility = Visibility.Collapsed
-  
-  # put current user details into fields on Corrective Actions area
-  tb_CurrUser.Text = _tikitUser
-  tb_CurrUserName.Text = _tikitResolver.Resolve("[SQL: SELECT FullName FROM Users WHERE Code = '{0}']".format(_tikitUser))
-  # NB: Tag="SQL: SELECT '[curentuser.code]'" didn't work on XAML (hence above)
-  # Tag="SQL: SELECT '[currentuser.fullname]'"
   
   # set current risk status
   setMasterRiskStatus(s, event)
@@ -99,16 +105,57 @@ def myOnLoadEvent(s, event):
   refresh_CaseDocs(_tikitSender, '')
   return
 
+
+def populate_XAML_Header_fields():
+  # Previously, we we using the 'Tag' property to populate the header fields on the XAML, however, as we added more, it added on time to load.
+  # Therefore, instead of those separate 11 SQL calls, I want to try doing in ONE, and calling this on load to see if any better.
+  # FYI: old version took 13 seconds to load. I'm hoping this new version is closer to 5 seconds (as we still have to populate other DG's etc)  
+
+  sql = """SELECT 'OurRef' = CONCAT(E.ShortCode, '/', CONVERT(NVARCHAR, M.Number)), 
+              'MatterDesc' = M.Description, 
+              'Client Name' = E.LegalName, 
+              'CaseTypeRef' = CONVERT(NVARCHAR, M.CaseTypeRef), 
+              'CaseTypeDesc' = CT.Description,
+              'CurrentUserCode' = CU.Code, 
+              'CurrentUserName' = CU.FullName, 
+              'CurrentUserEmail' = CU.EMailExternal, 
+              'FeeEarnerCode' = FE.Code, 
+              'FeeEarnerFullName' = FE.FullName, 
+              'FeeEarnerForeName' = FE.Forename, 
+              'FeeEarnerEmail' = FE.EMailExternal
+            FROM Matters M
+              LEFT OUTER JOIN Users FE ON M.FeeEarnerRef = FE.Code
+              LEFT OUTER JOIN Users CU ON CU.Code = '{currentUserCode}'
+              JOIN CaseTypes CT        ON M.CaseTypeRef = CT.Code
+              JOIN Entities E          ON M.EntityRef = E.Code
+            WHERE M.EntityRef = '{entRef}' AND M.Number = {matNo}""".format(currentUserCode=_tikitUser, entRef=_tikitEntity, matNo=_tikitMatter)
+  
+  _tikitDbAccess.Open(sql)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      dr.Read()
+      tb_OurRef.Text = '' if dr.IsDBNull(0) else dr.GetString(0)
+      tb_MatterDesc.Text = '' if dr.IsDBNull(1) else dr.GetString(1)
+      tb_ClientName.Text = '' if dr.IsDBNull(2) else dr.GetString(2)
+      tb_CaseTypeRef.Text = '' if dr.IsDBNull(3) else dr.GetString(3)
+      tb_CaseType.Text = '' if dr.IsDBNull(4) else dr.GetString(4)
+      tb_CurrentUserCode.Text = '' if dr.IsDBNull(5) else dr.GetString(5)
+      tb_CurrentUserName.Text = '' if dr.IsDBNull(6) else dr.GetString(6)
+      tb_CurrentUserEmail.Text = '' if dr.IsDBNull(7) else dr.GetString(7)
+      tb_FERef.Text = '' if dr.IsDBNull(8) else dr.GetString(8)
+      tb_FEFullName.Text = '' if dr.IsDBNull(9) else dr.GetString(9)
+      tb_FE_Forename.Text = '' if dr.IsDBNull(10) else dr.GetString(10)
+      tb_FE_Email.Text = '' if dr.IsDBNull(11) else dr.GetString(11)
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  return
+
 # # # #   END:   O N   L O A D   E V E N T   # # # # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 # # # # # # # # # # # #  C A S E   D O C S   -   F U N C T I O N S  # # # # # # # # # # # # # # 
 
-def opt_EntityOrMatterDocs_Clicked(s, event):
-  # Linked to XAML control: opt_CaseDocs_Entity
-  # needs to re-populate 'Agenda' combo box to only show Entity level docs
-  POPULATE_AGENDA_NAMES(s, 'onLoad')
-  refresh_CaseDocs(s, event)
-  return
 
 def CaseDoc_SelectionChanged(s, event):
   if dg_CaseManagerDocs.SelectedIndex == -1:
@@ -184,19 +231,25 @@ def refresh_CaseDocs(s, event):
         sItem.append(CaseDocs(aID, aDesc, aDate, aPath))
     
     dr.Close()
-  _tikitDbAccess.Close
+  _tikitDbAccess.Close()
 
   # Set 'Source' and close db connection
   dg_CaseManagerDocs.ItemsSource = sItem
+
+  if dg_CaseManagerDocs.Items.Count > 0:
+    tb_NoCaseDocsExist.Visibility = Visibility.Collapsed
+  else:
+    tb_NoCaseDocsExist.Visibility = Visibility.Visible
   return
   
 
 # Agenda Items
 class cboAgendaNames(object):
-  def __init__(self, myAgendaID, myAgendaName, myDefault):
+  def __init__(self, myAgendaID, myAgendaName, myDefault, myLevel):
     self.AgendaID = myAgendaID
     self.AgendaName = myAgendaName
     self.mIsDefault = myDefault
+    self.ALevel = myLevel
 
     if myAgendaName == 'Case History':
       self.mIsDefault = 1
@@ -211,25 +264,22 @@ class cboAgendaNames(object):
       return self.AgendaName
     elif index == 'Default':
       return self.mIsDefault
-
+    elif index == 'Level':
+      return self.ALevel
+    else:
+      return ''  
 
 def POPULATE_AGENDA_NAMES(s, event):
   # This function populates the combo box housing the 'Agendas' for the current matter
   # Updated 31st Oct 2024: Including ability to look at 'Entity' level docs too via 2 new Radio buttons above the 'Agenda' combo box
 
-  # if the option for Entity is selected
-  if opt_CaseDocs_Entity.IsChecked == True:
-    # set matter number to zero (for entity-level docs)
-    tmpMatterNo = 0
-  else:
-    # assumes 'matter' option selected, so set to active matter
-    tmpMatterNo = _tikitMatter
-
   # form SQL 
-  mySQL = """SELECT Cm_CaseItems.Description, Cm_Agendas.ItemID, Cm_Agendas.Default_Agenda 
-            FROM Cm_Agendas LEFT JOIN Cm_CaseItems ON Cm_Agendas.ItemID = Cm_CaseItems.ItemID 
-            WHERE Cm_Agendas.EntityRef = '{0}' AND Cm_Agendas.MatterNo = {1} 
-            ORDER BY Cm_CaseItems.Description""".format(_tikitEntity, tmpMatterNo)
+  mySQL = """SELECT CI.Description, CA.ItemID, CA.Default_Agenda, 
+                    'Level' = CASE WHEN CA.MatterNo = 0 THEN 'Entity' ELSE 'Matter' END
+             FROM Cm_Agendas CA
+                 LEFT JOIN Cm_CaseItems CI ON CA.ItemID = CI.ItemID 
+             WHERE CA.EntityRef = '{entRef}' AND CA.MatterNo IN (0, {matNo})
+             ORDER BY CA.MatterNo, CI.Description""".format(entRef=_tikitEntity, matNo=_tikitMatter)
   
   # open SQL and create a new list object to hold items
   _tikitDbAccess.Open(mySQL)
@@ -244,13 +294,17 @@ def POPULATE_AGENDA_NAMES(s, event):
           iAgendaName = '-' if dr.IsDBNull(0) else dr.GetString(0)
           iAgendaID = '-' if dr.IsDBNull(1) else dr.GetValue(1)
           iDefault = 0 if dr.IsDBNull(2) else dr.GetValue(2)
+          iLevel = '' if dr.IsDBNull(3) else dr.GetString(3)
           # finally add item to our temp list
-          itemA.append(cboAgendaNames(iAgendaID, iAgendaName, iDefault))
+          itemA.append(cboAgendaNames(iAgendaID, iAgendaName, iDefault, iLevel))
     dr.Close()
   _tikitDbAccess.Close()
 
+  tmpList = ListCollectionView(itemA)
+  # group on Level
+  tmpList.GroupDescriptions.Add(PropertyGroupDescription('ALevel'))
   # Set set source of the Agenda Names combo box to the list of items we created
-  cbo_AgendaName.ItemsSource = itemA
+  cbo_AgendaName.ItemsSource = tmpList
 
   if event == 'onLoad':
     #MessageBox.Show("Onload Test - this works, so need to add code to auto select default")
@@ -258,9 +312,11 @@ def POPULATE_AGENDA_NAMES(s, event):
     
     for x in cbo_AgendaName.Items:
       tmpCount += 1
-      if x['Default'] == 1:
+      if x['Default'] == 1 and x['Level'] == 'Matter':
         #MessageBox.Show("This one is the 'default': " + str(x['Name']))
         cbo_AgendaName.SelectedIndex = tmpCount
+        break
+
   return
         
 # #  END: C A S E   D O C S   -   F U N C T I O N S  # #
@@ -454,7 +510,7 @@ def dg_MRAFR_Refresh(s, event):
                           '07-QCount'           = TA.QCount,
                           '08-OS Count'         = TA.QCount - ISNULL(AA.AnswerCount, 0),
                           '09-Status'           = MH.Status,
-                          '10-SubmittedBy'      = ISNULL(CONCAT('(', U.Code, ') ', U.FullName), ''),
+                          '10-SubmittedBy'      = CASE WHEN ISNULL(U.Code, '') = '' THEN '' ELSE CONCAT('(', U.Code, ') ', U.FullName) END,
                           '11-SubmittedDate'    = MH.SubmittedDate,
                           '12-ScoreTriggerMed'  = TH.ScoreTriggerMed,
                           '13-ScoreTriggerHigh' = TH.ScoreTriggerHigh,
@@ -500,12 +556,12 @@ def dg_MRAFR_Refresh(s, event):
                           '07-QCount'           = ISNULL(A.QCount, 0),
                           '08-OS Count'         = ISNULL(A.OSCount, 0),
                           '09-Status'           = ISNULL(H.Status, 'Draft'),
-                          '10-SubmittedBy'      = ISNULL(CONCAT('(', U.Code, ') ', U.FullName), ''),
+                          '10-SubmittedBy'      = CASE WHEN ISNULL(U.Code, '') = '' THEN '' ELSE CONCAT('(', U.Code, ') ', U.FullName) END,
                           '11-SubmittedDate'    = H.SubmittedDate,
                           '12-ScoreTriggerMed'  = 0,
                           '13-ScoreTriggerHigh' = 0,
                           '14-DateAdded'        = H.DateAdded,
-                          '15-FR Reviewer'      = ISNULL(CONCAT('(', UR.Code, ') ', UR.FullName), 'N/A'), 
+                          '15-FR Reviewer'      = CASE WHEN ISNULL(UR.Code, '') = '' THEN 'N/A' ELSE CONCAT('(', UR.Code, ') ', UR.FullName) END, 
                           '16-Type'             = 'File Review'
                       FROM FR_Header H
                       LEFT JOIN FR_DetailAgg A ON A.OV_ID = H.ID
@@ -531,23 +587,23 @@ def dg_MRAFR_Refresh(s, event):
     if dr.HasRows:
       while dr.Read():
         if not dr.IsDBNull(0):
-          imraID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          iTemplateID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          iName = '' if dr.IsDBNull(2) else dr.GetString(2)
-          iExpiry = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          iScore = 0 if dr.IsDBNull(4) else dr.GetValue(4) 
-          iRiskR = 0 if dr.IsDBNull(5) else dr.GetValue(5)
-          iAppByHOD = '' if dr.IsDBNull(6) else dr.GetString(6)
-          iQCount = 0 if dr.IsDBNull(7) else dr.GetValue(7) 
-          iOSQs = 0 if dr.IsDBNull(8) else dr.GetValue(8) 
-          iStatus = '' if dr.IsDBNull(9) else dr.GetString(9)
-          iSubBy = '' if dr.IsDBNull(10) else dr.GetString(10)
-          iSubOn = 0 if dr.IsDBNull(11) else dr.GetValue(11)
-          iScoreTrigMed = 0 if dr.IsDBNull(12) else dr.GetValue(12)
+          imraID = 0         if dr.IsDBNull(0) else dr.GetValue(0)
+          iTemplateID = 0    if dr.IsDBNull(1) else dr.GetValue(1)
+          iName = ''         if dr.IsDBNull(2) else dr.GetString(2)
+          iExpiry = None     if dr.IsDBNull(3) else dr.GetValue(3)
+          iScore = 0         if dr.IsDBNull(4) else dr.GetValue(4) 
+          iRiskR = 0         if dr.IsDBNull(5) else dr.GetValue(5)
+          iAppByHOD = ''     if dr.IsDBNull(6) else dr.GetString(6)
+          iQCount = 0        if dr.IsDBNull(7) else dr.GetValue(7) 
+          iOSQs = 0          if dr.IsDBNull(8) else dr.GetValue(8) 
+          iStatus = ''       if dr.IsDBNull(9) else dr.GetString(9)
+          iSubBy = ''        if dr.IsDBNull(10) else dr.GetString(10)
+          iSubOn = None      if dr.IsDBNull(11) else dr.GetValue(11)
+          iScoreTrigMed = 0  if dr.IsDBNull(12) else dr.GetValue(12)
           iScoreTrigHigh = 0 if dr.IsDBNull(13) else dr.GetValue(13)
-          iDateAdded = 0 if dr.IsDBNull(14) else dr.GetValue(14)
-          iFRR = '' if dr.IsDBNull(15) else dr.GetString(15)
-          iType = '' if dr.IsDBNull(16) else dr.GetString(16)
+          iDateAdded = None  if dr.IsDBNull(14) else dr.GetValue(14)
+          iFRR = ''          if dr.IsDBNull(15) else dr.GetString(15)
+          iType = ''         if dr.IsDBNull(16) else dr.GetString(16)
 
           tmpItem.append(MRAFR(mymraID=imraID, myTemplateID=iTemplateID, myName=iName, myExpiryDate=iExpiry, myScore=iScore, 
                                myRiskR=iRiskR, myAppByHOD=iAppByHOD, myQCount=iQCount, myQOS=iOSQs, 
@@ -827,6 +883,8 @@ def AddNew_FileReview(templateID, templateName, templateValidityDays):
   insert_Qs_SQL = """INSERT INTO Usr_MRA_Detail (EntityRef, MatterNo, OV_ID, QuestionID, AnswerListToUse, SelectedAnswerID, CurrentAnswerScore, DisplayOrder)  
                      SELECT '{0}', {1}, {2}, ID, AnswerList, -1, 0, DisplayOrder FROM Usr_MRA_TemplateQs 
                      WHERE TypeID = {3}""".format(_tikitEntity, _tikitMatter, newHeaderID, templateID)
+  #! 05/03/2026 - do we actually need this with new setup?? (wg: I think we're doing like we do with MRA, and NOT saving unanswered question to the DB?)
+
   try:
     _tikitResolver.Resolve("[SQL: {0}]".format(insert_Qs_SQL))
   except:
@@ -926,7 +984,7 @@ def btn_Edit_MRAFR_Click(s, event):
 
 
 def LOAD_EDIT_MRA_PAGE(readOnly=False):
-  # is a MRA... first need to load up the 'Questions' tab and then select the tab
+  # first need to load up the 'Questions' tab and then select the tab
   lbl_MRA_Name.Content = dg_MRAFR.SelectedItem['Name']
   lbl_MRA_ID.Content = dg_MRAFR.SelectedItem['mraID']
   lbl_ScoreTrigger_High.Content = dg_MRAFR.SelectedItem['ScoreTriggerHigh']
@@ -982,40 +1040,48 @@ def LOAD_EDIT_FR_PAGE(readOnly=False):
     MessageBox.Show("Only the Fee Earner's HOD, or the Fee Earners' Approver(s) can edit!", "Error: Edit selected item...")
     return
   
-  # is a FR...
-  lbl_FR_Name.Content = dg_MRAFR.SelectedItem['Name']
-  lbl_FR_ID.Content = dg_MRAFR.SelectedItem['mraID']
-  
-  # refresh File Review datagrid
-  refresh_FR(None, None)
-
-  if readOnly == True:
-    # set 'view' mode option
-    opt_EditModeFR.IsChecked = False
-    # enable Submit button
-    btn_FR_Submit.IsEnabled = False 
-    # enable Answer Option buttons
-    opt_Yes.IsEnabled = False
-    opt_No.IsEnabled = False
-    opt_NA.IsEnabled = False
-    lbl_TimeEnteredFR.Content = ''
+  # populate ID fields for FR, from initial datagrid...
+  tb_FR_Name.Text = dg_MRAFR.SelectedItem['Name']
+  tb_FR_ID.Text = str(dg_MRAFR.SelectedItem['mraID'])
+  tb_FR_Status.Text = str(dg_MRAFR.SelectedItem['Status'])
+  subbedBy = str(dg_MRAFR.SelectedItem['SubbedBy'])
+  if len(subbedBy) == 0:
+    tb_FR_SubmittedBy.Text = ''
+    tb_FR_SubmittedOn.Text = '- Not yet submitted -'
   else:
-    # set 'edit' mode option    
-    opt_EditModeFR.IsChecked = True
-    # enable Submit button
-    btn_FR_Submit.IsEnabled = True 
-    # enable Answer Option buttons
-    opt_Yes.IsEnabled = True
-    opt_No.IsEnabled = True
-    opt_NA.IsEnabled = True
-    lbl_TimeEnteredFR.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
+    tb_FR_SubmittedBy.Text = subbedBy
+    tb_FR_SubmittedOn.Text = str(dg_MRAFR.SelectedItem['SubbedOn'])
+  
+  # first, get any OS corrective actions, and load Questions into memory (populating our datagrid)
+  FileReview_Load_CorrectiveActions_toMemory()
+  FileReview_Load_Questions_DataGrid()   
+  #! ^ This will also load the FR questions into memory as well as populating the datagrid, so we can use this function for both purposes 
+  # (eg: calls: FileReview_Load_MatterSelections_toMemory(); FileReview_apply_existing_selections(); and should select first row and '_sync_fr_right_panel_to_current_row()')  
 
-  #dg_FR.IsEnabled = True
+  FileReviewTab_SetEnabled(isReadOnly=readOnly)
   # show the 'auto go to next Question' and go to FR tab
   chk_FR_AutoSelectNext.Visibility = Visibility.Visible
   ti_FR.Visibility = Visibility.Visible
   ti_FR.IsSelected = True
 
+def FileReviewTab_SetEnabled(isReadOnly=False):
+
+  if isReadOnly == True:
+    opt_EditModeFR.IsChecked = False
+    opt_ViewModeFR.IsChecked = True
+    btn_FR_Submit.IsEnabled = False 
+    opt_Yes.IsEnabled = False
+    opt_No.IsEnabled = False
+    opt_NA.IsEnabled = False
+    lbl_TimeEnteredFR.Content = ''
+  else:
+    opt_EditModeFR.IsChecked = True
+    opt_ViewModeFR.IsChecked = False
+    btn_FR_Submit.IsEnabled = True 
+    opt_Yes.IsEnabled = True
+    opt_No.IsEnabled = True
+    opt_NA.IsEnabled = True
+    lbl_TimeEnteredFR.Content = runSQL("SELECT CONVERT(NVARCHAR, GETDATE(), 121)")
 
 def btn_HOD_Approval_MRA_Click(s, event):
   #! This is the 'Approval' button on the main 'Overview' tab (eg: so this function is tied to the DataGrid 'dg_MRAFR' and not the 'Questions' tab).
@@ -1212,7 +1278,7 @@ def dgCA_Overview_Refresh(s, event):
   myMatNo = _tikitMatter
 
   mySQL = """SELECT '0-CA ID' = MA.ID, '1-QText' = CONCAT('Q', TQ.DisplayOrder, ': ', TQ.QuestionText), 
-                  '2-Reviewer' = '(' + U.Code + ') ' + U.FullName, '3-CA Needed' = MA.CorrActionNeeded, 
+                  '2-Reviewer' = CONCAT('(', U.Code, ') ', U.FullName), '3-CA Needed' = MA.CorrActionNeeded, 
                   '4-CA Taken' = MA.CorrActionTaken, '5-Complete' = MA.AuditPass, '6-Due By' = MA.NextAuditDate, 
                   '7-FR ID' = MRAO.ID, '8-FR Reviewer' = ISNULL(MRAO.FR_Reviewer, ''), '9-Q Num ID' = FRD.ID,
                   '10-LocalName' = MRAO.LocalName 
@@ -1420,7 +1486,7 @@ def dgCA_Overview_ToggleComplete(s, event):
   currDGId = tb_Current_CA.Text
 
   # here we are assuming only the File Reviewer can toggle the 'Complete' status  
-  if tb_CurrUser.Text != tmpItemReviewer:
+  if tb_CurrentUserCode.Text != tmpItemReviewer:
     # current user doesn't appear to be the File Reviewer, so alert user and exit
     MessageBox.Show("Only the File Reviewer can toggle the 'Complete' status!", "Error: Toggle 'Complete' status of Corrective Action...")
     return
@@ -1460,14 +1526,15 @@ def dg_CA_Overview_ViewOnFileReview(s, event):
   # This function will go to the 'File Review' tab, and will select the Question to which the CA was added to, and populate bottom area of tab
   
   tmpFRID = dgCA_Overview.SelectedItem['FR ID']
-  tmpFRName = _tikitResolver.Resolve("[SQL: SELECT LocalName FROM Usr_MRA_Overview WHERE ID = {0}]".format(tmpFRID))
+  tmpFRName = dgCA_Overview.SelectedItem['FR Name']
   tmpQID = dgCA_Overview.SelectedItem['FR Q Num']
-  
-  lbl_FR_Name.Content = tmpFRName
-  lbl_FR_ID.Content = str(tmpFRID)
+
+  tb_FR_Name.Text = str(tmpFRName)
+  tb_FR_ID.Text = str(tmpFRID)
     
   # refresh File Review datagrid
   refresh_FR(s, event)
+  FileReviewTab_SetEnabled(isReadOnly=True)
 
   # now select the appropriate Q
   tCount = -1
@@ -1495,101 +1562,68 @@ def FR_checkForOSca_andFinalise(sender, e, ovID = 0, callingFrom = ''):
   myEntity = str(_tikitEntity)
   myMatNo = _tikitMatter
   # call our new function to update stats on XAML
-  update_FR_Stats(ov_ID=ovID)
+  update_FR_Stats()
 
-  countOfIncompleteCAs = int(tb_TotalOSCAs_FR.Text)
-  countOfQuestions = int(tb_TotalQs_FR.Text)
-  countAnswered = int(tb_TotalAnswered_FR.Text)
-  countOfQsNoAnswer = int(countOfQuestions) - int(countAnswered)
+  count_of_incomplete_cas = int(tb_TotalOSCAs_FR.Text)
+  count_of_questions = int(tb_TotalQs_FR.Text)
+  count_answered = int(tb_TotalAnswered_FR.Text)
+  count_of_qs_no_answer = count_of_questions - count_answered
 
+  has_incomplete_cas = count_of_incomplete_cas > 0
+  has_questions = count_of_questions > 0
+  has_unanswered_questions = count_of_qs_no_answer > 0
+  called_from_submit = callingFrom == 'btn_FR_Submit_Click'
 
-  ## form SQL to get the count of incomplete Corrective Actions for matter, and run
-  #countOfIncompleteCAs_SQL = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD 
-  #                              LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID WHERE MA.AuditPass = 0 
-  #                              AND MA.EntityRef = '{0}' AND MA.MatterNo = {1} AND MRAD.OV_ID = {2}""".format(myEntity, myMatNo, ovID)
-  #countOfIncompleteCAs = runSQL(countOfIncompleteCAs_SQL)
-  ##MessageBox.Show("Entering function\n(ovID={0}, callingFrom={1})\n\nCountIfIncompleteCAs: {2}".format(ovID, callingFrom, countOfIncompleteCAs), "DEBUGGING - FR_checkForOSca_andFinalise")
-  #
-  ## create SQL to 'count of questions' and 'count of questions with no answer'
-  #countOfQuestions_s = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD
-  #                        LEFT OUTER JOIN Usr_MRA_Overview MRAO ON MRAD.EntityRef = MRAO.EntityRef AND MRAD.MatterNo = MRAO.MatterNo AND MRAD.OV_ID = MRAO.ID 
-  #                        LEFT OUTER JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID
-  #                        WHERE MRAD.EntityRef = '{0}' AND MRAD.MatterNo = {1}  AND MRAD.OV_ID = {2} AND TT.Is_MRA = 'N'""".format(myEntity, myMatNo, ovID)
-  #countOfQsNoAnswer_s = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD
-  #                         LEFT OUTER JOIN Usr_MRA_Overview MRAO ON MRAD.EntityRef = MRAO.EntityRef AND MRAD.MatterNo = MRAO.MatterNo AND MRAD.OV_ID = MRAO.ID 
-  #                         LEFT OUTER JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID
-  #                         WHERE MRAD.EntityRef = '{0}' AND MRAD.MatterNo = {1}  AND MRAD.OV_ID = {2} AND ISNULL(tbAnswerText, '') = '' AND TT.Is_MRA = 'N'""".format(myEntity, myMatNo, ovID)
-  #
-  ## run the SQL to get answer
-  #countOfQuestions = runSQL(countOfQuestions_s)
-  #countOfQsNoAnswer = runSQL(countOfQsNoAnswer_s)
+  if has_incomplete_cas and not has_questions:
+    tmpStatus = 'Err-NoQ HasCA'
+    tmpTriggerText = ''
+    doSendTaskCentreEmail = False
 
-  # if there's 1 or more incomplete CA's...
-  if int(countOfIncompleteCAs) > 0:
+  elif has_incomplete_cas and has_unanswered_questions:
+    tmpStatus = 'Draft'
+    tmpTriggerText = 'FR_Draft'
+    doSendTaskCentreEmail = False
 
-    # if count of questions is greater than one
-    if int(countOfQuestions) > 0:
-      # if the count of questions without an answer is 0
-      if int(countOfQsNoAnswer) > 0:
-        tmpStatus = 'Draft'
-        tmpTriggerText = 'FR_Draft' 
-        doSendTaskCentreEmail = False
-      else:
-        # all questions have an answer, but there are CA's outstanding (not 'completed')
-        # set Status to state 'With FE'...
-        tmpStatus = 'With FE'
-        tmpTriggerText = 'FR_CorrectiveActions_WithFE'
-        # only set 'send TC email' to True if calling function was the initial 'Submit' button click (when editing the FR)
-        doSendTaskCentreEmail = True if callingFrom == 'btn_FR_Submit_Click' else False
-        # ^ why? if we're meant to be auto-completing, then why would we NOT want to send the email?
-    else:
-      # there don't appear to be any questions for this File Review, so mark as 
-      tmpStatus = 'Err-NoQ HasCA'
-      tmpTriggerText = '' 
-      doSendTaskCentreEmail = False
+  elif has_incomplete_cas:
+    tmpStatus = 'With FE'
+    tmpTriggerText = 'FR_CorrectiveActions_WithFE'
+    doSendTaskCentreEmail = called_from_submit
+
+  elif has_questions and has_unanswered_questions:
+    tmpStatus = 'Draft'
+    tmpTriggerText = 'FR_Draft'
+    doSendTaskCentreEmail = False
+
   else:
-  
-    # if there's more than 0 questions
-    if int(countOfQuestions) > 0:
-      # if count of quesions without an answer is zero - set status to 'Complete' and send TC task email
-      if int(countOfQsNoAnswer) == 0:
-        tmpStatus = 'Complete'
-        tmpTriggerText = 'FR_Complete' 
-        doSendTaskCentreEmail = True  
-      else:
-        # there's at least one Question without an answer, so set to 'Draft' and do NOT send TC email
-        tmpStatus = 'Draft'
-        tmpTriggerText = 'FR_Draft' 
-        doSendTaskCentreEmail = False
-    else:
-      # there are NO questions for File Review, set Status to 'Complete' (no Questions and no CAs)...
-      tmpStatus = 'Complete'
-      tmpTriggerText = 'FR_Complete' 
-      doSendTaskCentreEmail = True
+    tmpStatus = 'Complete'
+    tmpTriggerText = 'FR_Complete'
+    doSendTaskCentreEmail = True
 
   #MessageBox.Show("countIncompleteCAs: {0}\ntmpStatus: {1}\ntmpTriggerText: {2}\nSendTaskCentreEmail: {3}".format(countOfIncompleteCAs, tmpStatus, tmpTriggerText, doSendTaskCentreEmail), "DEBUGGING = FR_checkForOSca_andFinalise(ovID={0}, callingFrom={1})".format(ovID, callingFrom))
   # update main 'Overview' table with new 'Status'
   runSQL("UPDATE Usr_MRA_Overview SET Status = '{0}' WHERE ID = {1}".format(tmpStatus, ovID))
+  # save Q&A details back to table
+  FileReview_SaveDetails_FlattenToDb()
 
   # to work-around an issue that could arrise by a reviewer ticking off Corrective Actions (eg: this function is called every time a corrective
   # action is toggled, and therefore without intervention, would mean that we email the FE [and reviewer] after every update)
   # We intrtoduced the 'doSendTaskCentreEmail' parameter, to allow us to selectively chose WHEN to send out TC email
   if doSendTaskCentreEmail == True:
     # now set variables to pass into 'mra_events' table
-    tmpOurRef = "{0}{1}/{2}".format(myEntity[0:3], myEntity[11:15], myMatNo)
-    tmpMatDesc = runSQL(codeToRun="SELECT Description FROM Matters WHERE EntityRef = '{0}' AND Number = {1}".format(myEntity, myMatNo), apostropheHandle=1)
-    tmpClName = runSQL(codeToRun="SELECT LegalName FROM Entities WHERE Code = '{0}'".format(myEntity), apostropheHandle=1)
+    tmpOurRef = tb_OurRef.Text
+    tmpMatDesc = tb_MatterDesc.Text
+    tmpClName = tb_ClientName.Text
     # email to = Matter Fee Earner | email CC = current user
-    tmpEmailTo = runSQL("SELECT EMailExternal FROM Users WHERE Code = (SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '{0}' AND Number = {1})".format(myEntity, myMatNo))
-    tmpToUserName = runSQL(codeToRun="SELECT ISNULL(Forename, FullName) FROM Users WHERE Code = (SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '{0}' AND Number = {1})".format(myEntity, myMatNo), apostropheHandle=1)
-    tmpEmailCC = runSQL("SELECT EMailExternal FROM Users WHERE Code = '{0}'".format(_tikitUser))
+    tmpEmailTo = tb_FE_Email.Text
+    tmpToUserName = tb_FE_Forename.Text
+    tmpEmailCC = tb_CurrentUserEmail.Text
     tmpLocalName =  runSQL("SELECT ISNULL(LocalName, 'File Review') FROM Usr_MRA_Overview WHERE ID = {0}".format(ovID))
 
     # Insert a record into MRA Events table to trigger email to FE
     insert_into_MRAEvents(userRef=_tikitUser, triggerText=tmpTriggerText, ov_ID=ovID, 
                           emailTo=tmpEmailTo, emailCC=tmpEmailCC, toUserName=tmpToUserName, 
                           ourRef=tmpOurRef, matterDesc=tmpMatDesc, clientName=tmpClName, 
-                          addtl1=tmpLocalName, addtl2=countOfIncompleteCAs)
+                          addtl1=tmpLocalName, addtl2=count_of_incomplete_cas)
 
   # finally, refresh 'overview' list
   dg_MRAFR_Refresh(sender, e)
@@ -2541,387 +2575,874 @@ def populate_MRA_DaysUntilLocked(expiryDate=None):
 # # # #   END OF:   M A T T E R   R I S K   A S S E S S M E N T    TAB   # # # #
 
 # # # #   *F I L E   R E V I E W*    TAB    # # # #
+## I'm seriously considering redoing this so more like MRA (eg: have 'view state' in UI only, and when user clicks 'Save', we write to DB then, in one swoop)
+## Things to consider: File Review (old MRA tables), links to 'Matter_Audit' for corrective items, so in UI flow, we don't actually need the 'ID' at runtime, 
+##  only at 'save' point. Therefore, may may sense to see how many 'CAs' need to be added and write all to table in one 'INSERT' so we get consecutive IDs 
+# NB: Have separate class objects for 'File Review' and 'Corrective Actions', so that it's simpler writing back to tables later
+#     Also, make sure to save a 'localID' of Corrective Actions in the CA class, and an 'ActualID' from when it's written to DB, so that we 
+#     can link them together (eg: when user adds a CA in the UI, we create a new CA object with localID = -1, and then when we save to DB, we get the new ActualID from the DB and update the CA object with that, so we can link it to the relevant FR question etc.)   
+# This should make it so that we don't get phantom Corrective Actions too, from when user clicks the option that triggers a CA, but then later changes answer to the one that doesn't trigger it...
+#  (i do think we clean-up as we go along in current version, but it's not really ideal)
+#! Need to review all FR code, but where I left off before was 'FR_checkForOSca_andFinalise' function (called from a few places...)
+# > will want: FR_load_Answers_toMemory(); FR_load_Questions_DataGrid()
+# > and to load/apply current selections: FR_load_MatterSelections_toMemory(); FR_apply_existing_selections()
+#! Don't need 'x_load_Answers_...()' as there are always two answers available (Yes, No), with 'N/A' being an optional third.
+#! But, may want to treat 'Corrective Actions' like the answers though, in terms of having 'in-memory' objects that we then
+#!  write to DB on 'Save', rather than writing to DB as we go along (which is what we do now with CAs, but not ideal as mentioned above)
 
-class FR(object):
-  def __init__(self, myID, myOrder, myQuestion, myAnswerText, myCorrActionID, myCANeeded, myCATaken, 
-               myCAComplete, myQID, myGroup, myAllowNA, myCAtrigger, myHasOSCA, myAllowsComment, myComment):
- 
-    self.pvID = myID
-    self.pvDO = myOrder
-    self.pvQuestion = myQuestion
-    self.QuestionID = myQID
-    self.pvAnswerText = myAnswerText
-    self.CorrActionID = myCorrActionID
-    self.CorrActionNeeded = myCANeeded
-    self.CorrActionTaken = myCATaken
-    self.CorrActionComplete = myCAComplete
-    self.QGroup = myGroup
-    if myCAComplete == 0: 
-      self.CorrActionCompleteTF = False
-    else:
-      self.CorrActionCompleteTF = True
-    self.fr_AllowsNA = myAllowNA
-    self.fr_CAtrigger = myCAtrigger
-    self.fr_HasOSCA = myHasOSCA
-    self.fr_AllowsComment = myAllowsComment
-    self.fr_Comment = myComment
-    return
-    
+class FileReview_CorrectiveAction(object):
+  def __init__(self, localID, QuestionID, ActionText, ActionTaken, Completed):
+    self.localID = localID  # this is a temporary ID we use in the UI before we save to DB; once saved to DB, we update with the actual ID from the DB
+    self.QuestionID = QuestionID
+    self.ActionText = ActionText
+    self.ActionTaken = ActionTaken
+    self.Completed = Completed
+
   def __getitem__(self, index):
-    if index == 'Order':
-      return self.pvDO
-    elif index == 'Question':
-      return self.pvQuestion
-    elif index == 'QuestionID':
+    if index == 'QuestionID':
       return self.QuestionID
-    elif index == 'ID':
-      return self.pvID
-    elif index == 'AText':
-      return self.pvAnswerText
-    elif index == 'CorrActionID':
-      return self.CorrActionID
-    elif index == 'CorrActionNeeded':
-      return self.CorrActionNeeded
-    elif index == 'CorrActionTaken':
-      return self.CorrActionTaken
-    elif index == 'CorrActionComplete':
-      return self.CorrActionComplete
-    elif index == 'CorrActionCompleteTF':
-      return self.CorrActionCompleteTF 
-    elif index == 'QGroup':
-      return self.QGroup
-    elif index == 'AllowsNA':
-      return self.fr_AllowsNA 
-    elif index == 'CAtrigger':
-      return self.fr_CAtrigger
-    elif index == 'HasOSCA':
-      return self.fr_HasOSCA
-    elif index == 'AllowsComment':
-      return self.fr_AllowsComment
-    elif index == 'Comment':
-      return self.fr_Comment
+    elif index == 'ActionText':
+      return self.ActionText
+    elif index == 'ActionTaken':
+      return self.ActionTaken
+    elif index == 'Completed':
+      return self.Completed
+    elif index == 'localID':
+      return self.localID
     else:
       return ''
-      
-def refresh_FR(s, event):
-  # This function refreshes the File Review data grid (on the 'File Review' tab - where one Edits/adds answers to Qs)
+
+class FileReview_MatterQuestionItem(NotifyBase):
+  def __init__(self, QuestionGroup, QuestionID, QuestionText, AllowsNA, CAtrigger, DisplayOrder, AllowsComment, defaultCorrActText):
+    NotifyBase.__init__(self)
+    self.QuestionGroup = QuestionGroup or ""
+    self.QuestionID = int(QuestionID) if QuestionID is not None else 0
+    self.QuestionText = QuestionText or ""
+    self.AllowsNA = (str(AllowsNA or "Y").upper() == "Y")
+    self.CAtrigger = (CAtrigger or "").strip()
+    self.DisplayOrder = int(DisplayOrder) if DisplayOrder is not None else 0
+    self.AllowsComment = (str(AllowsComment or "N").upper() == "Y")
+    self.DefaultCorrActionText = defaultCorrActText or ""
+
+    self._UserComment = ""
+    self._SelectedAnswer = ""     # store answer text: Yes | No | N/A
+    self._CorrActionID = None
+    self._CorrActionText = ""
+    self._CorrActionTaken = ""
+    self._CorrActionCompleted = False
+
+  @property
+  def fr_HasOSCA(self):
+    # this is a helper property to determine whether this question currently has an open corrective action against it
+    return "Yes" if (self.CAtrigger != "" and self.SelectedAnswer.strip().lower() == self.CAtrigger.strip().lower() and not self.CorrActionCompleted) else "No"
+    
+  @property
+  def UserComment(self):
+    return self._UserComment
   
-  # generate the SQL to populate our datagraid
-  # NB: MA.AuditPass = 0 means 'Fail'/False, 1 means 'Pass'/True (completed)
-  mySQL = """SELECT '0-RowID' = FR.ID, '1-DisplayOrder' = FR.DisplayOrder, '2-Question Text' = TQ.QuestionText, 
-			        '3-AnswerText' = FR.tbAnswerText, '4-CorrActionID' = FR.CorrActionID, '5-CANeeded' = MA.CorrActionNeeded, 
-              '6-CATaken' = MA.CorrActionTaken, 
-              '7-CA_PF' = MA.AuditPass, '8-Qid' = FR.QuestionID, '9-QGroup' = QG.Name, 
-              '10-AllowsNA' = ISNULL(TQ.FR_Allow_NA_Answer, 'Y'), '11-CA Trigger' = ISNULL(TQ.FR_CorrAction_Trigger_Answer, 'No'), 
-              '12-HasOSCA' = CASE WHEN MA.AuditPass = 0 AND FR.CorrActionID > 0 THEN 'Yes' ELSE 'No' END, 
-              '13-AllowsComment' = ISNULL(TQ.FR_Allow_Comment, 'N'), '14-Comment' = FR.Notes 
-            FROM Usr_MRA_Detail FR 
-              LEFT OUTER JOIN Usr_MRA_TemplateQs TQ ON FR.QuestionID = TQ.ID 
-              LEFT OUTER JOIN Matter_Audit MA ON FR.CorrActionID = MA.ID 
-			        LEFT OUTER JOIN Usr_MRA_QGroups QG ON TQ.QGroupID = QG.ID
-            WHERE FR.EntityRef = '{0}' AND FR.MatterNo = {1} AND FR.OV_ID = {2}
-            ORDER BY QG.DisplayOrder, FR.DisplayOrder""".format(_tikitEntity, _tikitMatter, lbl_FR_ID.Content)
+  @UserComment.setter
+  def UserComment(self, value):
+    v = "" if value is None else str(value)
+    if self._UserComment == v:
+      return
+    self._UserComment = v
+    self._raise("UserComment")
+
+
+  @property
+  def SelectedAnswer(self):
+    return self._SelectedAnswer
+  
+  @SelectedAnswer.setter
+  def SelectedAnswer(self, value):
+    if self._SelectedAnswer == value:
+      return
+    self._SelectedAnswer = value
+    self._raise("SelectedAnswer")
+
+  @property
+  def CorrActionID(self):
+    return self._CorrActionID
+  @CorrActionID.setter
+  def CorrActionID(self, value):
+    v = None if value is None else int(value)
+    if self._CorrActionID == v:
+      return
+    self._CorrActionID = v
+    self._raise("CorrActionID")
+  
+  @property
+  def CorrActionText(self):
+    return self._CorrActionText
+  @CorrActionText.setter
+  def CorrActionText(self, value):
+    v = "" if value is None else str(value)
+    if self._CorrActionText == v:
+      return
+    self._CorrActionText = v
+    self._raise("CorrActionText")
+
+  @property
+  def CorrActionTaken(self):
+    return self._CorrActionTaken
+  @CorrActionTaken.setter
+  def CorrActionTaken(self, value):
+    v = "" if value is None else str(value)
+    if self._CorrActionTaken == v:
+      return
+    self._CorrActionTaken = v
+    self._raise("CorrActionTaken")
+
+  @property
+  def CorrActionCompleted(self):
+    return self._CorrActionCompleted
+  @CorrActionCompleted.setter
+  def CorrActionCompleted(self, value):
+    v = True if value is True or str(value) == "True" or str(value) == "1" else False
+    if self._CorrActionCompleted == v:
+      return
+    self._CorrActionCompleted = v
+    self._raise("CorrActionCompleted")
+
+  @property
+  def TriggersCorrectiveAction(self):
+    # CAtrigger holds the answer text that should trigger a CA
+    return (self.CAtrigger != "" and self.SelectedAnswer.strip().lower() == self.CAtrigger.strip().lower())
+
+
+def FileReview_Load_CorrectiveActions_toMemory():
+  # This function loads the corrective actions for the current matter into an in-memory list of 'FileReview_CorrectiveAction' objects, which we can then link to the relevant questions in the UI, and also write back to DB on 'Save'
+  global FR_CORRACTIONS_BY_QID
+  FR_CORRACTIONS_BY_QID = {}  # reset dict
+
+  mySQL = """SELECT '0-QuestionID' = FR.QuestionID, 
+                  '1-CA_ID' = ISNULL(FR.CorrActionID, 0), 
+                  '2-CA_Text' = ISNULL(MA.CorrActionNeeded, ''), 
+                  '3-CA_ActionTaken' = ISNULL(MA.CorrActionTaken, ''), 
+                  '4-CA_Done' = ISNULL(MA.AuditPass, 0)
+              FROM Usr_MRA_Detail FR 
+                JOIN Matter_Audit MA ON FR.CorrActionID = MA.ID 
+              WHERE FR.EntityRef = '{0}' AND FR.MatterNo = {1} AND FR.OV_ID = {2}
+              ORDER BY FR.DisplayOrder""".format(_tikitEntity, _tikitMatter, tb_FR_ID.Text)
 
   _tikitDbAccess.Open(mySQL)
-  myItems = []
   
   if _tikitDbAccess._dr is not None:
     dr = _tikitDbAccess._dr
     if dr.HasRows:
       while dr.Read():
-        if not dr.IsDBNull(0):
-          iID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          iDO = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          iQText = '-' if dr.IsDBNull(2) else dr.GetString(2)
-          iAText = '' if dr.IsDBNull(3) else dr.GetString(3)
-          iCAid = 0 if dr.IsDBNull(4) else dr.GetValue(4)
-          iCANeeded = '' if dr.IsDBNull(5) else dr.GetString(5)
-          iCATaken = '' if dr.IsDBNull(6) else dr.GetString(6)
-          iCAComplete = 0 if dr.IsDBNull(7) else dr.GetValue(7)
-          iQid = 0 if dr.IsDBNull(8) else dr.GetValue(8)
-          iGroupName = '' if dr.IsDBNull(9) else dr.GetString(9)
-          iAllowsNA = 'Y' if dr.IsDBNull(10) else dr.GetString(10)
-          iCAtrigger = 'No' if dr.IsDBNull(11) else dr.GetString(11)
-          iHasOSCA = 'No' if dr.IsDBNull(12) else dr.GetString(12)
-          iAllowsComment = 'N' if dr.IsDBNull(13) else dr.GetString(13)
-          iComment = '' if dr.IsDBNull(14) else dr.GetString(14)
+        iQID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+        iCAID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
+        iActionText = '' if dr.IsDBNull(2) else dr.GetString(2)
+        iActionTaken = '' if dr.IsDBNull(3) else dr.GetString(3)
+        iCompleted = False if dr.IsDBNull(4) else (dr.GetValue(4) == True)
 
-          myItems.append(FR(myID=iID, myOrder=iDO, myQuestion=iQText, myAnswerText=iAText, myCorrActionID=iCAid, 
-                            myCANeeded=iCANeeded, myCATaken=iCATaken, myCAComplete=iCAComplete, myQID=iQid, myGroup=iGroupName,
-                            myAllowNA=iAllowsNA, myCAtrigger=iCAtrigger, myHasOSCA=iHasOSCA, myAllowsComment=iAllowsComment, myComment=iComment))
-      
+        #ca = FileReview_CorrectiveAction(localID=iCAID, QuestionID=iQID, ActionText=iActionText,
+        #                                  ActionTaken=iActionTaken, Completed=iCompleted)
+        #FR_CORRACTIONS_BY_QID.setdefault(iQID, []).append(ca)  # group corrective actions by QuestionID in dict for easy access later when linking to questions in UI
+        # ^ this doesn't appear to be linking correctly... going to try doing what we do with '...MatterSelections...' function
+        FR_CORRACTIONS_BY_QID[iQID] = {"localID": iCAID, "ActionText": iActionText, "ActionTaken": iActionTaken, "Completed": iCompleted}  
     dr.Close()
   _tikitDbAccess.Close()
-  
-  # as we have 'grouping' on the XAML (using the Expander control), here we need to create 'ListCollectionView'
-  # in order to add 'GroupDescriptions' to properly 'group' our items accordingly (eg: uses the 'QGroup' name as a banner
-  # above each question set)
-  tmpC = ListCollectionView(myItems)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription('QGroup'))
-  dg_FR.ItemsSource = tmpC   
-  
-  # if nothing in the list
-  if dg_FR.Items.Count == 0:
-    # hide the datagrid and show the 'no questions' help label
-    dg_FR.Visibility = Visibility.Hidden
-    tb_NoFR_Qs.Visibility = Visibility.Visible
-  else:
-    # show the datagrid and hide the 'no questions' help label
+  return
+
+def FileReview_Load_Questions_DataGrid():
+
+  global FR_QUESTIONS_LIST
+  # wipe out existing list (if any)
+  FR_QUESTIONS_LIST = []
+
+  # load questions for template into in-memory list of 'FileReview_MatterQuestionItem' objects, which we can then bind to the datagrid in the UI; we'll also link to the relevant corrective actions for each question at this point (using the FR_CORRACTIONS_BY_QID dict we populated in 'FileReview_Load_CorrectiveActions_toMemory' function)
+  mySQL = """SELECT'0-QGroup' = QG.Name,
+                  '1-QuestionID' = TQ.QuestionID, 
+                  '2-QuestionText' = TQ.QuestionText,
+                  '3-AllowsNA' = ISNULL(TQ.FR_Allow_NA_Answer, 'Y'), 
+                  '4-AllowsComment' = ISNULL(TQ.FR_Allow_Comment, 'N'),
+                  '5-CA Trigger Answer' = ISNULL(TQ.FR_CorrAction_Trigger_Answer, 'No'),
+                  '6-DisplayOrder' = TQ.DisplayOrder, 
+                  '7-DefaultCAText' = ISNULL(TQ.FR_Default_Corrective_Action, '')
+              FROM Usr_MRA_TemplateQs TQ 
+                LEFT OUTER JOIN Usr_MRA_QGroups QG ON TQ.QGroupID = QG.ID
+              WHERE TQ.TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0}) 
+              ORDER BY QG.DisplayOrder, TQ.DisplayOrder""".format(tb_FR_ID.Text)
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      iGroup = '' if dr.IsDBNull(0) else dr.GetString(0)
+      iQID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
+      iQText = '' if dr.IsDBNull(2) else dr.GetString(2)
+      iAllowsNA = 'Y' if dr.IsDBNull(3) else dr.GetString(3)
+      iAllowsComment = 'N' if dr.IsDBNull(4) else dr.GetString(4)
+      iCAtrigger = 'No' if dr.IsDBNull(5) else dr.GetString(5)
+      iDO = 0 if dr.IsDBNull(6) else dr.GetValue(6)
+      iDefCorrActText = '' if dr.IsDBNull(7) else dr.GetString(7)
+      
+      FR_QUESTIONS_LIST.append(FileReview_MatterQuestionItem(QuestionGroup=iGroup,
+                                                              QuestionID=iQID, 
+                                                              QuestionText=iQText, 
+                                                              AllowsNA=iAllowsNA, 
+                                                              CAtrigger=iCAtrigger,
+                                                              DisplayOrder=iDO, 
+                                                              AllowsComment=iAllowsComment, 
+                                                              defaultCorrActText=iDefCorrActText))
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  # we'll then overlay existing selections for this matter (if any)
+  FileReview_Load_MatterSelections_toMemory()
+  FileReview_apply_existing_selections()
+
+  view = ListCollectionView(FR_QUESTIONS_LIST)
+  view.GroupDescriptions.Add(PropertyGroupDescription("QuestionGroup"))
+  dg_FR.ItemsSource = view
+
+  has_items = (len(FR_QUESTIONS_LIST) > 0)
+  # show or hide anything here based on whether items exist or not (though they should)
+
+  if has_items:
     dg_FR.Visibility = Visibility.Visible
-    tb_NoFR_Qs.Visibility = Visibility.Hidden
+    tb_NoFR_Qs.Visibility = Visibility.Collapsed
+
+    # scroll to top (first item) after loading itemsource
+    dg_FR.Dispatcher.BeginInvoke(
+      DispatcherPriority.ContextIdle,
+      Action(_select_first_FR_row)
+      )  
+  else:
+    dg_FR.Visibility = Visibility.Collapsed
+    tb_NoFR_Qs.Visibility = Visibility.Visible
   return
 
-
-def FR_optYes_Clicked(s, event):
-  # This is the 'opt_Yes' button for File Reviews - clicking this will save 'Yes' and move to next question (if 'Auto move to next Q' ticked)
-  # Linked to XAML control.event: opt_Yes.Click
-  FR_SaveAnswer(s=s, event=event, answerValue = 'Yes')
-  return
-
-
-def FR_optNo_Clicked(s, event):
-  # This is the 'opt_No' button for File Reviews - clicking this will save 'No' and move to next question (if 'Auto move to next Q' ticked)
-  # Linked to XAML control.event: opt_No.Click
-  FR_SaveAnswer(s=s, event=event, answerValue = 'No')
-  return
-
-
-def FR_optNA_Clicked(s, event):
-  # This is the 'opt_NA' button for File Reviews - clicking this will save 'NA' and move to next question (if 'Auto move to next Q' ticked)
-  # Linked to XAML control.event: opt_NA.Click
-  FR_SaveAnswer(s=s, event=event, answerValue = 'N/A')
-  return
-
-
-def FR_SaveAnswer(s, event, answerValue = ''):
-  # This is the main function to update the 'answer' on a File Review question
-  # This is a generic function that each of the Answer option/radio buttons call and supply with a new 'answerValue'
-
-  # get current values
-  rowID = dg_FR.SelectedItem['ID']
-  oldTextVal = dg_FR.SelectedItem['AText']
-  questionID = dg_FR.SelectedItem['QuestionID']
-  caID = dg_FR.SelectedItem['CorrActionID']
-  CAtriggerText = lbl_FR_CAtrigger.Content
-
-  caPreviouslyAdded = True if int(caID) > 0 else False
-
-  # firstly check if there's any change to actually 'update' (if old and new value same, no need to update)
-  if str(oldTextVal) == answerValue:
-    # selected value is the same as it was previously, so do the 'auto advance' if checkbox ticked
-    if chk_FR_AutoSelectNext.IsChecked == True:
-      currDGindex = dg_FR.SelectedIndex
-      FR_AutoAdvance(currDGindex, s, event)
+def _select_first_FR_row():
+  if len(FR_QUESTIONS_LIST) <= 0:
     return
   
-  # default 'caSQL' to nothing in case we don't set it in the 'if' traps below
-  caSQL = ""
-  newCA_ID = 0
-
-  # We were previously adding a Corrective Action if the selected answer was 'No', however, since 22nd Jan 2025, 
-  #  Amy would like to be able to select which answer triggers the CA, so we need to check the 'CA Trigger' field (temp stored in 'lbl_FR_CAtrigger')
-  if answerValue == CAtriggerText:
-  # OLD: if passed answer is no, then we need to add a new corrective action (if one not already added for this question)
-  #if answerValue == 'No':
-    if caPreviouslyAdded == False:
-      # get the 'default' corrective action text (and replace any occurrence of 'dd/mm/yyyy' with the date 14 days from now)
-      defaultCA = runSQL("SELECT ISNULL(REPLACE(FR_Default_Corrective_Action, 'dd/mm/yyyy', CONVERT(VARCHAR(12), DATEADD(day, 14, GETDATE()), 103)), '') FROM Usr_MRA_TemplateQs WHERE QuestionID = {0}".format(questionID))
-      # put this into the 'ca' text box
-      txt_CorractiveActionNeeded.Text = defaultCA
-      # call function to create a new Corrective Action and return the ID of item added
-      newCA_ID = add_CorrectiveAction(defaultCorrectiveActionText=defaultCA)
-      lbl_CorrActionID.Content = str(newCA_ID)
-      caSQL = ", CorrActionID = {0}".format(newCA_ID)
-    # make sure 'Corrective Actions' area is visible
-    stk_CorrectiveActions.Visibility = Visibility.Visible
-  else:
-    # hide the 'Corrective Actions' area as chosen answer isn't the 'Corrective Action' trigger
-    stk_CorrectiveActions.Visibility = Visibility.Collapsed
-
-  # form SQL to update with passed value
-  updateSQL = "[SQL: UPDATE Usr_MRA_Detail SET tbAnswerText = '{0}', SelectedAnswerID = -2{1} WHERE ID = {2}]".format(answerValue, caSQL, rowID)
-  
+  first = FR_QUESTIONS_LIST[0]
+  # force container to exist
   try:
-    _tikitResolver.Resolve(updateSQL)
-    canContinue = True
+    dg_FR.UpdateLayout()
   except:
-    MessageBox.Show("There was an error updating the answer (no updates made!), using SQL:\n{0}".format(updateSQL), "Error: FR Preview - Updating Answer...")
-    canContinue = False
+    pass
 
-  # if the user selects Yes after selecting no, we need to delete the already generated corrective action, so that it does not show up for the fee earner to action
-  #if answerValue == 'Yes' and caPreviouslyAdded:
-  # ^ UPDATED - no longer based on a a hard 'yes', checks against the 'CA Trigger' field (temp stored in 'lbl_FR_CAtrigger')
-  if answerValue != CAtriggerText and caPreviouslyAdded:
+  # 1 - force a real selection change event (inportant with Grouping DataGrids)
+  dg_FR.SelectedItem = None
+  dg_FR.SelectedItem = first
+
+  # 2 - ensure CurrentItem is aligned
+  view = CollectionViewSource.GetDefaultView(dg_FR.ItemsSource)
+  if view is not None:
     try:
-      deletesql = "[SQL: DELETE FROM Matter_Audit WHERE EntityRef = '{0}' AND MatterNo = {1} AND ID = {2}]".format(_tikitEntity, _tikitMatter, caID)
-      _tikitResolver.Resolve(deletesql) #Removes the row from the corrective actions table, to remove the CA
-      updateSQL = "[SQL: UPDATE Usr_MRA_Detail SET CorrActionID = null WHERE ID = {0}]".format(rowID)
-      _tikitResolver.Resolve(updateSQL) #updates the backing table for the datagrid to remove the corrective action ID, so that a new CA can be generated if yes selected again
-      canContinue = True
+      view.MoveCurrentTo(first)
     except:
-      MessageBox.Show("Error deleting corrective action for this question.", "Error")
-      canContinue = False
-  
-  # get current row index, and refresh DataGrid and finally select this Q again
-  currDGindex = dg_FR.SelectedIndex
-  refresh_FR(s, event)
-  dg_FR.SelectedIndex = currDGindex
-  # and scroll into view
-  dg_FR.ScrollIntoView(dg_FR.Items[currDGindex])
+      pass
 
-  ## only 'auto-advance' if answer wasn't 'no' (eg: as user should complete corrective action)   ################################################################## MAY NEED TO DOUBLE-CHECK THIS WORKS
-  if newCA_ID != 0: #str(newTextVal) == 'No' and newCA_ID != 0:
-    txt_CorractiveActionNeeded.Focus()
-    # remember to call function to make area visible if we do add a corrective action (and set 'True' or 'False' accordingly)
-  else:
-    # if we successfully updated something and 'auto select next' is ticked
-    if canContinue == True and chk_FR_AutoSelectNext.IsChecked == True:
-      #if chk_FR_AutoSelectNext.IsChecked == True:
-      # select next Q
-      FR_AutoAdvance(currDGindex, s, event)
-
-  return
-
-
-def FR_QComment_Save(s, event):
-  #! Linked to XAML control.event: txt_FR_QComment.TextChanged/LostFocus
-  # This function will save the 'Question Comment' text to the database when the text changes
-
-  # get current values
-  rowID = dg_FR.SelectedItem['ID']
-  newTextVal = str(txt_FR_QComment.Text)
-  newTextVal = newTextVal.replace("'", "''")
-  updateSQL = "[SQL: UPDATE Usr_MRA_Detail SET Notes = '{0}' WHERE ID = {1}]".format(newTextVal, rowID)
+  # 3 - commit 'current cell' so WPF trats it as a real row selection
+  try:
+    if dg_FR.Columns.Count > 0:
+      dg_FR.CurrentCell = DataGridCellInfo(first, dg_FR.Columns[0])
+  except:
+    pass
 
   try:
-    # run SQL to update text note
-    _tikitResolver.Resolve(updateSQL)
-    # get current selected index of datagrid, refresh list and re-select the current row
-    currDGindex = dg_FR.SelectedIndex
-    refresh_FR(s, event)
-    FR_AutoAdvance(currDGindex, s, event)
+    dg_FR.ScrollIntoView(first)
+    dg_FR.Focus()
   except:
-    MessageBox.Show("There was an error updating the Comment (no updates made!), using SQL:\n" + updateSQL, "Error: File Review - Updating Comment...")
+    pass
+
+  #_sync_combo_to_current_row()  # < not needed here... though, I do think we may need something to select applicable answer?
+  _sync_fr_right_panel_to_current_row()
   return
 
 
-def FR_AutoAdvance(currentDGindex, s, event):
-  currPlusOne = currentDGindex + 1
-  totalDGitems = dg_FR.Items.Count
-  #MessageBox.Show("Current Index: {0}\nPlusOne: {1}\nTotalDGitems: {2}".format(currentDGindex, currPlusOne, totalDGitems), "Auto-Advance to next question...")
+def FileReview_Load_MatterSelections_toMemory():
+
+  global FR_SELECTIONS_BY_QID
+  FR_SELECTIONS_BY_QID = {}  # reset dict
+
+  myEntity = str(_tikitEntity)
+  myMatter = to_int(_tikitMatter)
+  FileReviewID = to_int(tb_FR_ID.Text)
+
+  if not myEntity or myMatter <= 0 or FileReviewID <= 0:
+    return  # missing context, so exit  
   
-  # if current value plus one is equal to the total number of items in the datagrid
-  if currPlusOne == totalDGitems:
-    # select the first item
-    dg_FR.SelectedIndex = 0
-  else:
-    # current value plus one is greater than or less than total items,  so set to next
-    dg_FR.SelectedIndex = currPlusOne
-  # finally scroll it into view
-  dg_FR.ScrollIntoView(dg_FR.SelectedItem)
+  # SQL to load existing selections
+  sql = """SELECT '0-QuestionID' = FR.QuestionID, 
+                '1-AnswerText' = FR.tbAnswerText,
+                '2-Comment' = ISNULL(FR.Notes, '')
+           FROM Usr_MRA_Detail FR 
+           WHERE FR.EntityRef = '{0}' AND FR.MatterNo = {1} AND FR.OV_ID = {2}
+           ORDER BY FR.DisplayOrder""".format(myEntity, myMatter, FileReviewID)
+  
+  _tikitDbAccess.Open(sql)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      iQID = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+      iAText = '' if dr.IsDBNull(1) else dr.GetString(1)
+      iComment = '' if dr.IsDBNull(2) else dr.GetString(2)
+
+      FR_SELECTIONS_BY_QID[iQID] = {"AnswerText": iAText, "Comment": iComment}  # store in dict keyed by QuestionID for easy access later when applying to questions in UI
+    dr.Close()
+  _tikitDbAccess.Close()
+  return
+
+def FileReview_apply_existing_selections():
+  # this function applies the existing selections we loaded into memory in 'FileReview_Load_MatterSelections_toMemory' to the relevant question objects in our 'FR_QUESTIONS_LIST', so that they show up in the UI when we load the questions datagrid
+  global FR_QUESTIONS_LIST, FR_SELECTIONS_BY_QID, FR_CORRACTIONS_BY_QID
+
+  if not FR_QUESTIONS_LIST:
+    return  # nothing to apply
+
+  for q in FR_QUESTIONS_LIST:
+    qid = to_int(q.QuestionID)
+
+    sel = FR_SELECTIONS_BY_QID.get(qid, None)
+    if sel is not None:
+      # if we have a selection for this question, apply it to the question object (which will update the UI via data binding)
+      try:
+        q.UserComment = sel.get("Comment", "") or ""  # apply existing comment to question object
+      except:
+        pass  
+
+      try:
+        q.SelectedAnswer = sel.get("AnswerText", "") or ""  
+      except:
+        pass
+
+    # Corrective Actions overlay
+    ca_list = FR_CORRACTIONS_BY_QID.get(qid, None)
+    if ca_list is not None and len(ca_list) > 0:
+      # if we have corrective actions for this question, we'll just take the first one (there shouldn't be more than one per question, but if there are, we'll just show the first one in the UI for now)
+      #caSel = ca_list[0]
+      caSel = ca_list
+      try:
+        q.CorrActionID = caSel.get("localID", None) 
+        q.CorrActionText = caSel.get("ActionText", "") or ""
+        q.CorrActionTaken = caSel.get("ActionTaken", "") or ""
+        q.CorrActionCompleted = caSel.get("Completed", False)
+      except:
+        pass
   return
 
 
-def FR_SelectionChanged(s, event):
-  # When the selection changes in the DataGrid dg_FR, this function will populate the hidden area with the selected question's details
+def _get_fr_view():
+  return CollectionViewSource.GetDefaultView(dg_FR.ItemsSource)
 
-  global token1
-  myEntity = _tikitEntity
-  myMatNo = _tikitMatter
-  mraID = lbl_FR_ID.Content
+def _get_current_fr_question():
+  v = _get_fr_view()
+  if v is not None:
+    try:
+      return v.CurrentItem
+    except:
+      pass
+  return dg_FR.SelectedItem
 
-  if dg_FR.SelectedIndex > -1:
-    # something is selected in the datagrid, so populate our hidden labels with the selected values
-    # (this enables us to test 'before' and 'after' on 'DataGrid.CellUpdate' event - and only update if value changed)
-    lbl_FR_DGID.Content = dg_FR.SelectedItem['ID']
-    lbl_FR_CurrVal.Content = dg_FR.SelectedItem['AText']
-    lbl_CorrActionID.Content = dg_FR.SelectedItem['CorrActionID']
-    tb_CorrAct_QText.Text = dg_FR.SelectedItem['Question']
-    lbl_FR_CAtrigger.Content = dg_FR.SelectedItem['CAtrigger']
-    chk_FR_AllowsNA.IsChecked = False if dg_FR.SelectedItem['AllowsNA'] == 'N' else True
-    chk_FR_AllowsNotes.IsChecked = False if dg_FR.SelectedItem['AllowsComment'] == 'N' else True
-    txt_FR_QComment.Text = dg_FR.SelectedItem['Comment']
-    txt_CorractiveActionNeeded.Text = dg_FR.SelectedItem['CorrActionNeeded']
-    txt_CorractiveActionTaken.Text = dg_FR.SelectedItem['CorrActionTaken']
-    chk_CorrectiveActionPassed.IsChecked = dg_FR.SelectedItem['CorrActionCompleteTF']
-    
-    # select/tick appropriate radio button
-    opt_Yes.IsChecked = True if lbl_FR_CurrVal.Content == 'Yes' else False
-    opt_No.IsChecked = True if lbl_FR_CurrVal.Content == 'No' else False
-    opt_NA.IsChecked = True if lbl_FR_CurrVal.Content == 'N/A' else False
-      
-    # if there is a Corrective Action ID, then we need to show the 'Corrective Actions' area, otherwise, hide it.
-    # NB: this CAN be done with just XAML (binding the 'Visibility' to the lbl_CorrActionID value)
-    if dg_FR.SelectedItem['CorrActionID'] == 0:
-      #stk_CorrectiveActions.IsEnabled = False
-      stk_CorrectiveActions.Visibility = Visibility.Collapsed
+
+def dg_FR_SelectionChanged(s, e):
+  try:
+    dg_FR.Dispatcher.BeginInvoke(
+      DispatcherPriority.Background,
+      Action(_sync_fr_right_panel_to_current_row)
+    )
+  except:
+    _sync_fr_right_panel_to_current_row()
+  return
+
+def _sync_fr_right_panel_to_current_row():
+  global _fr_syncing_ui
+
+  q = _get_current_fr_question()
+  if q is None:
+    return
+
+  _fr_syncing_ui = True
+  try:
+    # Question text
+    try:
+      tb_CorrAct_QText.Text = getattr(q, "QuestionText", "") or ""
+    except:
+      pass
+
+    # Allows NA -> show/hide opt_NA (and optionally clear it if not allowed)
+    allows_na = False
+    try:
+      allows_na = True if getattr(q, "AllowsNA", False) else False
+    except:
+      allows_na = False
+
+    try:
+      opt_NA.Visibility = Visibility.Visible if allows_na else Visibility.Collapsed
+      if not allows_na and opt_NA.IsChecked == True:
+        opt_NA.IsChecked = False
+    except:
+      pass
+
+    # Allows Comments -> show/hide comment box
+    allows_comment = False
+    try:
+      allows_comment = True if getattr(q, "AllowsComment", False) else False
+    except:
+      allows_comment = False
+
+    try:
+      stk_UserComment.Visibility = Visibility.Visible if allows_comment else Visibility.Collapsed
+    except:
+      pass
+
+    # Comment text
+    try:
+      txt_FR_QComment.Text = getattr(q, "UserComment", "") or ""
+    except:
+      pass
+
+
+    # Radios reflect SelectedAnswer
+    ans = (getattr(q, "SelectedAnswer", "") or "").strip().lower()
+    try:
+      opt_Yes.IsChecked = (ans == "yes")
+      opt_No.IsChecked  = (ans == "no")
+      opt_NA.IsChecked  = (ans in ("n/a", "na"))
+    except:
+      pass
+
+    # Corrective Action panel (if present)
+     # Your rule: CAtrigger stores the answer text that should trigger a CA.
+    trigger_text = (getattr(q, "CAtrigger", "") or "").strip().lower()
+    ca_is_relevant = (trigger_text != "" and ans == trigger_text)
+
+    # Show/hide CA groupbox
+    try:
+      stk_CorrectiveActions.Visibility = Visibility.Visible if ca_is_relevant else Visibility.Collapsed
+    except:
+      pass
+
+    # Populate CA fields (even if hidden is fine)
+    try:
+      # ID label
+      try:
+        ca_id = getattr(q, "CorrActionID", None)
+        lbl_CorrActionID.Content = "" if ca_id in (None, "", 0) else str(ca_id)
+      except:
+        pass
+
+      txt_CorrectiveActionNeeded.Text = getattr(q, "CorrActionText", "") or ""
+      txt_CorrectiveActionTaken.Text  = getattr(q, "CorrActionTaken", "") or ""
+
+      # Prefer CorrActionCompleted bool if you have it, else CorrActionCompleteTF
+      completed = False
+      if hasattr(q, "CorrActionCompleted"):
+        completed = True if getattr(q, "CorrActionCompleted", False) else False
+
+      chk_CorrectiveActionPassed.IsChecked = completed
+    except:
+      pass
+
+    try:
+      # label for ID (if you have it)
+      try:
+        lbl_CorrActionID.Content = "" if not getattr(q, "CorrActionID", None) else str(q.CorrActionID)
+      except:
+        pass
+
+      txt_CorrectiveActionNeeded.Text = getattr(q, "CorrActionText", "") or ""
+      txt_CorrectiveActionTaken.Text  = getattr(q, "CorrActionTaken", "") or ""
+      chk_CorrectiveActionPassed.IsChecked = True if getattr(q, "CorrActionCompleted", False) else False
+    except:
+      pass
+
+  finally:
+    _fr_syncing_ui = False
+
+def _set_fr_answer(answerText):
+  if _fr_syncing_ui:
+    return
+
+  q = _get_current_fr_question()
+  if q is None:
+    return
+  q.SelectedAnswer = answerText
+
+  # If CA becomes irrelevant after changing answer, optionally clear CA fields
+  try:
+    trig = (getattr(q, "CAtrigger", "") or "").strip().lower()
+    if trig and (answerText or "").strip().lower() != trig:
+      # clear CA fields when not triggered (optional)
+      q.CorrActionText = ""
+      q.CorrActionTaken = ""
+      try:
+        q.CorrActionCompleted = False
+      except:
+        pass
     else:
-      # set visibility of 'Corrective Actions' controls to true as there IS a CA
-      stk_CorrectiveActions.Visibility = Visibility.Visible
-      # also only enable controls if in edit mode (linking directly to option button so no manual 'if' needed)
-      stk_CorrectiveActions.IsEnabled = opt_EditModeFR.IsChecked
+      # assign  ID for new CA (only added in UI)
+      q.CorrActionID = _next_temp_ca_id()  # assign a temp negative ID for new CA (we'll replace with real ID from DB when we save)
 
+  except:
+    pass
+
+  v = _get_fr_view()
+  if v is not None:
+    try:
+      v.Refresh()
+    except:
+      pass
+
+  update_FR_Stats()
+  # if auto-advance is checked, call function to auto-move, else just sync right panel to current row (to update CA visibility etc.)
+  if chk_FR_AutoSelectNext.IsChecked == True:
+    FR_AdvanceToNextQuestion()
   else:
-    lbl_FR_DGID.Content = ''
-    lbl_FR_CurrVal.Content = ''
-    lbl_CorrActionID.Content = ''
-    tb_CorrAct_QText.Text =''
-    txt_CorractiveActionNeeded.Text = ''
-    txt_CorractiveActionTaken.Text = ''
-    chk_CorrectiveActionPassed.IsChecked = False
-    #stk_CorrectiveActions.IsEnabled = False
-    stk_CorrectiveActions.Visibility = Visibility.Collapsed
-
-    chk_FR_AllowsNA.IsChecked = False
-    lbl_FR_CAtrigger.Content = ''
-    opt_Yes.IsChecked = False
-    opt_No.IsChecked = False
-    opt_NA.IsChecked = False
-
-  # MP: new 01/04/2025: Adding call to update 'header' stats
-  if update_FR_Stats(ov_ID=mraID) == True and token1 == 0:
-    token1 = 1
-    result = MessageBox.Show("You have completed all questions and there are no Corrective Actions, do you want to mark this File Review complete?", "Confirmation", MessageBoxButtons.YesNo)
-    if result == DialogResult.Yes:
-      btn_FR_Submit_Click(s, event)
+    _sync_fr_right_panel_to_current_row()
   return
 
-  ## Louis added below 'auto-check' if any Q's still awaiting an answer, and if none, and no CA's, ask to 'complete'
-  ## One issue though, it that this doesn't check the current status of the FR (from Overview table) to see if it's already marked as 'complete'
-  ## get current status:
-  #frStatus = runSQL("SELECT ISNULL(Status, '') FROM Usr_MRA_Overview WHERE ID = {0}".format(mraID))
-  #
-  ## get count of Questions without an Answer (eg: AnswerText = '')
-  #countOfQsNoAnswer_s = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD
-  #                         WHERE MRAD.EntityRef = '{0}' AND MRAD.MatterNo = {1} AND ISNULL(tbAnswerText, '') = '' 
-  #                         AND MRAD.OV_ID = {2}""".format(myEntity, myMatNo, mraID)
-  #
-  #countOfQsNoAnswer_s = runSQL(countOfQsNoAnswer_s)
-  #
-  ## get count of Corrective Actions that are not yet complete (eg: MA.AuditPass = 0)... NB: this appears to also be looking for empty CA 'taken' text too...
-  #OutstandingCAsCount = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD 
-  #                              LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID WHERE MA.AuditPass = 0 
-  #                              AND MA.EntityRef = '{0}' AND MA.MatterNo = {1}
-  #                              AND MA.CorrActionTaken = '' """.format(_tikitEntity, _tikitMatter) 
-  #
-  #OutstandingCAsCount = runSQL(OutstandingCAsCount)
-  #
-  ## now for logic: if no questions without an answer and no outstanding CAs, and we haven't already asked to mark as 'complete', ask if they want to
-  #if int(float(countOfQsNoAnswer_s)) == 0 and token1 == 0 and int(float(OutstandingCAsCount)) == 0 and frStatus != 'Complete':
-  #  token1 = 1
-  #  result = MessageBox.Show("You have completed all questions and there are no Corrective Actions, do you want to mark this File Review complete?", "Confirmation", 
-  #                      MessageBoxButtons.YesNo)
-  #  if result == DialogResult.Yes:
-  #    btn_FR_Submit_Click(s, event)
-  #  else:
-  #    return
-  #
-  #return
 
+def fr_Opt_Yes_Clicked(s, event):
+  _set_fr_answer("Yes")
+  return
+
+def fr_Opt_No_Clicked(s, event):
+  _set_fr_answer("No")
+  return
+
+def fr_Opt_NA_Clicked(s, event):
+  _set_fr_answer("N/A")
+  return
+
+
+def txt_FR_QComment_LostFocus(s, e):
+  if _fr_syncing_ui:
+    return
+  
+  q = _get_current_fr_question()
+  if q is None:
+    return
+  
+  q.UserComment = txt_FR_QComment.Text or ""
+
+  v = _get_fr_view()
+  if v is not None:
+    try:
+      v.Refresh()
+    except:
+      pass
+  return
+
+
+def _upsert_corrective_action(ca_id, entRef, matNo, neededText, takenText, completedTF):
+  """
+  If ca_id <= 0: INSERT new Matter_Audit row and return new ID
+  If ca_id > 0:  UPDATE existing row and return same ID
+  """
+  ent = sql_escape(entRef)
+  mat = int(to_int(matNo, 0))
+
+  needed = sql_escape(neededText or "")
+  taken  = sql_escape(takenText or "")
+  # Matter_Audit.AuditPass appears to be 0/1
+  audit_pass = 1 if completedTF else 0
+
+  cid = to_int(ca_id, 0)
+
+  if cid <= 0:
+    # INSERT
+    sql = """INSERT INTO Matter_Audit (EntityRef, MatterNo, CorrActionNeeded, CorrActionTaken, AuditPass, AuditTypeRef) 
+            OUTPUT INSERTED.ID 
+            VALUES ('{0}', {1}, '{2}', '{3}', {4}, 5);
+          """.format(ent, mat, needed, taken, audit_pass)
+    MessageBox.Show("SQL for inserting new CA:\n{0}".format(sql))
+    try:
+      newID = _tikitResolver.Resolve("[SQL: {0}]".format(sql))
+      return to_int(newID, 0)
+    except:
+      return 0
+
+  else:
+    # UPDATE (guarded by Entity/Matter + type, so we don't accidentally update wrong row)
+    sql = """UPDATE Matter_Audit 
+             SET CorrActionNeeded = '{0}', CorrActionTaken = '{1}', AuditPass = {2} 
+             WHERE ID = {3} AND EntityRef = '{4}' AND MatterNo = {5} AND AuditTypeRef = 5;
+          """.format(needed, taken, audit_pass, cid, ent, mat)
+
+    MessageBox.Show("SQL for updating CA:\n{0}".format(sql))
+    try:
+      runSQL(sql)
+      return cid
+    except:
+      return 0
+    
+
+def _sql_bit(x):
+  return "1" if (x is True or x == 1 or str(x).lower() == "true") else "0"
+
+
+def _fr_should_have_ca(q):
+  """
+  Returns True if this question should have a corrective action record.
+  Tune this logic to your exact rules.
+  """
+  try:
+    trig = (getattr(q, "CAtrigger", "") or "").strip()
+    ans  = (getattr(q, "SelectedAnswer", "") or "").strip()
+  except:
+    return False
+
+  if trig == "" or ans == "":
+    return False
+
+  if ans.lower() != trig.lower():
+    return False
+
+  return True
+
+def _sql_null_int(x):
+  try:
+    v = to_int(x, 0)
+  except:
+    v = 0
+  return "NULL" if v <= 0 else str(v)
+
+
+def _next_temp_ca_id():
+  global _FR_CA_TEMP_ID
+  v = _FR_CA_TEMP_ID
+  _FR_CA_TEMP_ID -= 1
+  return v
+
+def FileReview_ResolveCorrectiveActions(ent, mat):
+  """
+  Ensures q.CorrActionID is set correctly for every FR question BEFORE bulk-inserting Usr_MRA_Detail.
+  """
+  for q in FR_QUESTIONS_LIST:
+    if q is None or not hasattr(q, "QuestionID"):
+      continue
+
+    wants_ca = _fr_should_have_ca(q)
+    current_id = to_int(getattr(q, "CorrActionID", 0), 0)
+
+    if wants_ca:
+      new_id = _upsert_corrective_action(
+        ca_id=current_id,               # temp(-1/-2) or existing(+)
+        entRef=ent,
+        matNo=mat,
+        neededText=getattr(q, "CorrActionText", "") or "",
+        takenText=getattr(q, "CorrActionTaken", "") or "",
+        completedTF=(getattr(q, "CorrActionCompleted", False) == True)
+      )
+
+      if new_id <= 0:
+        MessageBox.Show("Could not save Corrective Action for QuestionID {0}".format(
+          getattr(q, "QuestionID", "?")), "File Review")
+        return False
+
+      # Replace temp ID with real one (or keep existing)
+      q.CorrActionID = new_id
+
+    else:
+      # No CA required – clear link
+      q.CorrActionID = None
+
+      # Optional cleanup strategy:
+      # If you want to *delete* old CAs when trigger no longer matches,
+      # implement _delete_corrective_action(current_id) and call it here when current_id > 0.
+
+  return True
+
+
+def FileReview_SaveDetails_FlattenToDb():
+  """
+  Saves FR answers/comments/CA for the current FR header (EntityRef+MatterNo+FR_ID)
+  using ONE INSERT with multiple VALUES tuples.
+  """
+
+  ent = str(_tikitEntity)
+  mat = to_int(_tikitMatter)
+  fr_id = to_int(tb_FR_ID.Text)   # adjust if your key is different
+
+  if fr_id <= 0 or not ent or mat <= 0:
+    MessageBox.Show("Missing Entity/Matter/Overview ID - cannot save File Review.", "Save")
+    return False
+
+  if not FileReview_ResolveCorrectiveActions(ent, mat):
+    return False
+
+  # --- 1) Flatten rows from your in-memory model ---
+  rows = []
+  # Use your real list backing dg_FR (grouping-safe: keep a raw list too)
+  for q in FR_QUESTIONS_LIST:  
+    # Skip group headers if they somehow got in (shouldn't if you keep raw list)
+    if q is None or not hasattr(q, "QuestionID"):
+      continue
+
+    qid = to_int(getattr(q, "QuestionID", 0))
+    if qid <= 0:
+      continue
+
+    rows.append({
+      "EntityRef": ent,
+      "MatterNo": mat,
+      "FRID": fr_id,
+      "QuestionID": qid,
+      "DisplayOrder": to_int(getattr(q, "DisplayOrder", getattr(q, "fr_DisplayOrder", 0)), 0),
+      # Only ever Yes/No/N/A (string)
+      "tbAnswerText": (getattr(q, "SelectedAnswer", "") or ""),
+      "Notes": (getattr(q, "UserComment", "") or ""),
+      "CorrActionID": getattr(q, "CorrActionID", None),
+    })
+
+  # If no questions, just clear DB rows and exit
+  delete_sql = (
+    "DELETE FROM Usr_MRA_Detail "
+    "WHERE EntityRef = '{0}' AND MatterNo = {1} AND OV_ID = {2};"
+  ).format(sql_escape(ent), mat, fr_id)
+
+  if not rows:
+    runSQL(delete_sql)
+    return
+
+  # --- 2) Build ONE INSERT with many VALUES tuples ---
+  values_sql = []
+  for r in rows:
+    values_sql.append(
+      "('{EntityRef}', {MatterNo}, {FRID}, {QuestionID}, {DisplayOrder}, '{tbAnswerText}', '{Notes}', "
+      "{CorrActionID})"
+      .format(
+        EntityRef=sql_escape(r["EntityRef"]),
+        MatterNo=to_int(r["MatterNo"]),
+        FRID=to_int(r["FRID"]),
+        QuestionID=to_int(r["QuestionID"]),
+        DisplayOrder=to_int(r["DisplayOrder"]),
+        tbAnswerText=sql_escape(r["tbAnswerText"]),
+        Notes=sql_escape(r["Notes"]),
+        CorrActionID=_sql_null_int(r["CorrActionID"])
+      )
+    )
+
+  insert_sql = (
+    "INSERT INTO Usr_MRA_Detail "
+    "(EntityRef, MatterNo, OV_ID, QuestionID, DisplayOrder, tbAnswerText, Notes, CorrActionID) "
+    "VALUES {0};"
+  ).format(", ".join(values_sql))
+
+  # --- 3) Execute as one batch (delete + insert) ---
+  batch_sql = delete_sql + "\r\n" + insert_sql
+  runSQL(batch_sql)
+  return
+
+
+def _get_fr_view():
+  return CollectionViewSource.GetDefaultView(dg_FR.ItemsSource)
+
+def _get_current_fr_question():
+  v = _get_fr_view()
+  if v is not None:
+    try:
+      return v.CurrentItem
+    except:
+      pass
+  return dg_FR.SelectedItem
+
+
+def _save_ca_fields_to_row():
+  if _fr_syncing_ui:
+    return
+  q = _get_current_fr_question()
+  if q is None:
+    return
+
+  q.CorrActionText = txt_CorrectiveActionNeeded.Text or ""
+  q.CorrActionTaken = txt_CorrectiveActionTaken.Text or ""
+
+  try:
+    q.CorrActionCompleted = (chk_CorrectiveActionPassed.IsChecked == True)
+  except:
+    pass
+
+  v = _get_fr_view()
+  if v is not None:
+    try: v.Refresh()
+    except: pass
+
+  update_FR_Stats()
+  return
+
+def txt_CorrectiveActionNeeded_LostFocus(s, e): _save_ca_fields_to_row()
+def txt_CorrectiveActionTaken_LostFocus(s, e):  _save_ca_fields_to_row()
+def chk_CorrectiveActionPassed_Click(s, e):     _save_ca_fields_to_row()
+
+def btn_CorrAction_Save_Click(s, e):
+  _save_ca_fields_to_row()
+
+  # if auto next ticked, advance (same approach as your MRA)
+  try:
+    auto = (chk_FR_AutoSelectNext.IsChecked == True)
+  except:
+    auto = False
+  if auto:
+    try:
+      dg_FR.Dispatcher.BeginInvoke(DispatcherPriority.Background, Action(FR_AdvanceToNextQuestion))
+    except:
+      FR_AdvanceToNextQuestion()
+  return
+
+
+def FR_AdvanceToNextQuestion():
+  
+  if len(FR_QUESTIONS_LIST) <= 0:
+    return
+  
+  current = _get_current_fr_question()
+  if current is None:
+    # go to first if something went odd
+    _select_first_FR_row()
+    return
+
+  try:    
+    idx = FR_QUESTIONS_LIST.index(current)
+  except:
+    try:
+      idx = FR_QUESTIONS_LIST.index(dg_FR.SelectedItem)
+    except:
+      _select_first_FR_row()
+      return
+
+  next_idx = idx + 1
+  if next_idx >= len(FR_QUESTIONS_LIST):
+    # optionally loop back to start
+    next_idx = 0
+
+  nxt = FR_QUESTIONS_LIST[next_idx]
+  
+  # update selection and currentitem and scroll, then sync right panel fields to current row
+  dg_FR.SelectedItem = nxt
+  
+  v = _get_fr_view()
+  if v is not None:
+    try:
+      v.MoveCurrentTo(nxt)
+    except:
+      pass
+
+  try:
+    dg_FR.ScrollIntoView(nxt)
+  except:
+    pass
+
+  _sync_fr_right_panel_to_current_row()
+  return
+
+# Back to Overview = save current progress, but do not mark as 'complete' / send to FE
+# Submit           = save current progress, mark as 'complete', and send to FE
 
 def FR_BackToOverview(s, event):
   # This function should clear the 'FR Questions' tab and take us back to the 'Overview' tab
   # refresh main overview datagrid
+
+  # save Q&A details back to table
+  FileReview_SaveDetails_FlattenToDb()
+
   dg_MRAFR_Refresh(s, event)
   dgCA_Overview_Refresh(s, event)
   
@@ -2937,10 +3458,10 @@ def btn_FR_Submit_Click(s, event):
   #! Linked to XAML control.event: btn_FR_Submit.Click
 
   # get initial variables
-  xovID = lbl_FR_ID.Content
+  xovID = tb_FR_ID.Text
 
-   # call our new function to update stats on XAML
-  update_FR_Stats(ov_ID=xovID)
+  # call our new function to update stats on XAML
+  update_FR_Stats()
 
   #countOfIncompleteCAs = int(tb_TotalOSCAs_FR.Text)
   countOfQuestions = int(tb_TotalQs_FR.Text)
@@ -2962,33 +3483,12 @@ def btn_FR_Submit_Click(s, event):
     if int(countOfQsNoAnswer) > 0:
       MessageBox.Show(tmpMsg, "'Save and Send to Fee Earner' error...")
       return
-  #else:
-    # there doesn't appear to be any questions so what to do here??
-  # else we continue on...
-  #MessageBox.Show("ovID: {0}\nCoutOfQs: {1}\nCountOfQs_NoAnswer: {2}".format(ovID, countOfQuestions, countOfQsNoAnswer), "DEBUGGING - btn_FR_Submit_Click")
-
-  # get amount of mins spent previously (this used to be inside following 'if', but pulled out to re-use for 'else' part)
-  existingMins = runSQL("SELECT ISNULL(MinsToComplete, 0) FROM Usr_MRA_Overview WHERE ID = {0}".format(xovID))
-  #MessageBox.Show("ovID: {0}\nCoutOfQs: {1}\nCountOfQs_NoAnswer: {2}\nexistingMins: {3}\nlbl_TimeEnteredFR.Content: {4}".format(ovID, countOfQuestions, countOfQsNoAnswer, existingMins, lbl_TimeEnteredFR.Content), "DEBUGGING - btn_FR_Submit_Click")
-
-  # get Time to Complete
-  if len(str(lbl_TimeEnteredFR.Content)) > 0:
-    # get the time we entered the screen
-    timeEntered = lbl_TimeEnteredFR.Content
-    # calculate mins for THIS session (date diff between now and time started)
-    thisSessionMins = runSQL("SELECT ISNULL(DATEDIFF(minute, '{0}', GETDATE()), 0)".format(timeEntered))
-    # calculate new total time spent (old/existing mins plus this session)
-    newTotalSpent = int(existingMins) + int(thisSessionMins)
-  else:
-    # as time doesn't appear to have been entered, we'll set 'new' time to 'old' time to avoid setting back to zero
-    newTotalSpent = int(existingMins)
-
-  #MessageBox.Show("existingMins: {0}\ntimeEntered: {1}\nnewTotalSpent: {2}".format(existingMins, timeEntered, newTotalSpent), "DEBUGGING - btn_FR_Submit_Click")
-  # update main 'Overview' table with new 'Status'
-  runSQL("UPDATE Usr_MRA_Overview SET SubmittedBy = '{0}', SubmittedDate = GETDATE(), MinsToComplete = {1} WHERE ID = {2}".format(_tikitUser, newTotalSpent, xovID))
 
   # now call function to set 'Status', and send email email from Task Centre to Fee Earner
   FR_checkForOSca_andFinalise(sender=s, e=event, ovID=int(xovID), callingFrom='btn_FR_Submit_Click')
+  
+  # update main 'Overview' table with new 'Status'
+  runSQL("UPDATE Usr_MRA_Overview SET SubmittedBy = '{0}', SubmittedDate = GETDATE() WHERE ID = {1}".format(_tikitUser, xovID))
 
   # refresh Corrective Actions datagrid on main page:
   dgCA_Overview_Refresh(s, event)
@@ -3036,43 +3536,35 @@ def FR_UpdateReviewerWithActionTaken_Click(s, event)  :
   return
 
 
-def update_FR_Stats(ov_ID='ID'):
+def update_FR_Stats():
   # This function will update the stats shown in the 'header' area at top of the 'File Review' tab.
 
-  # get Overview_ID
-  if ov_ID == 'ID' or ov_ID == 0:
-    # if no ID passed, get the ID from the label on the screen
-    ov_ID = lbl_FR_ID.Content
-  if ov_ID == 'ID':
-    # if OV_ID still saying 'ID', then alert user and quit
-    MessageBox("Overview ID doesn't appear to have been set!\nCannot update the header stats!", "Error: update_FR_Stats")
-    return
+  # lets first get stats from our loaded model
+  totalQs = len(FR_QUESTIONS_LIST)
+  totalAnswered = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "SelectedAnswer") and (getattr(q, "SelectedAnswer", "") or "").strip() != ""])
+  totalCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0])
+  totalOSCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0 and hasattr(q, "CorrActionCompleted") and getattr(q, "CorrActionCompleted", False) == False])
 
-  if int(ov_ID) > 0:
-    # get the stats from the database
-    totalQs = runSQL("SELECT COUNT(QuestionID) FROM Usr_MRA_Detail WHERE OV_ID = {0}".format(ov_ID))
-    totalAnswered = runSQL("SELECT COUNT(QuestionID) FROM Usr_MRA_Detail WHERE OV_ID = {0} AND ISNULL(tbAnswerText, '') <> ''".format(ov_ID))
-    totalCAs = runSQL("SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID WHERE ISNULL(MRAD.CorrActionID, '') <> '' AND MRAD.OV_ID = {0}".format(ov_ID))
-    totalOSCAs = runSQL("SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID WHERE MA.AuditPass = 0 AND MRAD.OV_ID = {0}".format(ov_ID))
-    # get the status of the File Review (from Overview table)
-    status = runSQL("SELECT ISNULL(Status, 'Draft') FROM Usr_MRA_Overview WHERE ID = {0}".format(ov_ID))
-  else:
-    # if no ID, set all values to nothing
-    status = 'Draft'
-    totalQs = 0
-    totalAnswered = 0
-    totalCAs = 0
-    totalOSCAs = 0
+  # calc the number of Q's without an answer...
+  QsWithNoAnswer = int(totalQs) - int(totalAnswered)
+  status = tb_FR_Status.Text
+
+  # note: for Status, we have 3 main states: 
+  # 'Draft'    = Whilst working through Questions (eg: had not been 'submitted' yet)
+  # 'With FE'  = Submit button was clicked (all Questions had answer), but there are Corrective Actions outstanding (so with Fee Earner to correct)
+  # 'Complete' = When submit button clicked and there's no Corrective Actions; or when status was 'With FE' (to complete Corrective Actions) and then
+  #              user has then subsequently completed those corrective actions (eg: no longer any outstanding) 
+
+  #if int(QsWithNoAnswer) > 1:
+  #  status = 'Draft'
+  ##! I don't think we actually want to change 'Status' in this function... ought to keep separate
 
   # put values into fields on the XAML
-  txt_FR_Status.Text = status
+  #tb_FR_Status.Text = status
   tb_TotalQs_FR.Text = str(totalQs)
   tb_TotalAnswered_FR.Text = str(totalAnswered)
   tb_TotalCAs_FR.Text = str(totalCAs)
   tb_TotalOSCAs_FR.Text = str(totalOSCAs)
-
-  # calc the number of Q's without an answer...
-  QsWithNoAnswer = int(totalQs) - int(totalAnswered)
 
   # if no OS Q's, and no OS CAs, and Status isn't 'Complete', then return 'True' (so we can ask to mark as complete)
   if int(QsWithNoAnswer) == 0 and int(totalOSCAs) == 0 and status != 'Complete':
@@ -3083,43 +3575,62 @@ def update_FR_Stats(ov_ID='ID'):
 # # # #   END OF:   *F I L E    R E V I E W*    TAB   # # # # 
 
 # # # #   C O R R E C T I V E   A C T I O N S   (ON FILE REVIEW TAB)  # # # #
-  
-def txt_CorractiveActionTaken_LostFocus(s, event):
-  # This will commit any update to the database
-  #! Linked to XAML control.event: txt_CorractiveActionTaken.LostFocus
 
-  caTaken = txt_CorractiveActionTaken.Text
-  caTaken = caTaken.replace("'", "''")
-  
-  update_SQL = "[SQL: UPDATE Matter_Audit SET CorrActionTaken = '{0}' WHERE ID = {1}]".format(caTaken, lbl_CorrActionID.Content)
+def FR_sync_corrective_action_fields_to_model():
+  q = _get_current_fr_question()
+  if q is None:
+    return
+
+  # Pull UI values
+  needed = txt_CorrectiveActionNeeded.Text if txt_CorrectiveActionNeeded is not None else ""
+  taken  = txt_CorrectiveActionTaken.Text  if txt_CorrectiveActionTaken  is not None else ""
+  passed = (chk_CorrectiveActionPassed.IsChecked == True) if chk_CorrectiveActionPassed is not None else False
+
+  # Update the model
+  q.CorrActionText = needed or ""
+  q.CorrActionTaken = taken or ""
+  q.CorrActionCompleted = True if passed else False
+
+  # Optional: keep display flags up to date
+  # If you have a CA trigger rule, you can compute "has outstanding CA" here.
+  # Example: outstanding if CA exists and not passed:
   try:
-    _tikitResolver.Resolve(update_SQL)
-    tmpDGindex = dg_FR.SelectedIndex
-    refresh_FR(s, event)
-    dg_FR.SelectedIndex = tmpDGindex
-    # and scroll it into view
-    dg_FR.ScrollIntoView(dg_FR.Items[tmpDGindex])
+    cid = to_int(getattr(q, "CorrActionID", 0), 0)
+    #q.fr_HasOSCA = "Yes" if (cid > 0 and not q.CorrActionCompleted) else "No"
   except:
-    MessageBox.Show("There was an error saving the Corrective Action.\nUsing SQL:\n{0}".format(update_SQL), "Error: Saving Corrective Action...")
+    pass
+
+  # Refresh the grid so any columns/row styling reflect the change
+  try:
+    view = CollectionViewSource.GetDefaultView(dg_FR.ItemsSource)
+    if view is not None:
+      view.Refresh()
+  except:
+    try:
+      dg_FR.Items.Refresh()
+    except:
+      pass
+
+  # If you show totals (Outstanding CAs etc.) recalc them here too
+  #try:
+  #  FR_RecalcTotals()
+  #except:
+  #  pass
+
   return
 
-def txt_CorractiveActionNeeded_LostFocus(s, event):
+def txt_CorrectiveActionTaken_LostFocus(s, event):
   # This will commit any update to the database
-  #! Linked to XAML control.event: txt_CorractiveActionNeeded.LostFocus
+  #! Linked to XAML control.event: txt_CorrectiveActionTaken.LostFocus
 
-  caNeeded = txt_CorractiveActionNeeded.Text
-  caNeeded = caNeeded.replace("'", "''")
-   
-  update_SQL = "[SQL: UPDATE Matter_Audit SET CorrActionNeeded = '{0}' WHERE ID = {1}]".format(caNeeded, lbl_CorrActionID.Content)
-  try:
-    _tikitResolver.Resolve(update_SQL)
-    tmpDGindex = dg_FR.SelectedIndex
-    refresh_FR(s, event)
-    dg_FR.SelectedIndex = tmpDGindex
-    # and scroll it into view
-    dg_FR.ScrollIntoView(dg_FR.Items[tmpDGindex])
-  except:
-    MessageBox.Show("There was an error saving the Corrective Action.\nUsing SQL:\n{0}".format(update_SQL), "Error: Saving Corrective Action...")
+  FR_sync_corrective_action_fields_to_model()
+  return
+
+def txt_CorrectiveActionNeeded_LostFocus(s, event):
+  # This will commit any update to the database
+  #! Linked to XAML control.event: txt_CorrectiveActionNeeded.LostFocus
+
+  FR_sync_corrective_action_fields_to_model()
   return
 
 
@@ -3127,24 +3638,11 @@ def chk_CorrectiveActionPassed_Click(s, event):
   # This will commit any update to the database
   #! Linked to XAML control.event: chk_CorrectiveActionPassed.Click
 
-  caComplete = 1 if chk_CorrectiveActionPassed.IsChecked == True else 0
-  
-  update_SQL = "[SQL: UPDATE Matter_Audit SET AuditPass = {0} WHERE ID = {1}]".format(caComplete, lbl_CorrActionID.Content)
-  try:
-    _tikitResolver.Resolve(update_SQL)
-    tmpDGindex = dg_FR.SelectedIndex
-    refresh_FR(s, event)
-    dg_FR.SelectedIndex = tmpDGindex
-    # and scroll it into view
-    dg_FR.ScrollIntoView(dg_FR.Items[tmpDGindex])
-  except:
-    MessageBox.Show("There was an error saving the Corrective Action.\nUsing SQL:\n{0}".format(update_SQL), "Error: Saving Corrective Action...")
-    return
-
+  FR_sync_corrective_action_fields_to_model()
   # new: check if any outstanding CA and if not, mark FR as complete
-  FR_checkForOSca_andFinalise(sender=s, e=event, ovID=int(lbl_FR_ID.Content))
+  #FR_checkForOSca_andFinalise(sender=s, e=event, ovID=int(tb_FR_ID.Text))
   # finally refresh the Corrective Actions datagrid and if 'ViewAll' selected, find item and re-select it
-  dgCA_Overview_Refresh(s, event)
+  #dgCA_Overview_Refresh(s, event)
   return
 
 
@@ -3153,34 +3651,9 @@ def btn_CorrectiveAction_Save_Clicked(s, event):
   # NB: we don't need to 'insert' here, because we auto-add one upon user selecting 'No' answer (in FR_CellEditEnding function)  
   # Linked to XAML control.event: btn_CorrAction_Save.Click
   
-  caNeeded = txt_CorractiveActionNeeded.Text
-  caNeeded = caNeeded.replace("'", "''")
-  caTaken = txt_CorractiveActionTaken.Text
-  caTaken = caTaken.replace("'", "''")
-  caComplete = 1 if chk_CorrectiveActionPassed.IsChecked == True else 0
-  
-  update_SQL = """[SQL: UPDATE Matter_Audit SET CorrActionNeeded = '{0}', CorrActionTaken = '{1}', AuditPass = {2} 
-                        WHERE ID = {3}]""".format(caNeeded, caTaken, caComplete, lbl_CorrActionID.Content)
-  try:
-    _tikitResolver.Resolve(update_SQL)
-    tmpDGindex = dg_FR.SelectedIndex
-    refresh_FR(s, event)
-    dg_FR.SelectedIndex = tmpDGindex
-    # and scroll it into view
-    dg_FR.ScrollIntoView(dg_FR.Items[tmpDGindex])
-  except:
-    MessageBox.Show("There was an error saving the Corrective Action.\nUsing SQL:\n{0}".format(update_SQL), "Error: Saving Corrective Action...")
-    return
-
-  # new: check if any outstanding CA and if not, mark FR as complete
-  FR_checkForOSca_andFinalise(sender=s, e=event, ovID=int(lbl_FR_ID.Content))
-
-  # get current DataGrid index position (for passing into 'FR_AutoAdvance' function)
-  currDGindex = dg_FR.SelectedIndex
-  # refresh the Corrective Actions datagrid 
-  dgCA_Overview_Refresh(s, event)
+  FR_sync_corrective_action_fields_to_model()
   if chk_FR_AutoSelectNext.IsChecked == True:
-    FR_AutoAdvance(currDGindex, s, event)
+    FR_AdvanceToNextQuestion()
   return
 
 
@@ -3194,9 +3667,9 @@ def add_CorrectiveAction(defaultCorrectiveActionText = ''):
   #     But... maybe it does need to be FE beause of report, in which case we may want another field to store 'Reviewer' in our 'Overview' table
   auditTypeID = _tikitResolver.Resolve("[SQL: SELECT AuditTypeID FROM Audit_Types WHERE Description = 'File Review']")
   
-  caNeeded = defaultCorrectiveActionText     #txt_CorractiveActionNeeded.Text #add the sql to get the email comment here
+  caNeeded = defaultCorrectiveActionText     #txt_CorrectiveActionNeeded.Text #add the sql to get the email comment here
   caNeeded = caNeeded.replace("'", "''")
-  caTaken = str(txt_CorractiveActionTaken.Text)
+  caTaken = str(txt_CorrectiveActionTaken.Text)
   caTaken = caTaken.replace("'", "''")  
   
   # Code to insert a new Corrective Action
@@ -3610,14 +4083,16 @@ def dg_MRAFR_ReSaveEmailToCase(s, event):
     </Init>
     <Loaded>
       <![CDATA[
+# Tab Items
 ti_Main = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_Main')
 ti_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA')
 ti_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_FR')
 
+# Current User / Matter / Entity Details - for use in code and also displaying on screen (top-right)
 tb_FERef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FERef')
+tb_FEFullName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FEFullName')
 tb_FE_Forename = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FE_Forename')
 tb_FE_Email = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FE_Email')
-#lbl_HOD_Email = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_HOD_Email')
 tb_MatterDesc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MatterDesc')
 tb_CaseTypeRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CaseTypeRef')
 tb_CaseType = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CaseType')
@@ -3625,8 +4100,9 @@ tb_OurRef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_OurRef')
 tb_ClientName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ClientName')
 tb_CurrentUserName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrentUserName')
 tb_CurrentUserCode = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrentUserCode')
+tb_CurrentUserEmail = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrentUserEmail')
 
-## O V E R V I E W   - TAB ##
+## Main O V E R V I E W   - TAB ##
 dg_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAFR')
 dg_MRAFR.SelectionChanged += dg_MRAFR_SelectionChanged
 lbl_MRAFR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAFR_ID')
@@ -3652,14 +4128,14 @@ btn_HOD_Approval_MRA.Click += btn_HOD_Approval_MRA_Click
 btn_DeleteSelected_MRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelected_MRAFR')
 btn_DeleteSelected_MRAFR.Click += dg_MRAFR_DeleteSelected
 #btn_DeleteSelected_MRAFR.Click += lambda s, event: (test_dgItem_DeleteSelected(childDeletes = [{'table': 'Usr_MRA_Detail','foreignKey': 'OV_ID','conditions': {'EntityRef': _tikitEntity,'MatterNo': _tikitMatter}}], dgControl=dg_MRAFR, tableToUpdate='Usr_MRA_Overview', primaryKeyColName='ID', displayOrderColName='', keyColumns={'EntityRef': _tikitEntity, 'MatterNo': _tikitMatter}, selectedColumns={'ID': 'ID', 'Name': 'Desc'}, typeFilterColName='', typeFilterVal=0), dg_MRAFR_Refresh(s, event))
-# Louis version - but can't remember why this isn't 'active'
+# ^ Louis version - but can't remember why this isn't 'active'
 btn_RegenerateEmailForFile = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_RegenerateEmailForFile')
 btn_RegenerateEmailForFile.Click += dg_MRAFR_ReSaveEmailToCase
 
 tb_OV_RiskStatus = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_OV_RiskStatus')
 tb_NoMRAFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRAFR')
 
-## OVERVIEW - CORRECTIVE ACTIONS ##
+## OVERVIEW - CORRECTIVE ACTIONS (bottom-half of main tab) ##
 dgCA_Overview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dgCA_Overview')
 dgCA_Overview.SelectionChanged += dgCA_Overview_SelectionChanged
 dgCA_Overview.CellEditEnding += dgCA_Overview_CellEditEnding
@@ -3670,8 +4146,7 @@ btn_View_CA_onFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_View_CA_
 btn_View_CA_onFR.Click += dg_CA_Overview_ViewOnFileReview
 tb_Current_CA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_Current_CA')
 tb_Current_CA_Complete = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_Current_CA_Complete')
-tb_CurrUser = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrUser')
-tb_CurrUserName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CurrUserName')
+
 opt_CA_ViewNotComplete = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_CA_ViewNotComplete')
 opt_CA_ViewNotComplete.Click += dgCA_Overview_Refresh
 opt_CA_ViewComplete = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_CA_ViewComplete')
@@ -3730,7 +4205,9 @@ btn_MRA_SaveAnswer.Click += btn_MRASaveAnswer_Click
 
 
 ##   F I L E   R E V I E W   - TAB ##
-txt_FR_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_FR_Status')
+tb_FR_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FR_Status')
+tb_FR_SubmittedBy = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FR_SubmittedBy')
+tb_FR_SubmittedOn = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FR_SubmittedOn')
 tb_TotalQs_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_TotalQs_FR')
 tb_TotalAnswered_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_TotalAnswered_FR')
 tb_TotalCAs_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_TotalCAs_FR')
@@ -3739,12 +4216,12 @@ btn_FR_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_FR_
 btn_FR_BackToOverview.Click += FR_BackToOverview
 btn_FR_Submit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_FR_Submit')
 btn_FR_Submit.Click += btn_FR_Submit_Click
-lbl_FR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FR_ID')
-lbl_FR_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FR_Name')
+tb_FR_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FR_ID')
+tb_FR_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FR_Name')
 tb_NoFR_Qs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoFR_Qs')
 dg_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_FR')
 #dg_FR.CellEditEnding += FR_CellEditEnding
-dg_FR.SelectionChanged += FR_SelectionChanged
+dg_FR.SelectionChanged += dg_FR_SelectionChanged
 lbl_FR_DGID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FR_DGID')
 lbl_FR_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FR_CurrVal')
 chk_FR_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FR_AutoSelectNext')
@@ -3754,18 +4231,19 @@ opt_EditModeFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_EditModeFR
 opt_ViewModeFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_ViewModeFR')
 
 opt_Yes = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_Yes')
-opt_Yes.Click += FR_optYes_Clicked
+opt_Yes.Click += fr_Opt_Yes_Clicked
 opt_No = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_No')
-opt_No.Click += FR_optNo_Clicked
+opt_No.Click += fr_Opt_No_Clicked
 opt_NA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_NA')
-opt_NA.Click += FR_optNA_Clicked
+opt_NA.Click += fr_Opt_NA_Clicked
 
 chk_FR_AllowsNA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FR_AllowsNA')
 lbl_FR_CAtrigger = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FR_CAtrigger')
 chk_FR_AllowsNotes = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FR_AllowsNotes')
+stk_UserComment = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_UserComment')
 txt_FR_QComment = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_FR_QComment')
 #txt_FR_QComment.TextChanged += FR_QComment_Save
-txt_FR_QComment.LostFocus += FR_QComment_Save
+txt_FR_QComment.LostFocus += txt_FR_QComment_LostFocus
 
 # testing if we can action cell update based off direct combo box access
 #cbo_FR_DGAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_FR_DGAnswer')
@@ -3784,10 +4262,10 @@ stk_CorrectiveActions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_Cor
 
 lbl_CorrActionID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_CorrActionID')
 tb_CorrAct_QText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_CorrAct_QText')
-txt_CorractiveActionNeeded = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorractiveActionNeeded')
-txt_CorractiveActionNeeded.LostFocus += txt_CorractiveActionNeeded_LostFocus
-txt_CorractiveActionTaken = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorractiveActionTaken')
-txt_CorractiveActionTaken.LostFocus += txt_CorractiveActionTaken_LostFocus
+txt_CorrectiveActionNeeded = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorrectiveActionNeeded')
+txt_CorrectiveActionNeeded.LostFocus += txt_CorrectiveActionNeeded_LostFocus
+txt_CorrectiveActionTaken = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_CorrectiveActionTaken')
+txt_CorrectiveActionTaken.LostFocus += txt_CorrectiveActionTaken_LostFocus
 chk_CorrectiveActionPassed = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_CorrectiveActionPassed')
 chk_CorrectiveActionPassed.Click += chk_CorrectiveActionPassed_Click
 btn_CorrAction_Save = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CorrAction_Save')
@@ -3795,17 +4273,13 @@ btn_CorrAction_Save.Click += btn_CorrectiveAction_Save_Clicked
 
 
 ## C A S E   D O C S    C O N T R O L S   ##
-opt_CaseDocs_Entity = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_CaseDocs_Entity')
-opt_CaseDocs_Entity.Click += opt_EntityOrMatterDocs_Clicked
-opt_CaseDocs_Matter = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_CaseDocs_Matter')
-opt_CaseDocs_Matter.Click += opt_EntityOrMatterDocs_Clicked
 dg_CaseManagerDocs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_CaseManagerDocs')
 dg_CaseManagerDocs.SelectionChanged += CaseDoc_SelectionChanged
 btn_OpenCaseDoc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_OpenCaseDoc')
 btn_OpenCaseDoc.Click += open_Selected_CaseDoc
 cbo_AgendaName = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_AgendaName')
 cbo_AgendaName.SelectionChanged += refresh_CaseDocs
-
+tb_NoCaseDocsExist = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoCaseDocsExist')
 #tog_TEST_CorrActions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tog_TEST_CorrActions')
 #tog_TEST_CorrActions.Click += tog_Test_CorrectiveActions
 
