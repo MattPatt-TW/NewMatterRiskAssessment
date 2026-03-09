@@ -4,7 +4,7 @@
     <Init>
       <![CDATA[
 import clr
-import System
+import System 
 
 clr.AddReference("System")            # for new MRA Edit Template tab code
 clr.AddReference("WindowsBase")       # for new MRA Edit Template tab code
@@ -14,6 +14,7 @@ clr.AddReference('PresentationCore')
 clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
+from datetime import datetime, timedelta
 from System import DateTime, Action, Convert, DBNull
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
@@ -1059,6 +1060,7 @@ def LOAD_EDIT_FR_PAGE(readOnly=False):
   # (eg: calls: FileReview_Load_MatterSelections_toMemory(); FileReview_apply_existing_selections(); and should select first row and '_sync_fr_right_panel_to_current_row()')  
 
   FileReviewTab_SetEnabled(isReadOnly=readOnly)
+  update_FR_Stats()
   # show the 'auto go to next Question' and go to FR tab
   chk_FR_AutoSelectNext.Visibility = Visibility.Visible
   ti_FR.Visibility = Visibility.Visible
@@ -2635,7 +2637,12 @@ class FileReview_MatterQuestionItem(NotifyBase):
   def fr_HasOSCA(self):
     # this is a helper property to determine whether this question currently has an open corrective action against it
     return "Yes" if (self.CAtrigger != "" and self.SelectedAnswer.strip().lower() == self.CAtrigger.strip().lower() and not self.CorrActionCompleted) else "No"
-    
+  
+  @property
+  def fr_HasCorrAction(self):
+    # this is a helper property to determine the status of the corrective action for this question;
+    return "Yes" if (self.CorrActionID is not None) else "No"
+
   @property
   def UserComment(self):
     return self._UserComment
@@ -2923,6 +2930,7 @@ def FileReview_apply_existing_selections():
         q.CorrActionText = caSel.get("ActionText", "") or ""
         q.CorrActionTaken = caSel.get("ActionTaken", "") or ""
         q.CorrActionCompleted = caSel.get("Completed", False)
+        #q.HasCorrAction = "Yes" if (caSel.get("fr_HasCorrAction", "") or "").strip() != "" else "No"
       except:
         pass
   return
@@ -3066,12 +3074,14 @@ def _set_fr_answer(answerText):
   q.SelectedAnswer = answerText
 
   # If CA becomes irrelevant after changing answer, optionally clear CA fields
+  caAdded = False
   try:
     trig = (getattr(q, "CAtrigger", "") or "").strip().lower()
     if trig and (answerText or "").strip().lower() != trig:
       # clear CA fields when not triggered (optional)
       q.CorrActionText = ""
       q.CorrActionTaken = ""
+      q.HasCorrAction = "No"
       try:
         q.CorrActionCompleted = False
       except:
@@ -3079,6 +3089,16 @@ def _set_fr_answer(answerText):
     else:
       # assign  ID for new CA (only added in UI)
       q.CorrActionID = _next_temp_ca_id()  # assign a temp negative ID for new CA (we'll replace with real ID from DB when we save)
+      q.HasCorrAction = "Yes"
+      caAdded = True
+      # we also need to pull-down the 'default' Corrective Action text and replace date placeholder with date two weeks from now
+      defaultCAtext = getattr(q, "DefaultCorrActionText", "") or ""
+      if defaultCAtext:
+        two_weeks = (datetime.now() + timedelta(days=14)).strftime("%d/%m/%Y")
+        defaultCAtext = defaultCAtext.replace("dd/mm/yyyy", two_weeks)
+        q.CorrActionText = defaultCAtext
+        q.CorrActionCompleted = False
+
 
   except:
     pass
@@ -3091,6 +3111,13 @@ def _set_fr_answer(answerText):
       pass
 
   update_FR_Stats()
+
+  if caAdded == True:
+    MessageBox.Show("A corrective action has been triggered for this question based on your answer. Please fill in the details in the section below.")
+    _sync_fr_right_panel_to_current_row()
+    txt_CorrectiveActionNeeded.Focus()
+    return
+
   # if auto-advance is checked, call function to auto-move, else just sync right panel to current row (to update CA visibility etc.)
   if chk_FR_AutoSelectNext.IsChecked == True:
     FR_AdvanceToNextQuestion()
@@ -3148,11 +3175,12 @@ def _upsert_corrective_action(ca_id, entRef, matNo, neededText, takenText, compl
 
   if cid <= 0:
     # INSERT
-    sql = """INSERT INTO Matter_Audit (EntityRef, MatterNo, CorrActionNeeded, CorrActionTaken, AuditPass, AuditTypeRef) 
+    sql = """INSERT INTO Matter_Audit (EntityRef, MatterNo, CorrActionNeeded, CorrActionTaken, AuditPass, 
+                                      AuditTypeRef, AuditDate, NextAuditDate, FeeEarnerRef) 
             OUTPUT INSERTED.ID 
-            VALUES ('{0}', {1}, '{2}', '{3}', {4}, 5);
-          """.format(ent, mat, needed, taken, audit_pass)
-    MessageBox.Show("SQL for inserting new CA:\n{0}".format(sql))
+            VALUES ('{0}', {1}, '{2}', '{3}', {4}, 4, GETDATE(), DATEADD(DAY, 14, GETDATE()), '{5}');
+          """.format(ent, mat, needed, taken, audit_pass, tb_FERef.Text or _tikitUser)
+    #MessageBox.Show("SQL for inserting new CA:\n{0}".format(sql))
     try:
       newID = _tikitResolver.Resolve("[SQL: {0}]".format(sql))
       return to_int(newID, 0)
@@ -3163,10 +3191,10 @@ def _upsert_corrective_action(ca_id, entRef, matNo, neededText, takenText, compl
     # UPDATE (guarded by Entity/Matter + type, so we don't accidentally update wrong row)
     sql = """UPDATE Matter_Audit 
              SET CorrActionNeeded = '{0}', CorrActionTaken = '{1}', AuditPass = {2} 
-             WHERE ID = {3} AND EntityRef = '{4}' AND MatterNo = {5} AND AuditTypeRef = 5;
+             WHERE ID = {3} AND EntityRef = '{4}' AND MatterNo = {5} AND AuditTypeRef = 4;
           """.format(needed, taken, audit_pass, cid, ent, mat)
 
-    MessageBox.Show("SQL for updating CA:\n{0}".format(sql))
+    #MessageBox.Show("SQL for updating CA:\n{0}".format(sql))
     try:
       runSQL(sql)
       return cid
@@ -3542,8 +3570,12 @@ def update_FR_Stats():
   # lets first get stats from our loaded model
   totalQs = len(FR_QUESTIONS_LIST)
   totalAnswered = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "SelectedAnswer") and (getattr(q, "SelectedAnswer", "") or "").strip() != ""])
-  totalCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0])
-  totalOSCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0 and hasattr(q, "CorrActionCompleted") and getattr(q, "CorrActionCompleted", False) == False])
+  #totalCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0])
+  #totalOSCAs = len([q for q in FR_QUESTIONS_LIST if hasattr(q, "CorrActionID") and to_int(getattr(q, "CorrActionID", 0)) > 0 and hasattr(q, "CorrActionCompleted") and getattr(q, "CorrActionCompleted", False) == False])
+  # ^ original version - doesn't appear to be updating correctly in UI... possiby because it's counting where CorrActionID is GREATER THAN zero, but in our UI we assign a TEMP negative ID for new CAs, which then gets replaced
+  #   with real ID upon saving to DB - so the question object has a negative ID until we save, which is why the count isn't working correctly. So, we'll just count based on the 'trigger' logic instead of relying on ID being set or not.
+  totalCAs = len([q for q in FR_QUESTIONS_LIST if _fr_should_have_ca(q)])
+  totalOSCAs = len([q for q in FR_QUESTIONS_LIST if getattr(q, "fr_HasOSCA", "No") == "Yes"])
 
   # calc the number of Q's without an answer...
   QsWithNoAnswer = int(totalQs) - int(totalAnswered)
@@ -3573,130 +3605,6 @@ def update_FR_Stats():
     return False
 
 # # # #   END OF:   *F I L E    R E V I E W*    TAB   # # # # 
-
-# # # #   C O R R E C T I V E   A C T I O N S   (ON FILE REVIEW TAB)  # # # #
-
-def FR_sync_corrective_action_fields_to_model():
-  q = _get_current_fr_question()
-  if q is None:
-    return
-
-  # Pull UI values
-  needed = txt_CorrectiveActionNeeded.Text if txt_CorrectiveActionNeeded is not None else ""
-  taken  = txt_CorrectiveActionTaken.Text  if txt_CorrectiveActionTaken  is not None else ""
-  passed = (chk_CorrectiveActionPassed.IsChecked == True) if chk_CorrectiveActionPassed is not None else False
-
-  # Update the model
-  q.CorrActionText = needed or ""
-  q.CorrActionTaken = taken or ""
-  q.CorrActionCompleted = True if passed else False
-
-  # Optional: keep display flags up to date
-  # If you have a CA trigger rule, you can compute "has outstanding CA" here.
-  # Example: outstanding if CA exists and not passed:
-  try:
-    cid = to_int(getattr(q, "CorrActionID", 0), 0)
-    #q.fr_HasOSCA = "Yes" if (cid > 0 and not q.CorrActionCompleted) else "No"
-  except:
-    pass
-
-  # Refresh the grid so any columns/row styling reflect the change
-  try:
-    view = CollectionViewSource.GetDefaultView(dg_FR.ItemsSource)
-    if view is not None:
-      view.Refresh()
-  except:
-    try:
-      dg_FR.Items.Refresh()
-    except:
-      pass
-
-  # If you show totals (Outstanding CAs etc.) recalc them here too
-  #try:
-  #  FR_RecalcTotals()
-  #except:
-  #  pass
-
-  return
-
-def txt_CorrectiveActionTaken_LostFocus(s, event):
-  # This will commit any update to the database
-  #! Linked to XAML control.event: txt_CorrectiveActionTaken.LostFocus
-
-  FR_sync_corrective_action_fields_to_model()
-  return
-
-def txt_CorrectiveActionNeeded_LostFocus(s, event):
-  # This will commit any update to the database
-  #! Linked to XAML control.event: txt_CorrectiveActionNeeded.LostFocus
-
-  FR_sync_corrective_action_fields_to_model()
-  return
-
-
-def chk_CorrectiveActionPassed_Click(s, event):
-  # This will commit any update to the database
-  #! Linked to XAML control.event: chk_CorrectiveActionPassed.Click
-
-  FR_sync_corrective_action_fields_to_model()
-  # new: check if any outstanding CA and if not, mark FR as complete
-  #FR_checkForOSca_andFinalise(sender=s, e=event, ovID=int(tb_FR_ID.Text))
-  # finally refresh the Corrective Actions datagrid and if 'ViewAll' selected, find item and re-select it
-  #dgCA_Overview_Refresh(s, event)
-  return
-
-
-def btn_CorrectiveAction_Save_Clicked(s, event):
-  # This function will SAVE the details to the Matters Audit table (where Corrective Actions are stored)
-  # NB: we don't need to 'insert' here, because we auto-add one upon user selecting 'No' answer (in FR_CellEditEnding function)  
-  # Linked to XAML control.event: btn_CorrAction_Save.Click
-  
-  FR_sync_corrective_action_fields_to_model()
-  if chk_FR_AutoSelectNext.IsChecked == True:
-    FR_AdvanceToNextQuestion()
-  return
-
-
-def add_CorrectiveAction(defaultCorrectiveActionText = ''):
-  # This function will add a new Corrective Action (if one doesn't already exist)
-  
-  # first, get details to allow us to generate SQL
-  mFEref = tb_FERef.Text         #_tikitResolver.Resolve("[SQL: SELECT FeeEarnerRef FROM Matters WHERE EntityRef = '" + _tikitEntity + "' AND Number = " + str(_tikitMatter) + "]")
-  # NB: I'm now wondering if 'Fee Earner' as shown on the Matter Audit screen in P4W is actually meant to show 'Reviewer' (person conducting File Review / adding Corrective Action)
-  #     As Fee Earner already noted on Matter, it doesn't make sense that they need to be selected again on this screen (unless it's just lazyness on Advanced's part, with regard to reports)
-  #     But... maybe it does need to be FE beause of report, in which case we may want another field to store 'Reviewer' in our 'Overview' table
-  auditTypeID = _tikitResolver.Resolve("[SQL: SELECT AuditTypeID FROM Audit_Types WHERE Description = 'File Review']")
-  
-  caNeeded = defaultCorrectiveActionText     #txt_CorrectiveActionNeeded.Text #add the sql to get the email comment here
-  caNeeded = caNeeded.replace("'", "''")
-  caTaken = str(txt_CorrectiveActionTaken.Text)
-  caTaken = caTaken.replace("'", "''")  
-  
-  # Code to insert a new Corrective Action
-  newCA_SQL = """[SQL: INSERT INTO Matter_Audit (EntityRef, MatterNo, AuditPass, AuditDate, FeeEarnerRef, CorrActionNeeded, 
-                                                 CorrActionTaken, AuditTypeRef, NextAuditDate) 
-                       VALUES ('{0}', {1}, 0, GETDATE(), '{2}', '{3}', '{4}', {5}, DATEADD(DAY, 14, GETDATE()))]""".format(_tikitEntity, _tikitMatter, mFEref, caNeeded, caTaken, auditTypeID)
-
-  
-  try:
-    _tikitResolver.Resolve(newCA_SQL)
-  except:
-    MessageBox.Show("There was an error adding a Corrective Action, using SQL:\n{0}".format(newCA_SQL), "Error: Adding new Corrective Action...")
-  
-  # try and get ID to return back to calling function
-  newID_SQL = """[SQL: SELECT TOP 1 ID FROM Matter_Audit WHERE EntityRef = '{0}' AND MatterNo = {1} AND AuditTypeRef = {2} AND CorrActionNeeded = '{3}' 
-                       AND CorrActionTaken = '{4}' ORDER BY NextAuditDate DESC]""".format(_tikitEntity, _tikitMatter, auditTypeID, caNeeded, caTaken)
-  
-  try:
-    newID = _tikitResolver.Resolve(newID_SQL)
-  except:
-    newID = "0"
-    MessageBox.Show("There was an error getting the ID of the newly added Corrective Action, using SQL:\n{0}".format(newID_SQL), "Error: Getting ID of newly added Corrective Action...")
-  
-  return int(newID)
-  
-
-# # # #   END OF:   C O R R E C T I V E   A C T I O N S   # # # #    
 
 
 # # # # #   G E N E R I C   F U N C T I O N S   # # # # #
@@ -4269,7 +4177,7 @@ txt_CorrectiveActionTaken.LostFocus += txt_CorrectiveActionTaken_LostFocus
 chk_CorrectiveActionPassed = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_CorrectiveActionPassed')
 chk_CorrectiveActionPassed.Click += chk_CorrectiveActionPassed_Click
 btn_CorrAction_Save = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CorrAction_Save')
-btn_CorrAction_Save.Click += btn_CorrectiveAction_Save_Clicked
+btn_CorrAction_Save.Click += btn_CorrAction_Save_Click
 
 
 ## C A S E   D O C S    C O N T R O L S   ##

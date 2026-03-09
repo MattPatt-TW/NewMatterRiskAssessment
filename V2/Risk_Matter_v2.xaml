@@ -170,6 +170,15 @@
         <Label Content="Agenda/Folder:" Foreground="#FF6150BE" />
 
         <ComboBox x:Name="cbo_AgendaName" Width="211" Height="26" VerticalContentAlignment="Center" >
+          <ComboBox.ToolTip>
+            <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray" Padding="8" Background="Cornsilk">
+              <StackPanel>
+                <TextBlock Text="Entity and Matter Agendas are all accessible within here for speedier access"
+                            Width="300" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </ComboBox.ToolTip>
+          
           <!-- Collapsible group headers -->
           <ComboBox.GroupStyle>
             <GroupStyle>
@@ -1336,30 +1345,67 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
 
-              <DataGridTextColumn Header="CorrActionID" IsReadOnly="True" Width="100" Visibility="Hidden"
+              <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
+                    Binding="{Binding UserComment}" />
+              
+              <DataGridTextColumn Header="CorrActionID" IsReadOnly="True" Width="100" Visibility="Collapsed"
                                   Binding="{Binding CorrActionID}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="Corrective Action Needed" IsReadOnly="True" Width="Auto" Visibility="Hidden"
+              <DataGridTextColumn Header="Corrective Action Needed" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
                                   Binding="{Binding CorrActionText}" HeaderStyle="{StaticResource HiddenCol}"  />
-              <DataGridTextColumn Header="Corrective Action Taken" IsReadOnly="True" Width="Auto" Visibility="Hidden"
+              <DataGridTextColumn Header="Corrective Action Taken" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
                                   Binding="{Binding CorrActionTaken}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="CA Complete" IsReadOnly="True" Width="Auto" Visibility="Hidden"
-                                  Binding="{Binding CorrActionCompleted}" HeaderStyle="{StaticResource HiddenCol}" />
-              
-              <DataGridCheckBoxColumn Header="CA Complete?"
-                                      Binding="{Binding CorrActionCompleteTF}" IsReadOnly="True" 
-                                      HeaderStyle="{StaticResource HiddenCol}"/>
+              <DataGridTextColumn Header="HasCA" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
+                                  Binding="{Binding fr_HasCorrAction}" HeaderStyle="{StaticResource HiddenCol}" />
 
-              
-              <DataGridCheckBoxColumn Header="AllowsNA" IsReadOnly="True" Visibility="Hidden"
+
+              <DataGridTemplateColumn Header="CA Complete?" >
+                <DataGridTemplateColumn.HeaderStyle>
+                  <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="ToolTip" >
+                      <Setter.Value>
+                        <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray" Padding="8" Background="Cornsilk">
+                          <StackPanel>
+                            <TextBlock Text="A checkbox will appear if there's a Corrective Action for a particular Question.  If ticked, it means that the Corrective Action has been completed"
+                                       Width="300" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </Border>
+                        
+                      </Setter.Value>
+                    </Setter>
+                  </Style>
+                  
+                </DataGridTemplateColumn.HeaderStyle>
+                
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <CheckBox IsChecked="{Binding CorrActionCompleted}"
+                              IsHitTestVisible="False"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center">
+                      <CheckBox.Style>
+                        <Style TargetType="CheckBox">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding fr_HasCorrAction}" Value="Yes">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </CheckBox.Style>
+                    </CheckBox>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+
+              <DataGridCheckBoxColumn Header="AllowsNA" IsReadOnly="True" Visibility="Collapsed"
                                       Binding="{Binding AllowsNA}" />
-              <DataGridTextColumn Header="CA Trigger" IsReadOnly="True" Visibility="Hidden"
+              <DataGridTextColumn Header="CA Trigger" IsReadOnly="True" Visibility="Collapsed"
                                   Binding="{Binding CAtrigger}" />
 
-              <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Hidden"
+              <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Collapsed"
                                   Binding="{Binding AllowsComment}" />
-              <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
-                                  Binding="{Binding UserComment}" />
-              <DataGridTextColumn Header="Has OS CA" IsReadOnly="True" Visibility="Hidden"
+              <DataGridTextColumn Header="Has OS CA" IsReadOnly="True" Visibility="Collapsed"
                                   Binding="{Binding fr_HasOSCA}" />
 
             </DataGrid.Columns>
@@ -1449,13 +1495,13 @@
 
                       <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <Label Content="Corrective Action Needed:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                        <TextBox x:Name="txt_CorractiveActionNeeded" FontWeight="Normal" MaxLength="300"
+                        <TextBox x:Name="txt_CorrectiveActionNeeded" FontWeight="Normal" MaxLength="300"
                                  VerticalAlignment="Center"
                                  MinHeight="23" Height="Auto" AcceptsReturn="True" TextWrapping="Wrap" Width="780" />
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <Label Content="Corrective Action Taken:" Width="150" FontWeight="Normal" Foreground="#FF6150BE" HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                        <TextBox x:Name="txt_CorractiveActionTaken" FontWeight="Normal"  MaxLength="300"
+                        <TextBox x:Name="txt_CorrectiveActionTaken" FontWeight="Normal"  MaxLength="300"
                                  VerticalAlignment="Center"
                                  MinHeight="23" Height="Auto" AcceptsReturn="True" TextWrapping="Wrap" Width="780" />
                       </StackPanel>
