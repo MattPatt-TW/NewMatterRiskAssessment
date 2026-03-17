@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tfb>
-  <RiskPracticeV2>
+  <MRAv2_Setup>
     <Init>
       <![CDATA[
 import clr
@@ -15,7 +15,7 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
 from datetime import datetime
-from System import DateTime, Environment, String
+from System import DateTime, Environment, String, Convert, DBNull, Action
 from System.IO import Path, File, Directory
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
@@ -24,16 +24,19 @@ from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventAr
 from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper, Clipboard 
 from System.Windows import Data, UIElement, Visibility, Window
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
-from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, Validation, DataGridCellInfo
+from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
-from System.Windows.Input import KeyEventHandler
-from System.Windows.Media import Brush, Brushes
+from System.Windows.Threading import DispatcherPriority
 import re
 
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
+
+MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
+MRA_PREVIEW_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
+_preview_combo_syncing = False
 
 ## GLOBAL CONSTANTS##
 UNSELECTED = -1
@@ -105,7 +108,9 @@ def refresh_MRA_Templates():
   # SQL to populate datagrid
   getTableSQL = """SELECT TD.TemplateID, TD.ID, TD.Name, TD.DaysUntil_IncompleteLock, 
                           TD.ScoreMediumTrigger, TD.ScoreHighTrigger, 
-                          'Q Count' = (SELECT COUNT(QuestionID) FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = TD.TemplateID)
+                          'Q Count' = (SELECT COUNT(*) FROM (
+                                          SELECT QuestionID FROM Usr_MRAv2_Templates MRAT 
+                                          WHERE MRAT.TemplateID = TD.TemplateID GROUP BY MRAT.QuestionID) as tmpT)
                    FROM Usr_MRAv2_TemplateDetails TD ORDER BY TD.TemplateID"""
   
   tmpItem = []
@@ -179,8 +184,8 @@ def MRATemplateDetails_PopulateFieldsFromDataGrid():
   tb_ScoreMedFrom.Text = str(selItem['ScoreMedFrom']) if selItem['ScoreMedFrom'] is not None else '0'
   tb_ScoreHighFrom.Text = str(selItem['ScoreHighFrom']) if selItem['ScoreHighFrom'] is not None else '0'
   # now calculate other values
-  tb_ScoreLowTo.Text = str(int(selItem['ScoreMedFrom']) - 1) if selItem['ScoreMedFrom'] is not None else '0'
-  tb_ScoreMedTo.Text = str(int(selItem['ScoreHighFrom']) - 1) if selItem['ScoreHighFrom'] is not None else '0'
+  #tb_ScoreLowTo.Text = str(int(selItem['ScoreMedFrom']) - 1) if selItem['ScoreMedFrom'] is not None else '0'
+  #tb_ScoreMedTo.Text = str(int(selItem['ScoreHighFrom']) - 1) if selItem['ScoreHighFrom'] is not None else '0'
 
 
   # set button states
@@ -201,9 +206,9 @@ def MRATemplateDetails_ClearFields():
   tb_MRATemplate_Name.Text = ''
   lbl_MRATemplate_ID.Content = ''
   tb_MRATemplate_ExpiresInXdays.Text = '0'
-  tb_ScoreLowTo.Text = '0'
+  #tb_ScoreLowTo.Text = '0'
   tb_ScoreMedFrom.Text = '0'
-  tb_ScoreMedTo.Text = '0'
+  #tb_ScoreMedTo.Text = '0'
   tb_ScoreHighFrom.Text = '0'
 
   # set button states
@@ -222,7 +227,7 @@ def btn_MRATemplate_SaveHeaderDetails_Click(s, event):
   # This is the 'Save' button on the 'List of NMRA Templates' tab, and saves the 'header'/details to the selected template
 
   # firstly check something is selected
-  if dg_MRA_Templates.SelectedIndex == -1:
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
     MessageBox.Show("No Matter Risk Assessment Template has been selected!\nPlease select a template before clicking 'Save Changes'", "Error: Save Changes to Selected Matter Risk Assessment Template...")
     return
 
@@ -264,12 +269,13 @@ def btn_MRATemplate_AddNew_Click(s, event):
   # This function will add a new row to the 'MRAv2_TemplateDetails' table
   
   #! Added 29/07/2025: Get next new TypeID so we can add it directly in the INSERT statement
-  nextTypeID = runSQL(codeToRun="SELECT ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails", returnType='Int')
-  insertSQL = """[SQL: INSERT INTO Usr_MRAv2_TemplateDetails (Name, DaysUntil_IncompleteLock, ScoreMediumTrigger, ScoreHighTrigger, TemplateID)
-                 VALUES ('NMRA - new', 29, 0, 0, {0})]""".format(nextTypeID)
+  #nextTypeID = runSQL(codeToRun="SELECT ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails", returnType='Int')
+  insertSQL = """INSERT INTO Usr_MRAv2_TemplateDetails (Name, DaysUntil_IncompleteLock, ScoreMediumTrigger, ScoreHighTrigger, TemplateID)
+                 OUTPUT INSERTED.TemplateID
+                 SELECT 'NMRA - new', 29, 0, 0, ISNULL(MAX(TemplateID), 0) + 1 FROM Usr_MRAv2_TemplateDetails"""
   
   try:
-    _tikitResolver.Resolve(insertSQL)
+    nextTypeID = _tikitResolver.Resolve("[SQL: {0}]".format(insertSQL))
   except:
     MessageBox.Show("There was an error trying to create a new Matter Risk Assessment, using SQL:\n" + str(insertSQL), "Error: Adding new Matter Risk Assessment...")
     return
@@ -285,7 +291,7 @@ def MRATemplates_refreshAndReselect(withTemplateID=None):
   if withTemplateID is not None:
     currentSelectedID = withTemplateID
   else:
-    currentSelectedID = dg_MRA_Templates.SelectedItem['TemplateID'] if dg_MRA_Templates.SelectedIndex != -1 else None
+    currentSelectedID = dg_MRA_Templates.SelectedItem['TemplateID'] if dg_MRA_Templates.SelectedIndex != UNSELECTED else None
 
   refresh_MRA_Templates()
 
@@ -305,21 +311,98 @@ def MRATemplates_refreshAndReselect(withTemplateID=None):
 def btn_MRATemplate_CopySelected_Click(s, event):
   # This function will duplicate the selected Matter Risk Assessment (including the questions) AND ANSWERS - NEED TO REVIEW
 
-  MessageBox.Show("Copy selected MRA button click", "Duplicating Matter Risk Assessment...")
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    MessageBox.Show("No Matter Risk Assessment Template has been selected!\nPlease select a template before clicking 'Copy'", "Error: Copy Selected Matter Risk Assessment Template...")
+    return
+  
+  id_ToCopy = dg_MRA_Templates.SelectedItem['TemplateID']
+  tmpName   = str(dg_MRA_Templates.SelectedItem['Name'])
+
+  # step 1: Need to duplicate the 'TemplateDetails' record (with a new TemplateID and new Name (e.g. 'Copy of XXX')
+  newID_SQL = """;WITH AllMRA_Templates AS (
+                    SELECT TD.TemplateID, TD.Name, TD.ScoreMediumTrigger, TD.ScoreHighTrigger, TD.DaysUntil_IncompleteLock
+                    FROM Usr_MRAv2_TemplateDetails TD
+                    ), 
+                    TemplateToCopy AS (
+                      SELECT TemplateID, Name, ScoreMediumTrigger, ScoreHighTrigger, DaysUntil_IncompleteLock
+                      FROM AllMRA_Templates
+                      WHERE TemplateID = {templateID_toCopy}
+                    )
+                  INSERT INTO Usr_MRAv2_TemplateDetails (TemplateID, Name, ScoreMediumTrigger, ScoreHighTrigger, DaysUntil_IncompleteLock) 
+                  OUTPUT INSERTED.TemplateID 
+                  SELECT (SELECT MAX(TemplateID) + 1 FROM AllMRA_Templates), 
+                      CONCAT(Name, ' (copy of ', TemplateID, ')'), 
+                      ScoreMediumTrigger, ScoreHighTrigger, DaysUntil_IncompleteLock
+                  FROM TemplateToCopy """.format(templateID_toCopy=id_ToCopy)
+  newTemplateID = runSQL(codeToRun=newID_SQL, returnType='Int')
+
+  # step 2: Need to duplicate the 'Templates' table (all questions and answers linked to the original TemplateID) and duplicate those with the new TemplateID 
+  copyQandA_sql = """INSERT INTO Usr_MRAv2_Templates (TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder)
+                     SELECT {new_TemplateID}, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder
+                     FROM Usr_MRAv2_Templates WHERE TemplateID = {templateID_toCopy}""".format(new_TemplateID=newTemplateID, templateID_toCopy=id_ToCopy)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(copyQandA_sql))
+  except:
+    MessageBox.Show("There was an error trying to copy the questions and answers for the new Matter Risk Assessment, using SQL:\n" + str(copyQandA_sql), "Error: Copying questions and answers for new Matter Risk Assessment...")
+    return
+
+  # now we want to refresh the DataGrid and select the newly added item
+  MRATemplates_refreshAndReselect(withTemplateID=newTemplateID)
+  MessageBox.Show("'{0}' has been duplicated and selected.\nNew ID: {1}".format(tmpName, newTemplateID), "Duplicating Matter Risk Assessment...")
   return
 
 
 def btn_MRATemplate_DeleteSelected_Click(s, event):
   # This function will delete the selected Matter Risk Assessment template (and any questions associated to it)
+  #! Should we also be checking and removing Questions and Answers from their respective tables if not used elsewhere?
 
-  MessageBox.Show("Delete selected MRA button click", "Delete Matter Risk Assessment...")
-  return
+  if dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    MessageBox.Show("No Matter Risk Assessment Template has been selected!\nPlease select a template before clicking 'Delete'", "Error: Delete Selected Matter Risk Assessment Template...")
+    return
   
-  
-def btn_MRATemplate_Preview_Click(s, event):
-  # This function will load the 'Preview' tab (made to look like 'matter-level' XAML) for the selected item
+  selectedID = dg_MRA_Templates.SelectedItem['TemplateID']
+  selectedName = dg_MRA_Templates.SelectedItem['Name']
 
-  MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
+  # firstly, we'll need to see if this template is in use on any matter, if so, we'll need to block deletion
+  # Advise user that we can remove from CaseTypeDefaults to prevent it being used any further (but can't delete if a matter is using)
+  #! Do we need a 'Hidden' flag, so we can mark ths and hide from main datagrid (unless 'show all' is ticked... would need to add this checkbox)
+  howManyMattersUsing_SQL = "SELECT COUNT(*) FROM Usr_MRAv2_MatterHeader WHERE TemplateID = {templateID_toCheck}".format(templateID_toCheck=selectedID)
+  mattersUsingCount = runSQL(codeToRun=howManyMattersUsing_SQL, returnType='Int')
+
+  if int(mattersUsingCount) > 0:
+    MessageBox.Show("This Matter Risk Assessment template ('{0}') is currently in use on {1} matter(s) and therefore cannot be deleted.\n\nIf you want to prevent this template from being used on any new matters, please remove it from the Case Type Defaults area.".format(selectedName, mattersUsingCount), "Error: Delete Selected Matter Risk Assessment Template...")
+    return
+  
+
+  # If not in use on any matter then we are free to delete...
+  # Firstly, delete from the 'Templates' table (to remove all Quesions and Answers links for this template)
+  #! Note: we're not deleting the actual Questions/Answers themselves 
+  deleteQandA_sql = """DELETE FROM Usr_MRAv2_Templates WHERE TemplateID = {templateID_toDelete}""".format(templateID_toDelete=selectedID)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteQandA_sql))
+  except:
+    MessageBox.Show("There was an error trying to delete the questions and answers for the selected Matter Risk Assessment, using SQL:\n" + str(deleteQandA_sql), "Error: Deleting questions and answers for selected Matter Risk Assessment...")
+    return
+  
+  # Secondly, delete from the 'TemplateDetails' table to remove the template itself
+  deleteTemplate_sql = """DELETE FROM Usr_MRAv2_TemplateDetails WHERE TemplateID = {templateID_toDelete}""".format(templateID_toDelete=selectedID)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteTemplate_sql))
+  except:
+    MessageBox.Show("There was an error trying to delete the selected Matter Risk Assessment template, using SQL:\n" + str(deleteTemplate_sql), "Error: Deleting selected Matter Risk Assessment template...")
+    return
+  
+  # remove from case type defaults if exists there
+  deleteCaseTypeDefaults_sql = "DELETE FROM Usr_MRAv2_CaseTypeDefaults WHERE TemplateID = {templateID_toDelete}".format(templateID_toDelete=selectedID)
+  try:
+    _tikitResolver.Resolve("[SQL: {0}]".format(deleteCaseTypeDefaults_sql))
+  except:
+    MessageBox.Show("There was an error trying to delete the selected Matter Risk Assessment template from Case Type Defaults, using SQL:\n" + str(deleteCaseTypeDefaults_sql), "Error: Deleting selected Matter Risk Assessment template from Case Type Defaults...")
+    return
+
+  # refresh datagrid and select first item
+  MRATemplates_refreshAndReselect()
+  MessageBox.Show("MRA with TemplateID '{0}' has been deleted".format(selectedID), "Delete Matter Risk Assessment...")
   return
   
   
@@ -343,11 +426,11 @@ def btn_MRATemplate_Edit_Click(s, event):
   vm = _tikitSender.DataContext
   # note: vm.Debug to populate our on-screen debug text box, and 'log_line' to write to users daily log file
   if vm is None:
-    vm.Debug("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))  
-    log_line("ERROR: Unable to load MRA Template ID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))
+    vm.Debug("ERROR: Unable to load MRA TemplateID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))  
+    log_line("ERROR: Unable to load MRA TemplateID {0} into TreeView structure for editing".format(tb_ThisMRAid.Text))
   else:
-    vm.Debug("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
-    log_line("Loaded MRA Template ID {0} into TreeView structure for editing".format(vm.TemplateID))
+    vm.Debug("Loaded MRA TemplateID {0} into TreeView structure for editing".format(vm.TemplateID))
+    log_line("Loaded MRA TemplateID {0} into TreeView structure for editing".format(vm.TemplateID))
     # also output a 'before' dump of view model to file for audit purposes
     dump_vm_to_file(vm, prefix="AUTO_BEFORE")
 
@@ -435,7 +518,10 @@ def btn_CopyToClipboard_QuestionOnly_Click(s, event):
   _set_clipboard_indicators("Question only", vm.TemplateID, q.QuestionID, None)
 
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Question Only to Clipboard", "Copied Question Only to Clipboard...")
+  #MessageBox.Show("Copied Question Only to Clipboard", "Copied Question Only to Clipboard...")
+  # logging instead of messagebox for this one as it's more likely to be used when copying multiple questions, and we don't want to bombard user with message boxes in that scenario
+  vm.Debug("Copied question (ID={0}) to clipboard".format(q.QuestionID))
+  log_line("Copied question (ID={0}) to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_QuestionAndAnswers_Click(s, event):
@@ -456,7 +542,9 @@ def btn_CopyToClipboard_QuestionAndAnswers_Click(s, event):
   _set_clipboard_indicators("Question + all answers", vm.TemplateID, q.QuestionID, None)
   
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Question and Answers to Clipboard", "Copied Question and Answers to Clipboard...")
+  #MessageBox.Show("Copied Question and Answers to Clipboard", "Copied Question and Answers to Clipboard...")
+  vm.Debug("Copied question (ID={0}) and all answers to clipboard".format(q.QuestionID))
+  log_line("Copied question (ID={0}) and all answers to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_AnswersAll_Click(s, event):
@@ -477,7 +565,9 @@ def btn_CopyToClipboard_AnswersAll_Click(s, event):
   _set_clipboard_indicators("All answers", vm.TemplateID, q.QuestionID, None)
 
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied All Answers to Clipboard", "Copied All Answers to Clipboard...")
+  #MessageBox.Show("Copied All Answers to Clipboard", "Copied All Answers to Clipboard...")
+  vm.Debug("Copied all answers for question (ID={0}) to clipboard".format(q.QuestionID))
+  log_line("Copied all answers for question (ID={0}) to clipboard".format(q.QuestionID))
   return
 
 def btn_CopyToClipboard_AnswerOnly_Click(s, event):
@@ -499,7 +589,9 @@ def btn_CopyToClipboard_AnswerOnly_Click(s, event):
   _set_clipboard_indicators("Single answer", vm.TemplateID, q.QuestionID, a.AnswerID)  
   
   Clipboard_Popup_Copy_Closed(s, event)
-  MessageBox.Show("Copied Answer Only to Clipboard", "Copied Answer Only to Clipboard...")
+  #MessageBox.Show("Copied Answer Only to Clipboard", "Copied Answer Only to Clipboard...")
+  vm.Debug("Copied answer (ID={0}) to clipboard".format(a.AnswerID))
+  log_line("Copied answer (ID={0}) to clipboard".format(a.AnswerID))
   return
 
 
@@ -513,17 +605,20 @@ def btn_CopyToClipboard_Clear_Click(s, event):
   MRA_CLIPBOARD["QuestionText"] = ""
   MRA_CLIPBOARD["Answers"] = []
 
+  vm = _tikitSender.DataContext
+
   # hide area
   _set_clipboard_indicators("", None, None, None)
   grp_MRA_Clipboard.Visibility = Visibility.Collapsed
-  MessageBox.Show("Clipboard has been emptied", "Cleared Clipboard...")
+  #MessageBox.Show("Clipboard has been emptied", "Cleared Clipboard...")
+  vm.Debug("Clipboard cleared")
+  log_line("Clipboard cleared")
   return
 
 def btn_Clipboard_Paste_Click(s, event):
   # This function will paste the contents of the clipboard into the selected question/answer area
   vm = _tikitSender.DataContext
   clipboard_paste(vm)
-  
   return
 
 def clipboard_paste(vm):
@@ -599,6 +694,19 @@ def clipboard_paste(vm):
 
   # Select something sensible after paste
   vm.SelectedItem = target_q
+  # output paste operation to debug and log
+  vm.Debug("Pasted {0} from TemplateID={1}, QuestionID={2}, AnswerID={3}".format(
+      mode,
+      MRA_CLIPBOARD.get("SourceTemplateID"),
+      MRA_CLIPBOARD.get("SourceQuestionID"),
+      MRA_CLIPBOARD.get("SourceAnswerID")
+  ))
+  log_line("Pasted {0} from TemplateID={1}, QuestionID={2}, AnswerID={3}".format(
+      mode,
+      MRA_CLIPBOARD.get("SourceTemplateID"),
+      MRA_CLIPBOARD.get("SourceQuestionID"),
+      MRA_CLIPBOARD.get("SourceAnswerID")
+  ))
   return
 
  
@@ -643,7 +751,7 @@ def refresh_MRA_CaseType_Defaults():
                       LEFT OUTER JOIN Usr_MRAv2_TemplateDetails TD ON CTD.TemplateID = TD.TemplateID
                       LEFT OUTER JOIN CaseTypes CT ON CTD.CaseTypesCode = CT.Code
                       LEFT OUTER JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID
-                   WHERE CTD.TemplateID = {templateID}""".format(templateID=dg_MRA_Templates.SelectedItem['TemplateID'])
+                   WHERE CTD.TemplateID = {templateID} ORDER BY CT.Description """.format(templateID=dg_MRA_Templates.SelectedItem['TemplateID'])
 
   tmpItem = []
   _tikitDbAccess.Open(getTableSQL)
@@ -813,7 +921,7 @@ def runSQL(codeToRun = '', showError = False, errorMsgText = '', errorMsgTitle =
   # textBoxForOutput      = None (defatul) | TextBox. If supplied, will output the result of the SQL execution into this TextBox
   # codeToRun_returnValue = (empty string default). This expects a standard 'SELECT' statement, and should be what you'd like returned from this procedure.
   #                         Eg: your main 'codeToRun' may be an 'INSERT INTO...' and you would like the code/ID/row_number of the added item returned - with the
-  #                             'codeToRun_returnValue' piarameter, you can specify the SQL to retrieve such info... Generally speaking, this is usually immediately
+  #                             'codeToRun_returnValue' parameter, you can specify the SQL to retrieve such info... Generally speaking, this is usually immediately
   #                             after an 'INSERT INTO' in my code anyway, so just need to pass as a param here instead.
   #                         ^ ignoring this... seemed like a good idea, but couldn't make use off in this particular project (WIP WriteOff)
   #                           What we do here is: 1) count existing rows match entity/matter; 2) if none exist, add one; 3) get id of row for entity/matter
@@ -1279,7 +1387,7 @@ def attach_logger(vm):
     log_line(msg, vm.TemplateID)
     # 2) also push to on-screen debug (so we can confirm setters fire)
     try:
-      vm.Debug("LOG: " + str(msg))
+      vm.Debug(str(msg))
     except:
       pass
 
@@ -1991,76 +2099,969 @@ def btn_EditMRA_SaveToDB_Click(sender, e):
   if vm is None:
     return
 
+  # Validate VM first (no DB changes yet)
+  ok, msg = validate_unique_question_text(vm)
+  if not ok:
+    MessageBox.Show(msg, "Cannot Save Template", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+    vm.Debug("SAVE BLOCKED: " + msg)
+    log_line("SAVE BLOCKED: " + msg, to_int(vm.TemplateID))
+    return
+
   # Confirm save action
-  res = MessageBox.Show("Are you sure you want to save the current template structure to the database? This will overwrite existing questions and answers for this template.", "Confirm Save to Database", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+  res = MessageBox.Show(
+      "Are you sure you want to save the current template structure to the database?\n\n"
+      "This will overwrite the existing structure for this template.",
+      "Confirm Save to Database",
+      MessageBoxButtons.YesNo,
+      MessageBoxIcon.Question
+  )
   if res != DialogResult.Yes:
     return
 
-  # first output the VM structure as the 'AFTER' snapshot in logs, so we have a record of exactly what was attempted to be saved
+  # Snapshot "after" (attempted state)
   dump_vm_to_file(vm, prefix="AUTO_AFTER")
 
-  # Save to DB
   try:
-    #save_template_structure_to_db(vm)
-    # ^ this is CodeGPT auto-code - see function below. 
-    # However, it doesn't appear to be adding to '_Question' and '_Answer' tables (if new item/updates needed) 
-    # So we'll want to x-ref against what ChatGPT advised as I did ask it to re-think because of amount of separate SQL calls needed, and consider a more efficient approach
-    #  (e.g. DataTable + stored procedure, or at least batching inserts).
-    MessageBox.Show("PRETEND - Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
-    log_line("Template saved to database successfully.", vm.TemplateID)
+    save_template_to_db(vm)  # <-- no UI inside, just raises on error
+    MessageBox.Show("Template saved successfully.", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information)
+    vm.Debug("TemplateID {0} saved to database successfully.".format(to_int(vm.TemplateID)))
+    log_line("TemplateID {0} saved to database successfully.".format(to_int(vm.TemplateID)), to_int(vm.TemplateID))
   except Exception as ex:
-    MessageBox.Show("An error occurred while saving the template:\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    log_line("Error saving template to database: {0}".format(str(ex)), vm.TemplateID)
+    MessageBox.Show("An error occurred while saving the template:\n\n{0}".format(str(ex)), "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    vm.Debug("Error saving TemplateID {0}: {1}".format(to_int(vm.TemplateID), str(ex)))
+    log_line("Error saving TemplateID {0}: {1}".format(to_int(vm.TemplateID), str(ex)), to_int(vm.TemplateID))
+
+  return
 
 
-def save_template_structure_to_db(vm):
-  # This function will save the template structure from the ViewModel back to the database.
-  # For simplicity, this example will delete existing questions/answers for the template and re-insert based on current VM state.
-  # In a production scenario, you might want a more sophisticated diff-and-update approach.
-  #! MP: CodeGPT's initial suggestion was to loop through and do individual INSERT/UPDATE statements, but that would be inefficient with many questions/answers. A more efficient approach would be to use a DataTable and a stored procedure to batch the updates, or at least build a single SQL command with multiple inserts. For now, we'll implement the straightforward approach and can optimize later if needed.
-  #! MP: Also, we need to ensure that any new questions/answers that don't have IDs yet get inserted into their respective tables and get assigned IDs before we can insert into the Template table. This adds complexity because of the dependencies. A transaction is essential here to maintain data integrity.
-  #! eg: can we instead build a table in code and use as a 'WITH xxx ()...' type INSERT etc to do in fewer calls?
-
+def save_template_to_db(vm):
+  # This function will save the template structure from the ViewModel (vm) back to the database.
   if vm is None:
     return
 
-  template_id = vm.TemplateID
-  if template_id is None or template_id == 0:
-    raise ValueError("Invalid TemplateID for saving.")
+  tid = to_int(vm.TemplateID)
+ 
+  # 1a) Resolve Questions/Answers (add any new ones,  handle duplicates as needed)
+  # Note: this logs results to Debug window AND the log_file
+  for g in vm.Groups:
+    for q in g.Questions:
+      #resolve_question_id(vm, q)
+      get_or_create_question_id(vm, q)
+      for a in q.Answers:
+        #resolve_answer_id(vm, a)
+        get_or_create_answer_id(vm, a)
 
-  # Begin transaction
-  _tikitDbAccess.Open()
+  # 1b) Flatten rows (output list of dicts with TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, 
+  # AnswerOrder for each answer (or question if no answers)) - NB: outputs status to log/debug
+  rows = flatten_template_rows(vm)
+
+    # 2) Build 'apply' statements for the 'write' phase
+  sql_batch = []
+  sql_batch.append("DELETE FROM Usr_MRAv2_Templates WHERE TemplateID = {0};".format(tid))
+
+  if rows:
+    values_sql = []
+    for r in rows:
+      values_sql.append(
+        "({TemplateID}, {QuestionID}, {AnswerID}, {Score}, '{QuestionGroup}', {QuestionOrder}, {AnswerOrder})".format(
+            TemplateID=to_int(r["TemplateID"]),
+            QuestionID=to_int(r["QuestionID"]),
+            AnswerID=to_int(r["AnswerID"]),
+            Score=to_int(r["Score"]),
+            QuestionGroup=sql_escape(r["QuestionGroup"]),
+            QuestionOrder=to_int(r["QuestionOrder"]),
+            AnswerOrder=to_int(r["AnswerOrder"]),
+          )
+        )
+
+    sql_batch.append(
+        "INSERT INTO Usr_MRAv2_Templates "
+        "(TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder) "
+        "VALUES {0};".format(", ".join(values_sql))
+    )
+    vm.Debug("Prepared INSERT for {0} rows".format(len(rows)))
+    log_line("Prepared INSERT for {0} rows.".format(len(rows)))
+      
+  run_apply_phase(vm, sql_batch)
+
+  vm.Debug("SAVE Complete for TemplateID: {0}".format(tid))
+  log_line("SAVE Complete for TemplateID: {0}".format(tid))
+  return
+
+
+def run_apply_phase(vm, sql_batch):
+  tid = to_int(vm.TemplateID)
+  if not sql_batch:
+    return
+
+  # Preferred: execute as ONE batch, so it is at least same session *if* your provider keeps it
+  # (still not a real transaction, but reduces partial apply risk)
+  batch_sql = ";\r\n".join(sql_batch) + ";"
+
+  vm.Debug("APPLY batch for TID={0}:\n{1}".format(tid, batch_sql))
+  log_line("APPLY batch for TID={0}".format(tid), tid)
+
   try:
-    # Delete existing structure for this template
-    delete_sql = "DELETE MRAT FROM Usr_MRAv2_Templates MRAT WHERE MRAT.TemplateID = {0}".format(template_id)
-    _tikitDbAccess.ExecuteNonQuery(delete_sql)
-
-    # Insert new structure based on VM
-    for g in vm.Groups:
-      for q in g.Questions:
-        for a in q.Answers:
-          insert_sql = """INSERT INTO Usr_MRAv2_Templates (TemplateID, QuestionGroup, QuestionOrder, QuestionID, AnswerOrder, AnswerID, Score, EmailComment)
-                          VALUES ({0}, '{1}', {2}, {3}, {4}, {5}, {6}, '{7}')""".format(
-                            template_id,
-                            g.GroupName.replace("'", "''"),  # escape single quotes
-                            q.QuestionDisplayOrder,
-                            q.QuestionID if q.QuestionID > 0 else "NULL",
-                            a.AnswerDisplayOrder,
-                            a.AnswerID if a.AnswerID > 0 else "NULL",
-                            a.Score,
-                            a.EmailComment.replace("'", "''")  # escape single quotes
-                          )
-          _tikitDbAccess.ExecuteNonQuery(insert_sql)
-
-    _tikitDbAccess.Commit()
+    # Try resolver first (often better at multi-statement batches)
+    runSQL(batch_sql, useAltResolver=False, returnType="String")
+    vm.Debug("APPLY batch executed successfully for TID={0}".format(tid))
+    log_line("APPLY batch executed successfully for TID={0}".format(tid), tid)
+    return
   except Exception as ex:
-    _tikitDbAccess.Rollback()
-    raise ex
-  finally:
-    _tikitDbAccess.Close()
+    vm.Debug("APPLY batch failed, falling back to per-statement. Error: " + str(ex))
+    log_line("APPLY batch failed, falling back to per-statement. Error: " + str(ex), tid)
+
+  # Fallback: execute each statement separately
+  for i, stmt in enumerate(sql_batch):
+    vm.Debug("APPLY stmt {0}/{1}: {2}".format(i+1, len(sql_batch), stmt))
+    runSQL(stmt, useAltResolver=False, returnType="String")
+  return
+
+
+def flatten_template_rows(vm):
+  """
+  Returns a list of dicts for use with 'INSERT INTO Usr_MRAv2_Templates (...) VALUES ...' with one dict per answer (or question if no answers), 
+  containing all necessary info to reconstruct the template structure in the database, including display orders:
+    {TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder}
+  """
+  rows = []
+  tid = to_int(vm.TemplateID)
+
+  for g in vm.Groups:
+    group_name = g.GroupName or ""
+
+    q_order = 1
+    for q in g.Questions:
+      if to_int(q.QuestionDisplayOrder) != q_order:
+        q.QuestionDisplayOrder = q_order
+
+      a_order = 1
+      for a in q.Answers:
+        if to_int(a.AnswerDisplayOrder) != a_order:
+          a.AnswerDisplayOrder = a_order
+
+        rows.append({
+          "TemplateID": tid,
+          "QuestionID": to_int(q.QuestionID),
+          "AnswerID": to_int(a.AnswerID),
+          "Score": to_int(a.Score, 0),
+          "QuestionGroup": group_name,
+          "QuestionOrder": to_int(q.QuestionDisplayOrder),
+          "AnswerOrder": to_int(a.AnswerDisplayOrder),
+        })
+        a_order += 1
+
+      q_order += 1
+
+  vm.Debug("Flattened template structure into {0} rows for database insertion.".format(len(rows)))
+  log_line("Flattened template structure into {0} rows for database insertion.".format(len(rows)), tid)
+  return rows
+
+
+def norm_text(s):
+  # basic normalisation; keep it conservative
+  s = "" if s is None else str(s)
+  s = s.strip()
+  # optional: collapse internal whitespace
+  # s = " ".join(s.split())
+  return s
+
+def get_or_create_question_id(vm, q):
+
+  txt = norm_text(q.QuestionText)
+  if txt == "":
+    raise Exception("Question text cannot be blank.")
+
+  # 1) lookup by text
+  existing = db_scalar(
+    "SELECT TOP 1 QuestionID FROM Usr_MRAv2_Question WHERE QuestionText = '{0}'".format(sql_escape(txt))
+  )
+  eid = to_int(existing, 0)
+  if eid > 0:
+    q.QuestionID = eid
+    return eid
+
+  # 2) insert
+  new_id = db_scalar(
+    "INSERT INTO Usr_MRAv2_Question (QuestionText, QuestionID) OUTPUT INSERTED.QuestionID SELECT '{0}', MAX(QuestionID) + 1 FROM Usr_MRAv2_Question".format(sql_escape(txt))
+  )
+  new_id = to_int(new_id, 0)
+  if new_id <= 0:
+    raise Exception("Failed to insert Question.")
+  q.QuestionID = new_id
+  return new_id
+
+def get_or_create_answer_id(vm, a):
+  txt = norm_text(a.AnswerText)
+  email = norm_text(a.EmailComment)
+
+  if txt == "":
+    raise Exception("Answer text cannot be blank.")
+
+  # 1) lookup by text+email (because you store EmailComment in the Answer table)
+  existing = db_scalar(
+    "SELECT TOP 1 AnswerID FROM Usr_MRAv2_Answer "
+    "WHERE AnswerText = '{0}' AND ISNULL(EmailComment,'') = '{1}'".format(
+      sql_escape(txt),
+      sql_escape(email)
+    )
+  )
+  eid = to_int(existing, 0)
+  if eid > 0:
+    a.AnswerID = eid
+    return eid
+
+  # 2) insert
+  new_id = db_scalar(
+    "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) OUTPUT INSERTED.AnswerID SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer".format(sql_escape(txt), sql_escape(email))
+  )
+  new_id = to_int(new_id, 0)
+  if new_id <= 0:
+    raise Exception("Failed to insert Answer.")
+  a.AnswerID = new_id
+  return new_id
+
+
+def resolve_question_id(vm, q):
+  """
+  Ensures q.QuestionID is correct for saving:
+    - If new (negative): insert, set new ID
+    - If existing and text differs:
+        * if used elsewhere -> prompt update globally vs clone
+        * else update directly
+  Returns final QuestionID.
+  """
+  qid = to_int(q.QuestionID)
+  new_text = q.QuestionText or ""
+
+  vm.Debug("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
+  log_line("Resolving QuestionID for question '{0}' (current ID: {1})".format(new_text, qid))
+
+  # compare current DB text if we already have ID to see if text was changed
+  if qid > 0:
+    db_text = db_scalar(
+        "SELECT QuestionText FROM Usr_MRAv2_Question WHERE QuestionID = {0};".format(qid)
+    )
+    db_text = "" if db_text is None else str(db_text)
+
+    if db_text == new_text:
+      return qid  # no change
+
+    # Check usage in other templates (excluding current template)
+    used_elsewhere = db_scalar(
+        "SELECT COUNT(*) FROM Usr_MRAv2_Templates "
+        "WHERE QuestionID = {0} AND TemplateID <> {1};".format(qid, to_int(vm.TemplateID))
+    )
+    used_elsewhere = 0 if used_elsewhere is None else to_int(used_elsewhere)
+
+    if used_elsewhere <= 0:
+      # safe: update in place
+      db_nonquery(
+          "UPDATE Usr_MRAv2_Question SET QuestionText = '{0}' WHERE QuestionID = {1};".format(
+              sql_escape(new_text), qid
+          )
+      )
+      vm.Debug("Updated question text for QuestionID={0} since not used in other templates.".format(qid))
+      log_line("Updated question text for QuestionID={0} since not used in other templates.".format(qid))
+      return qid
+
+    # Used elsewhere: prompt
+    res = MessageBox.Show(
+        "Question text has been changed, and this QuestionID is used in {0} other template(s).\n\n"
+        "YES  = Update ALL templates (update Usr_MRAv2_Question)\n"
+        "NO   = Create a NEW question (only this template will use it)\n"
+        "CANCEL = Abort save".format(used_elsewhere),
+        "Question text changed",
+        MessageBoxButtons.YesNoCancel,
+        MessageBoxIcon.Warning
+    )
+
+    if res == DialogResult.Cancel:
+        vm.Debug("Save cancelled by user due to question text change for QuestionID={0}".format(qid))
+        log_line("Save cancelled by user due to question text change for QuestionID={0}".format(qid))
+        raise Exception("Save cancelled by user (question change).")
+
+    if res == DialogResult.Yes:
+        db_nonquery(
+            "UPDATE Usr_MRAv2_Question SET QuestionText = '{0}' WHERE QuestionID = {1};".format(
+                sql_escape(new_text), qid
+            )
+        )
+        vm.Debug("Updated question text for QuestionID={0}. User requested update 'all' other occurrences.".format(qid))
+        log_line("Updated question text for QuestionID={0}. User requested update 'all' other occurrences.".format(qid))
+        return qid
+
+  # Not previously used / user answered 'no' to 'updating' existing question text, so clone:
+  insert_sql = (
+      "INSERT INTO Usr_MRAv2_Question (QuestionText, QuestionID) "
+      "OUTPUT INSERTED.QuestionID "
+      "SELECT '{0}', MAX(QuestionID) + 1 FROM Usr_MRAv2_Question;"
+  ).format(sql_escape(new_text))
+  new_id = db_scalar(insert_sql)
+  q.QuestionID = to_int(new_id)
+  vm.Debug("Inserted new question '{0}' with QuestionID={1} since user requested to clone due to text change.".format(new_text, new_id))
+  log_line("Inserted new question '{0}' with QuestionID={1} since user requested to clone due to text change.".format(new_text, new_id))
+  return to_int(new_id)
+
+
+def resolve_answer_id(vm, a):
+  """
+  Ensures a.AnswerID is correct for saving:
+    - If new (negative): insert, set new ID
+    - If existing and text/email differs:
+        * if used elsewhere -> prompt update globally vs clone
+        * else update directly
+  Returns final AnswerID.
+  """
+  aid = to_int(a.AnswerID)
+  new_text = a.AnswerText or ""
+  new_email = a.EmailComment or ""
+
+  vm.Debug("Resolving AnswerID for answer '{0}' (current ID: {1})".format(new_text, aid))
+  log_line("Resolving AnswerID for answer '{0}' (current ID: {1})".format(new_text, aid))
+
+  # compare current DB text/email
+  db_row = None
+  _tikitDbAccess.Open(
+      "SELECT AnswerText, EmailComment FROM Usr_MRAv2_Answer WHERE AnswerID = {0};".format(aid)
+  )
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows and dr.Read():
+    t = "" if dr.IsDBNull(0) else dr.GetString(0)
+    e = "" if dr.IsDBNull(1) else dr.GetString(1)
+    db_row = (t, e)
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  if db_row is None:
+    # If somehow missing in DB, treat like new
+    insert_sql = (
+        "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) "
+        "OUTPUT INSERTED.AnswerID "
+        "SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer;"
+    ).format(sql_escape(new_text), sql_escape(new_email))
+    new_id = db_scalar(insert_sql)
+    a.AnswerID = to_int(new_id)
+    vm.Debug("Inserted new answer '{0}' with AnswerID={1}. No match to existing in DB.".format(new_text, new_id))
+    log_line("Inserted new answer '{0}' with AnswerID={1}. No match to existing in DB.".format(new_text, new_id))   
+    return to_int(new_id)
+
+
+  db_text, db_email = db_row
+  if db_text == new_text and (db_email or "") == (new_email or ""):
+    vm.Debug("No change to answer '{0}' with AnswerID={1}. Matches existing in DB.".format(new_text, aid))
+    log_line("No change to answer '{0}' with AnswerID={1}. Matches existing in DB.".format(new_text, aid))   
+    return aid  # no change
+
+  used_elsewhere = db_scalar(
+      "SELECT COUNT(*) FROM Usr_MRAv2_Templates "
+      "WHERE AnswerID = {0} AND TemplateID <> {1};".format(aid, vm.TemplateID)
+  )
+  used_elsewhere = 0 if used_elsewhere is None else to_int(used_elsewhere)
+
+  if used_elsewhere <= 0:
+    # not used elsewhere: safe to update in place
+    db_nonquery(
+        "UPDATE Usr_MRAv2_Answer SET AnswerText = '{0}', EmailComment = '{1}' WHERE AnswerID = {2};".format(
+            sql_escape(new_text), sql_escape(new_email), aid
+        )
+    )
+    vm.Debug("Updated answer text/email for AnswerID={0} since not used in other templates.".format(aid))
+    log_line("Updated answer text/email for AnswerID={0} since not used in other templates.".format(aid))
+    return aid
+
+  # used elsewhere prompt:
+  res = MessageBox.Show(
+      "Answer text/comment has been changed, and this AnswerID is used in {0} other template(s).\n\n"
+      "YES  = Update ALL templates (update Usr_MRAv2_Answer)\n"
+      "NO   = Create a NEW answer (only this template will use it)\n"
+      "CANCEL = Abort save".format(used_elsewhere),
+      "Answer changed",
+      MessageBoxButtons.YesNoCancel,
+      MessageBoxIcon.Warning
+  )
+
+  if res == DialogResult.Cancel:
+    vm.Debug("Save cancelled by user due to answer text/email change for AnswerID={0}".format(aid))
+    log_line("Save cancelled by user due to answer text/email change for AnswerID={0}".format(aid))
+    raise Exception("Save cancelled by user (answer change).")
+
+  if res == DialogResult.Yes:
+    db_nonquery(
+        "UPDATE Usr_MRAv2_Answer SET AnswerText = '{0}', EmailComment = '{1}' WHERE AnswerID = {2};".format(
+            sql_escape(new_text), sql_escape(new_email), aid
+        )
+    )
+    vm.Debug("Updated answer text/email for AnswerID={0}. User requested update 'all' other occurrences.".format(aid))
+    log_line("Updated answer text/email for AnswerID={0}. User requested update 'all' other occurrences.".format(aid))
+    return aid
+
+  # NO: clone
+  insert_sql = (
+      "INSERT INTO Usr_MRAv2_Answer (AnswerText, EmailComment, AnswerID) "
+      "OUTPUT INSERTED.AnswerID "
+      "SELECT '{0}', '{1}', MAX(AnswerID) + 1 FROM Usr_MRAv2_Answer;"
+    ).format(sql_escape(new_text), sql_escape(new_email))
+  new_id = db_scalar(insert_sql)
+  a.AnswerID = to_int(new_id)
+  vm.Debug("Inserted new answer '{0}' with AnswerID={1} since user requested to clone due to text/email change.".format(new_text, new_id))
+  log_line("Inserted new answer '{0}' with AnswerID={1} since user requested to clone due to text/email change.".format(new_text, new_id))
+  return to_int(new_id)
+
+
+## Helper function for SQL
+def db_scalar(sql):
+  # Returns first column of first row or None.
+  # In theory, we could just use TikitResolver for this, but to keep it consistent with our db access patterns and ensure proper opening/closing, we'll do it manually here.
+  val = None
+  _tikitDbAccess.Open(sql)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    if dr.Read():
+      if not dr.IsDBNull(0):
+        val = dr.GetValue(0)
+    dr.Close()
+  _tikitDbAccess.Close()
+  return val
+
+def db_nonquery(sql):
+  # Executes non-query SQL.
+  _tikitDbAccess.Open(sql)
+  # Partner/Tikit often executes on Open for non-select; if you have a dedicated method use that instead.
+  #! We do have 'runSQL'
+  # Ensure reader closed if any
+  dr = _tikitDbAccess._dr
+  if dr is not None:
+    try:
+      dr.Close()
+    except:
+      pass
+  _tikitDbAccess.Close()
+
+
+def sql_escape(s):
+  # Very basic single-quote escaping for building SQL strings.
+  if s is None:
+    return ""
+  return str(s).replace("'", "''")
+
+def is_dbnull(x):
+  try:
+    return x is None or x == DBNull.Value
+  except:
+    return x is None
+
+def to_int(x, default=0):
+  if is_dbnull(x):
+    return default
+  try:
+    return Convert.ToInt32(x)
+  except:
+    try:
+      return Convert.ToInt32(str(x))
+    except:
+      return default
+
+def to_str(x, default=""):
+  if is_dbnull(x):
+    return default
+  try:
+    return str(x)
+  except:
+    return default
+
+
+def validate_unique_question_text(vm):
+  # Returns (ok, message)
+  # Rule: within a template, QuestionText must be unique (case/trim normalised)
+  seen = {}   # norm_text -> first QuestionVM
+  dups = []   # list of tuples: (text, first_q, dup_q)
+
+  for g in vm.Groups:
+    for q in g.Questions:
+      t = norm_text(q.QuestionText)
+      if t == "":
+        return (False, "One or more questions have blank text. Please complete or delete blank questions before saving.")
+      if t in seen:
+        dups.append((t, seen[t], q))
+      else:
+        seen[t] = q
+
+  if not dups:
+    return (True, "")
+
+  # Build a helpful error message
+  # Include group + display order to help user find them
+  lines = []
+  lines.append("Duplicate QuestionText found in this template. Question text must be unique before saving.\n")
+  for (t, q1, q2) in dups[:20]:
+    g1 = q1.ParentGroup.GroupName if getattr(q1, "ParentGroup", None) is not None else "?"
+    g2 = q2.ParentGroup.GroupName if getattr(q2, "ParentGroup", None) is not None else "?"
+    lines.append("• '{0}'".format(t))
+    lines.append("    - First:  Group='{0}', Order={1}, QID={2}".format(g1, to_int(q1.QuestionDisplayOrder), to_int(q1.QuestionID)))
+    lines.append("    - Again:  Group='{0}', Order={1}, QID={2}".format(g2, to_int(q2.QuestionDisplayOrder), to_int(q2.QuestionID)))
+  if len(dups) > 20:
+    lines.append("\n(Showing first 20 duplicates; there are {0} total.)".format(len(dups)))
+
+  return (False, "\n".join(lines))
 
 ######################################################################################################################
 
+## P R E V I E W   M R A   T E M P L A T E   ##
+
+def btn_MRATemplate_Preview_Click(s, event):
+  # This function will load the 'Preview' tab (made to look like 'matter-level' XAML) for the selected item
+
+  # if nothing selected, alert user and quit
+  if lbl_MRATemplate_ID.Content == '0' or dg_MRA_Templates.SelectedIndex == UNSELECTED:
+    MessageBox.Show("Nothing selected to Preview!", "Error: Preview selected Matter Risk Assessment...")
+    return
+  
+  # put details into header area of 'Preview' tab
+  tb_MRAPreview_ID.Text = str(lbl_MRATemplate_ID.Content)
+  tb_MRAPreview_Name.Text = str(tb_MRATemplate_Name.Text)
+  tb_MRAPreview_Score.Text = '0'          
+  tb_MRAPreview_RiskCategory.Text = '-'   
+  tb_MRAPreview_RiskCategoryID.Text = "1" if tb_MRAPreview_RiskCategory.Text == "Low Risk" else "2" if tb_MRAPreview_RiskCategory.Text == "Medium Risk" else "3"
+  tb_MRAPreview_ScoreTriggerMedium.Text = str(tb_ScoreMedFrom.Text)
+  tb_MRAPreview_ScoreTriggerHigh.Text = str(tb_ScoreHighFrom.Text)
+
+  # get AnswerList in memory for this template
+  MRAPreview_load_Answers_toMemory()
+
+  # load DataGrid with Questions
+  MRAPreview_load_Questions_DataGrid()
+
+  # finally, show this Preview tab and hide 'Overview' tab
+  ti_MRA_Overview.Visibility = Visibility.Collapsed
+  ti_MRA_Preview.Visibility = Visibility.Visible
+  ti_MRA_Preview.IsSelected = True
+  #MessageBox.Show("Preview selected MRA click", "Preview selected Matter Risk Assessment...")
+  return
+  
+
+def btn_MRAPreview_BackToOverview_Click(sender, e):
+  # Just switch back to overview tab; VM is already updated since we're binding directly to the edit fields
+  
+  ti_MRA_Preview.Visibility = Visibility.Collapsed
+  ti_MRA_Overview.Visibility = Visibility.Visible
+  ti_MRA_Overview.IsSelected = True
+  return
+
+# Concept with Preview MRA is to load MRA Template into memory only - and we get answer data from DataGrid data
+# difference from v1 is that we have different columns in the datagrid, and got rid of redundant ones.
+
+# -------------------------
+# Answer model
+# -------------------------
+class AnswerItem(object):
+  def __init__(self, answer_id, text, email_comment="", score=0):
+    self.AnswerID = int(answer_id) if answer_id is not None else None
+    self.AnswerText = text or ""
+    self.EmailComment = email_comment or ""
+    self.Score = int(score) if score is not None else 0
+
+  def __repr__(self):
+    return self.AnswerText
+
+# -------------------------
+# Question model (bindable)
+# -------------------------
+class QuestionItem(NotifyBase):
+  def __init__(self, group_name, order_no, qid, qtext, answers):
+    NotifyBase.__init__(self)
+    self.QuestionGroup = group_name or ""
+    self.QuestionOrder = int(order_no) if order_no is not None else 0
+    self.QuestionID = int(qid) if qid is not None else None
+    self.QuestionText = qtext or ""
+    self.AvailableAnswers = answers or []
+
+    self._SelectedAnswer = None  # <-- bind target
+
+  @property
+  def SelectedAnswer(self):
+    return self._SelectedAnswer
+
+  @SelectedAnswer.setter
+  def SelectedAnswer(self, value):
+    # value should be an AnswerItem (or None)
+    if self._SelectedAnswer == value:
+      return
+    self._SelectedAnswer = value
+
+    # Notify all dependents
+    self._raise("SelectedAnswer")
+    self._raise("SelectedAnswerID")
+    self._raise("SelectedAnswerText")
+    self._raise("SelectedAnswerScore")
+    self._raise("SelectedAnswerEmailComment")
+
+  # Computed (read-only) convenience properties
+  @property
+  def SelectedAnswerID(self):
+    return None if self._SelectedAnswer is None else self._SelectedAnswer.AnswerID
+
+  @property
+  def SelectedAnswerText(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.AnswerText
+
+  @property
+  def SelectedAnswerScore(self):
+    return 0 if self._SelectedAnswer is None else self._SelectedAnswer.Score
+
+  @property
+  def SelectedAnswerEmailComment(self):
+    return "" if self._SelectedAnswer is None else self._SelectedAnswer.EmailComment
+  
+
+def _get_preview_current_question():
+  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+  if view is None:
+    return None
+  return view.CurrentItem
+
+
+def MRAPreview_load_Answers_toMemory():
+  global MRA_PREVIEW_ANSWERS_BY_QID
+  MRA_PREVIEW_ANSWERS_BY_QID = {}
+
+  mySQL = """SELECT T.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.Score
+             FROM Usr_MRAv2_Templates T
+                JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
+             WHERE T.TemplateID = {0}
+             ORDER BY T.QuestionID, T.AnswerOrder;""".format(tb_MRAPreview_ID.Text)
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      qid = to_int(dr.GetValue(0))
+      aid = to_int(dr.GetValue(1))
+      text = "" if dr.IsDBNull(2) else dr.GetString(2)
+      ec = "" if dr.IsDBNull(3) else dr.GetString(3)
+      score = 0 if dr.IsDBNull(4) else to_int(dr.GetValue(4))
+
+      item = AnswerItem(aid, text, ec, score)
+      MRA_PREVIEW_ANSWERS_BY_QID.setdefault(qid, []).append(item)
+
+    dr.Close()
+  _tikitDbAccess.Close()
+  return
+
+def MRAPreview_load_Questions_DataGrid():
+  # This function will populate the Matter Risk Assessment Preview datagrid
+  #MessageBox.Show("Start - getting group ID", "Refreshing list (datagrid of questions)")
+
+  global MRA_PREVIEW_QUESTIONS_LIST
+  # firstly, wipe list in case we're reloading
+  MRA_PREVIEW_QUESTIONS_LIST = []
+
+  #MessageBox.Show("Genating SQL...", "Refreshing list (datagrid of questions)")
+  mySQL = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             FROM Usr_MRAv2_Templates MRAT
+                LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
+             WHERE MRAT.TemplateID = {0}
+             GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(tb_MRAPreview_ID.Text)
+  
+  #MessageBox.Show("SQL: " + str(mySQL) + "\n\nRefreshing list (datagrid of questions)", "Debug: Populating List of Questions (Preview MRA)")
+
+  _tikitDbAccess.Open(mySQL)
+  dr = _tikitDbAccess._dr
+  if dr is not None and dr.HasRows:
+    while dr.Read():
+      group_name = "" if dr.IsDBNull(0) else dr.GetValue(0)
+      order_no = to_int(dr.GetValue(1))
+      qid = to_int(dr.GetValue(2))
+      qtext = "" if dr.IsDBNull(3) else dr.GetString(3)
+
+      answers = MRA_PREVIEW_ANSWERS_BY_QID.get(qid, [])
+      MRA_PREVIEW_QUESTIONS_LIST.append(QuestionItem(group_name, order_no, qid, qtext, answers))
+
+    dr.Close()
+  _tikitDbAccess.Close()
+  
+  # and now we have a list of question items in memory for this template, with their available answers;
+  # we can bind this to the datagrid and it should show the questions grouped by 'QuestionGroup' with a
+  # combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the
+  # QuestionItem, which will allow us to easily get the selected answer and its score/email comment (when
+  # user selects an answer in the preview)
+  # create observable collection for WPF and bind to datagrid; this should show the questions grouped by 'QuestionGroup' with a combo box of available answers for each question (bound to the 'SelectedAnswerID' property of the QuestionItem, which will allow us to easily get the selected answer and its score/email comment when user selects an answer in the preview)
+  view = ListCollectionView(MRA_PREVIEW_QUESTIONS_LIST)
+  view.GroupDescriptions.Add(PropertyGroupDescription("QuestionGroup"))
+  dg_MRAPreview.ItemsSource = view
+
+  has_items = (len(MRA_PREVIEW_QUESTIONS_LIST) > 0)
+  grid_Preview_MRA.Visibility = Visibility.Visible if has_items else Visibility.Collapsed
+  tb_NoMRA_PreviewQs.Visibility = Visibility.Collapsed if has_items else Visibility.Visible
+
+  if has_items:
+    # defer until UI has built group containers
+    dg_MRAPreview.Dispatcher.BeginInvoke(
+                  DispatcherPriority.ContextIdle,
+                  Action(_select_first_preview_row)
+                  )
+
+    #first = MRA_PREVIEW_QUESTIONS_LIST[0]   # <-- this is the first QUESTION row
+    #dg_MRAPreview.SelectedItem = first      # <-- avoids group header selection
+    #view.MoveCurrentTo(first)               # <-- keeps CurrentItem in sync with SelectedItem
+    #dg_MRAPreview.ScrollIntoView(first)
+  return
+
+
+def _select_first_preview_row():
+  if len(MRA_PREVIEW_QUESTIONS_LIST) <= 0:
+    return
+
+  first = MRA_PREVIEW_QUESTIONS_LIST[0]
+
+  # force containers to exist
+  try:
+    dg_MRAPreview.UpdateLayout()
+  except:
+    pass
+
+  # 1) Force a real selection change event (important with Grouping DataGrids), select nothing and then first row
+  dg_MRAPreview.SelectedItem = None
+  dg_MRAPreview.SelectedItem = first
+
+  # 2) ensure CurrentItem is aligned
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(first)
+    except:
+      pass
+
+  # 3) Commit "current cell" so WPF treats it as a real row selection
+  try:
+    if dg_MRAPreview.Columns.Count > 0:
+      dg_MRAPreview.CurrentCell = DataGridCellInfo(first, dg_MRAPreview.Columns[0])
+  except:
+    pass
+
+  try:
+    dg_MRAPreview.ScrollIntoView(first)
+    dg_MRAPreview.Focus()
+  except:
+    pass
+
+  _sync_combo_to_current_row()
+  MRAPreview_RecalcTotalScore()
+
+
+def MRAPreview_AdvanceToNextQuestion():
+  # Uses the real list, so grouping doesn't break indices
+  if len(MRA_PREVIEW_QUESTIONS_LIST) <= 0:
+    return
+
+  curr = _get_current_question()
+  if curr is None:
+    # if something went odd, just go to first
+    _select_first_preview_row()
+    return
+
+  try:
+    idx = MRA_PREVIEW_QUESTIONS_LIST.index(curr)
+  except:
+    # CurrentItem might be a group wrapper; fall back to SelectedItem
+    try:
+      idx = MRA_PREVIEW_QUESTIONS_LIST.index(dg_MRAPreview.SelectedItem)
+    except:
+      _select_first_preview_row()
+      return
+
+  next_idx = idx + 1
+  if next_idx >= len(MRA_PREVIEW_QUESTIONS_LIST):
+    next_idx = 0  # wrap to first; change this if you'd rather stop at end
+
+  nxt = MRA_PREVIEW_QUESTIONS_LIST[next_idx]
+
+  # Update selection + CurrentItem + scroll, then sync right panel combo
+  dg_MRAPreview.SelectedItem = nxt
+
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      view.MoveCurrentTo(nxt)
+    except:
+      pass
+
+  try:
+    dg_MRAPreview.ScrollIntoView(nxt)
+  except:
+    pass
+
+  _sync_combo_to_current_row()
+  return
+  
+
+def dg_MRAPreview_SelectionChanged(s, event):
+  # defer slightly so CurrentItem is updated, especially with grouping
+  try:
+    dg_MRAPreview.Dispatcher.BeginInvoke(
+      DispatcherPriority.Background,
+      Action(_sync_combo_to_current_row)
+    )
+  except:
+    _sync_combo_to_current_row()
+  return
+
+
+def _current_preview_row():
+  # Prefer CurrentItem (works properly with grouping)
+  view = CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRAPreview.SelectedItem
+
+def cbo_MRAPreview_SelectedComboAnswer_SelectionChanged(s, event):
+  global _preview_combo_syncing
+  if _preview_combo_syncing:
+    return  # ignore programmatic sync changes
+
+  q = _get_current_question()
+  if q is None or not hasattr(q, "SelectedAnswer"):
+    return
+
+  ans = cbo_MRAPreview_SelectedComboAnswer.SelectedItem
+
+  # IMPORTANT: ignore the transient "None" that occurs when ItemsSource swaps
+  # unless the user genuinely cleared it (rare in your UI)
+  if ans is None:
+    return
+
+  q.SelectedAnswer = ans
+
+  view = _get_preview_view()
+  if view is not None:
+    view.Refresh()
+
+  MRAPreview_RecalcTotalScore()
+  ##MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
+  return
+
+def btn_MRAPreview_SaveAnswer_Click(s, event):
+  q = _current_preview_row()
+  if q is None:
+    MessageBox.Show("No question selected to save answer for!", "Save")
+    return
+
+  a = getattr(q, "SelectedAnswer", None)
+  if a is None:
+    MessageBox.Show("No answer selected for the current question!", "Save")
+    return
+
+  #MessageBox.Show("Saved: QID={0}, AnswerID={1}".format(q.QuestionID, a.AnswerID))
+  # if 'move to next' checkbox is ticked, then move to next question
+  try:
+    auto = (chk_MRAPreview_AutoSelectNext.IsChecked == True)
+  except:
+    auto = False
+
+  if auto:
+    # Defer slightly so UI settles before we change selection
+    try:
+      dg_MRAPreview.Dispatcher.BeginInvoke(
+        DispatcherPriority.Background,
+        lambda: MRAPreview_AdvanceToNextQuestion()
+      )
+    except:
+      MRAPreview_AdvanceToNextQuestion()
+
+  return
+
+## Helper functions to sync the ComboBox to datagrid (in terms of displaying value)
+def _get_preview_view():
+  return CollectionViewSource.GetDefaultView(dg_MRAPreview.ItemsSource)
+
+def _get_current_question():
+  view = _get_preview_view()
+  if view is not None:
+    try:
+      return view.CurrentItem
+    except:
+      pass
+  return dg_MRAPreview.SelectedItem
+
+def _sync_combo_to_current_row():
+  global _preview_combo_syncing
+  q = _get_current_question()
+  if q is None or not hasattr(q, "AvailableAnswers"):
+    return
+
+  _preview_combo_syncing = True
+  try:
+    # Make sure combo is showing this row’s answers
+    try:
+      cbo_MRAPreview_SelectedComboAnswer.ItemsSource = q.AvailableAnswers
+    except:
+      pass
+
+    target = getattr(q, "SelectedAnswer", None)
+    if target is None:
+      cbo_MRAPreview_SelectedComboAnswer.SelectedItem = None
+      return
+
+    # Choose matching item by AnswerID
+    tid = getattr(target, "AnswerID", None)
+    found = None
+    for a in q.AvailableAnswers:
+      if getattr(a, "AnswerID", None) == tid:
+        found = a
+        break
+
+    cbo_MRAPreview_SelectedComboAnswer.SelectedItem = found
+  finally:
+    _preview_combo_syncing = False
+
+
+def MRAPreview_RecalcTotalScore():
+  total = 0
+  try:
+    for q in MRA_PREVIEW_QUESTIONS_LIST:
+      # SelectedAnswerScore is 0 when no answer selected
+      try:
+        total += int(getattr(q, "SelectedAnswerScore", 0) or 0)
+      except:
+        pass
+  except:
+    total = 0
+
+  tb_MRAPreview_Score.Text = str(total)
+
+  # now work out 'category' based on score and thresholds; we have two thresholds: MediumFrom and HighFrom; if score is below MediumFrom, it's Low Risk; if it's between MediumFrom and HighFrom, it's Medium Risk; if it's above HighFrom, it's High Risk
+  tb_MRAPreview_ScoreTriggerMedium.Text
+  tb_MRAPreview_ScoreTriggerHigh.Text
+  if total < to_int(tb_MRAPreview_ScoreTriggerMedium.Text): 
+    category = "Low"
+    categoryNum = 1 
+  elif total >= to_int(tb_MRAPreview_ScoreTriggerMedium.Text) and total < to_int(tb_MRAPreview_ScoreTriggerHigh.Text):
+    category = "Medium" 
+    categoryNum = 2
+  elif total >= to_int(tb_MRAPreview_ScoreTriggerHigh.Text):
+    category = "High" 
+    categoryNum = 3
+  else: 
+    category = "-"
+    categoryNum = 0 
+  
+  tb_MRAPreview_RiskCategory.Text = category
+  tb_MRAPreview_RiskCategoryID.Text = str(categoryNum)
+  return total
+
+
+# SELECT Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.QuestionID
+# FROM Usr_MRAv2_Answer Ans 
+#   LEFT OUTER JOIN Usr_MRAv2_Templates T ON Ans.AnswerID = T.AnswerID
+# WHERE T.TemplateID = 1
+
+
+
+##########################################################################
 
 ]]>
     </Init>
@@ -2084,9 +3085,9 @@ tb_MRATemplate_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATem
 lbl_MRATemplate_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRATemplate_ID')              # Label to store ID of selected NMRA template
 tb_MRATemplate_ExpiresInXdays = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_ExpiresInXdays')
 
-tb_ScoreLowTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreLowTo')
+#tb_ScoreLowTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreLowTo')
 tb_ScoreMedFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedFrom')
-tb_ScoreMedTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedTo')
+#tb_ScoreMedTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedTo')
 tb_ScoreHighFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreHighFrom')
 
 #! Buttons for MRA Template management
@@ -2095,14 +3096,14 @@ btn_MRATemplate_AddNew.Click += btn_MRATemplate_AddNew_Click
 
 btn_MRATemplate_SaveHeaderDetails = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_SaveHeaderDetails')
 btn_MRATemplate_SaveHeaderDetails.Click += btn_MRATemplate_SaveHeaderDetails_Click
-
-# still to do below
-btn_MRATemplate_CopySelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_CopySelected')
-btn_MRATemplate_CopySelected.Click += btn_MRATemplate_CopySelected_Click
 btn_MRATemplate_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_Preview')
 btn_MRATemplate_Preview.Click += btn_MRATemplate_Preview_Click
 btn_MRATemplate_Edit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_Edit')
 btn_MRATemplate_Edit.Click += btn_MRATemplate_Edit_Click
+
+# still to do below
+btn_MRATemplate_CopySelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_CopySelected')
+btn_MRATemplate_CopySelected.Click += btn_MRATemplate_CopySelected_Click
 btn_MRATemplate_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_DeleteSelected')
 btn_MRATemplate_DeleteSelected.Click += btn_MRATemplate_DeleteSelected_Click
 
@@ -2160,32 +3161,33 @@ lbl_NoAnswers = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoAnswers')
 
 ## P R E V I E W   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
 btn_MRAPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_BackToOverview')
-#btn_MRAPreview_BackToOverview.Click += PreviewMRA_BackToOverview
-lbl_MRA_Preview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_ID')
-lbl_MRA_Preview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Preview_Name')
-lbl_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_Score')
-lbl_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategory')
-lbl_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_RiskCategoryID')
+btn_MRAPreview_BackToOverview.Click += btn_MRAPreview_BackToOverview_Click
 
+tb_MRAPreview_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ID')
+tb_MRAPreview_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_Name')
+tb_MRAPreview_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_Score')
+tb_MRAPreview_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_RiskCategory')
+tb_MRAPreview_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_RiskCategoryID')
+tb_MRAPreview_ScoreTriggerMedium = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ScoreTriggerMedium')
+tb_MRAPreview_ScoreTriggerHigh = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_ScoreTriggerHigh')
 
 tb_NoMRA_PreviewQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoMRA_PreviewQs')
-dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
-#dg_MRAPreview.SelectionChanged += MRA_Preview_SelectionChanged
-dg_GroupItems_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems_Preview')
-#dg_GroupItems_Preview.SelectionChanged += GroupItems_Preview_SelectionChanged
 grid_Preview_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grid_Preview_MRA')
+
+dg_MRAPreview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MRAPreview')
+dg_MRAPreview.SelectionChanged += dg_MRAPreview_SelectionChanged
+
+tb_MRAPreview_QuestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_QuestionText')
+cbo_MRAPreview_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_MRAPreview_SelectedComboAnswer')
+cbo_MRAPreview_SelectedComboAnswer.SelectionChanged += cbo_MRAPreview_SelectedComboAnswer_SelectionChanged
+btn_MRAPreview_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRAPreview_SaveAnswer')
+btn_MRAPreview_SaveAnswer.Click += btn_MRAPreview_SaveAnswer_Click
+chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
+tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
+
 lbl_MRAPreview_DGID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_DGID')
 lbl_MRAPreview_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRAPreview_CurrVal')
-chk_MRAPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_MRAPreview_AutoSelectNext')
 
-tb_previewMRA_QestionText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_previewMRA_QestionText')
-cbo_preview_MRA_SelectedComboAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_preview_MRA_SelectedComboAnswer')
-#cbo_preview_MRA_SelectedComboAnswer.SelectionChanged += update_EmailComment
-tb_preview_MRA_SelectedTextAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_preview_MRA_SelectedTextAnswer')
-#tb_preview_MRA_SelectedTextAnswer.TextChanged += update_EmailComment
-btn_preview_MRA_SaveAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_preview_MRA_SaveAnswer')
-#btn_preview_MRA_SaveAnswer.Click += preview_MRA_SaveAnswer
-tb_MRAPreview_EC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRAPreview_EC')
 
 
 ## New MRA Template Editor ViewModel ##
@@ -2244,6 +3246,6 @@ myOnLoadEvent(_tikitSender, 'onLoad')
 
 ]]>
     </Loaded>
-  </RiskPracticeV2>
+  </MRAv2_Setup>
 
 </tfb>

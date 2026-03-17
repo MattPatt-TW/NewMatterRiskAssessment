@@ -627,7 +627,24 @@ tb_NoFEs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoFEs')
 stk_SelectedMRAHeader_NoData = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_SelectedMRAHeader_NoData')
 stk_SelectedMRAHeader = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_SelectedMRAHeader')
 
+#################################################################################################
+# code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
+# (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
+# Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
+myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
+myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
+myGrid = LogicalTreeHelper.GetParent(myDockPanel)
 
+tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
+tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
+tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
+tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
+
+tikitCancel.Content = 'Close'
+tikitOK.Visibility = Visibility.Collapsed
+tikitApply.Visibility = Visibility.Collapsed
+tikitContact.Visibility = Visibility.Collapsed
+#################################################################################################
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')

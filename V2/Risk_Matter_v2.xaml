@@ -66,7 +66,8 @@
                       Text="TES0080/1" Width="Auto" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" Padding="4,0"/>
 
           <TextBlock x:Name="tb_ClientName" 
-                     Text="Example Client Name" MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="White" FontWeight="Bold"  />
+                     Text="Example Client Name" MaxWidth="144" 
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="White" FontWeight="Bold"  />
 
         </StackPanel>
 
@@ -187,18 +188,41 @@
                   <Setter Property="Template">
                     <Setter.Value>
                       <ControlTemplate TargetType="{x:Type GroupItem}">
-                        <Expander IsExpanded="True" Margin="0,2,0,6">
+                        <Expander IsExpanded="True" Margin="4,2,4,6">
+
+                          <Expander.Style>
+                            <Style TargetType="Expander">
+                              <Setter Property="Background" Value="#FFF3F3F3"/>
+                              <Setter Property="BorderBrush" Value="#FFD0D0D0"/>
+                              <Setter Property="Padding" Value="2"/>
+                              <Setter Property="BorderThickness" Value="1"/>
+                              
+
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding Name}" Value="Entity">
+                                  <Setter Property="Background" Value="#FFEAF4EA"/>
+                                  <Setter Property="BorderBrush" Value="#FFB7D7B8"/>
+                                </DataTrigger>
+
+                                <DataTrigger Binding="{Binding Name}" Value="Matter">
+                                  <Setter Property="Background" Value="#FFEAF0F8"/>
+                                  <Setter Property="BorderBrush" Value="#FFB8CBE6"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Expander.Style>
+
                           <Expander.Header>
                             <StackPanel>
                               <TextBlock Text="{Binding Name}"
                                          FontWeight="SemiBold"
-                                         Margin="2,4,2,2" />
-                              <Separator Margin="0,0,0,2"/>
+                                         Margin="6,4,6,2"/>
+                              <Separator Margin="4,0,4,2"/>
                             </StackPanel>
                           </Expander.Header>
 
-                          <!-- The grouped items render here -->
-                          <ItemsPresenter />
+                           <!--grouped items--> 
+                          <ItemsPresenter Margin="10,2,0,0"/>
                         </Expander>
                       </ControlTemplate>
                     </Setter.Value>
@@ -330,14 +354,14 @@
                               <Button Tag="{Binding}"
                                       Margin="0,0,0,6"
                                       HorizontalAlignment="Stretch">
-                                <StackPanel>
-                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                  <TextBlock FontSize="11" Foreground="#666">
-                                    <Run Text="{Binding Type}"/>
-                                    <Run Text=" • Validity: "/>
-                                    <Run Text="{Binding ValidityDays}"/>
-                                    <Run Text=" days"/>
-                                  </TextBlock>
+                                <StackPanel Orientation="Vertical">
+                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextAlignment="Center"/>
+                                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock FontSize="11" Foreground="#666" Text="{Binding Type}" />
+                                    <TextBlock FontSize="11" Foreground="#666" Text=" • Validity: "/>
+                                    <TextBlock FontSize="11" Foreground="#666" Text="{Binding ValidityDays}"/>
+                                    <TextBlock FontSize="11" Foreground="#666"  Text=" days"/>
+                                  </StackPanel>
                                 </StackPanel>
 
                               </Button>

@@ -5,37 +5,187 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:DesignHeight="800" d:DesignWidth="1200" Height="auto" Width="auto"  
-    Background="#FFEFF3FC" Name="RiskPracticeV2">
+    Background="#FFEFF1F1" Name="RiskPractice_v2">
+  <Label x:Name="lbl_FormHeader" Content="Practice-Level Matter Risk Assessment and File Reviews - Management Area" 
+         Height="32" Canvas.Left="10" Canvas.Top="10" Width="590" FontWeight="Bold" Foreground="#FF6150BE" FontSize="16"/>
 
-  <Label x:Name="lbl_FormHeader" Content="MRAv2 - Test"
-         Height="32" Canvas.Left="10" Canvas.Top="10" Width="590" FontWeight="Bold" Foreground="Navy" FontSize="16"/>
+  <TabControl x:Name="TC_Main" Canvas.Left="10" Canvas.Top="47" Height="743" Width="1180" Background="#FFEFF1F1" BorderBrush="Gray">
+    <TabControl.Resources>
+      <Style TargetType="{x:Type TabItem}">
+        <!-- set default colours for not selected -->
+        <Setter Property="Background" Value="#8B82B6" />
+        <Setter Property="BorderBrush" Value="#FF5E577C" />
+        <Setter Property="Foreground" Value="White" />
 
+        <Style.Triggers>
+          <!-- Triggers when tab is selected - set font colour to black -->
+          <Trigger Property="IsSelected" Value="True" >
+            <Setter Property="Foreground" Value="Black" />
 
-  <TabControl x:Name="tc_MRA" 
-              Canvas.Left="10" Canvas.Top="42" 
-              Height="690" Width="1154" 
-              Background="#FFEFF3FC" BorderBrush="#FF7E98EE" 
-              TabStripPlacement="Top" >
+          </Trigger>
+          <!-- Trigger to set header text to Black on MouseOver -->
+          <Trigger Property="IsMouseOver" Value="True">
+            <Setter Property="Foreground" Value="Black"/>
+          </Trigger>
+        </Style.Triggers>
+      </Style>
 
-    <TabItem Header="Risk Assessments Overview" x:Name="ti_MRA_Overview" >
+    </TabControl.Resources>
+    
+    <TabItem Header="Manage Locks" x:Name="ti_ManageLocks" Height="26" Width="200" >
       <Canvas>
-        <TextBlock Text="Use this page to configure a Matter Risk Assessment template and set which Case Types (or Departments) should use which"
-                   Foreground="Gray" Canvas.Left="10" Canvas.Top="10" Width="812" />
+        <TextBlock Text="Use this page to unlock matters which were automatically locked, to allow the Fee Earner to complete one now (this resets the timer to allow another 2 weeks)." Foreground="Gray" TextWrapping="Wrap" Height="18" Width="909" Canvas.Left="10" Canvas.Top="10" />
+        <TextBlock Text="NB: Matters are automatically locked after 14 days if there isn't a completed 'Matter Risk Assessment' on file. This prevents any activity on the matter from taking place (eg: Fee Earner cannot Time Record to the matter; secretaries unable to create documents etc)." Foreground="Gray" TextWrapping="Wrap" Height="38" Width="856" Canvas.Left="10" Canvas.Top="28" HorizontalAlignment="Left" VerticalAlignment="Center" />
+        <TextBlock x:Name="tb_NoLockedMatters" Text="There are no Locked matters matching the 'Filter Criteria'" Foreground="Red" TextWrapping="Wrap" Canvas.Left="285" Canvas.Top="157" FontSize="22" FontWeight="Bold" />
 
-        <DataGrid x:Name="dg_MRA_Templates" Width="577" Height="611"
-                  AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" 
-                  IsTextSearchEnabled="True" Canvas.Top="41" Canvas.Left="10"
-                  CanUserResizeRows="False" HeadersVisibility="All" 
-                  RowDetailsVisibilityMode="Visible" 
-                  HorizontalAlignment="Center" VerticalAlignment="Top">
+        <ToggleButton x:Name="btn_UnlockMatters2" Canvas.Top="73" Height="79" Width="100" Canvas.Left="1012" HorizontalAlignment="Center" VerticalAlignment="Top">
+          <StackPanel Orientation="Vertical">
+            <Image MaxHeight="30" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Unlock.png"/>
+            <TextBlock Text="Unlock selected matter(s)" TextWrapping="Wrap" TextAlignment="Center" Width="90"/>
+          </StackPanel>
+        </ToggleButton>
 
+        <!-- Popup anchored to the New button -->
+        <Popup x:Name="popTemplates"
+               PlacementTarget="{Binding ElementName=btn_UnlockMatters2}"
+               Placement="Bottom"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade">
+
+          <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
+                  Background="#FFF4F4BF" Padding="10">
+            <StackPanel MinWidth="260">
+
+              <TextBlock Text="Please select reason for unlocking:"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,8"/>
+
+              <!-- Scroll if lots of templates -->
+              <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="icTemplates">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <!-- Show Name, keep TemplateID in Tag -->
+                      <Button Tag="{Binding}"
+                              Margin="0,0,0,6"
+                              HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Vertical">
+                          <TextBlock Text="{Binding Reason}" 
+                                     FontWeight="SemiBold" TextAlignment="Center"
+                                     TextWrapping="Wrap" MaxWidth="320"/>
+                        </StackPanel>
+
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+
+              <Separator Margin="0,8,0,8"/>
+
+              <Button x:Name="btnCancel"
+                      Content="Cancel"
+                      HorizontalAlignment="Right"
+                      Width="80"/>
+            </StackPanel>
+          </Border>
+        </Popup>
+
+
+
+        <GroupBox Header="Filter Criteria..." Foreground="#FF6150BE" BorderBrush="Gray" Height="86" Width="990" Canvas.Left="10" Canvas.Top="66">
+          <Canvas>
+            <Label Content="Fee Earner" Foreground="#FF6150BE" Canvas.Left="10" HorizontalContentAlignment="Right" Canvas.Top="34" />
+            <ComboBox x:Name="cboFeeEarner" Canvas.Left="80" Width="195" Height="26" Canvas.Top="34" >
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="38" />
+                    <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="180" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Label Content="Department" Foreground="#FF6150BE" Canvas.Left="2" HorizontalContentAlignment="Right" Canvas.Top="3" />
+            <ComboBox x:Name="cboDept" Canvas.Left="80" Width="195" Height="26" Canvas.Top="3">
+              <!--<ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="180" />
+                                        <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>-->
+
+            </ComboBox>
+            <Label Content="Text Search" Foreground="#FF6150BE" Canvas.Left="280" Width="75" HorizontalContentAlignment="Right"  />
+            <Label Foreground="Gray" Content="(searches: Client Name, Matter Description)" Canvas.Left="563" Width="235" HorizontalContentAlignment="Left" FontStyle="Italic"  />
+            <TextBox x:Name="txtSearch" Width="199" Canvas.Left="360" Height="26" VerticalContentAlignment="Center" />
+
+            <Label Content="Entity Ref / Matter No" Foreground="#FF6150BE" Canvas.Top="31" Width="134" HorizontalContentAlignment="Right"  Canvas.Left="299"  />
+            <TextBox x:Name="txtEntityRef" Width="65" Canvas.Left="438" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" />
+            <Label Content="/" Foreground="#FF6150BE" Canvas.Top="31" Width="15" HorizontalContentAlignment="Left"  Canvas.Left="504"  />
+            <TextBox x:Name="txtMatterNo" Width="40" Canvas.Left="519" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
+
+            <Button x:Name="btn_RefreshLockedMatters" Content="Search" Background="#FF91E888" Canvas.Left="718" Height="26" Width="70" Canvas.Top="31" />
+            <Button x:Name="btn_ClearLockedMattersFilters" Content="Clear Filters - View All" Background="#FFF0B8B8" ToolTip="Click here to clear all filter criteria and view all locked matters" Canvas.Left="572" Height="26" Width="128" Canvas.Top="31" />
+
+            <StackPanel Orientation="Vertical" Canvas.Left="816" Canvas.Top="6" Visibility="Visible">
+              <Label Content="Group By" Foreground="#FF6150BE" />
+              <ComboBox x:Name="cbo_GroupBy" Width="155" >
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding FriendlyName, Mode=TwoWay}" Width="150" />
+                      <TextBlock Text="{Binding CodeName, Mode=TwoWay}" Width="0" Visibility="Hidden"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+
+            </StackPanel>
+          </Canvas>
+        </GroupBox>
+
+
+        <DataGrid x:Name="dg_LockedMatters" Height="553" Width="1174" Canvas.Top="157" AlternatingRowBackground="#FFAEDEB9" 
+                  AutoGenerateColumns="False" IsTextSearchEnabled="True" SelectionMode="Single" FrozenColumnCount="1"
+                  CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
+                  BorderBrush="Gray" BorderThickness="1">
           <DataGrid.Resources>
+            <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+              <Setter Property="Margin" Value="0,2,0,4"/>
+              <!--<Setter Property="Padding" Value="0,2,0,0" />-->
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="{x:Type GroupItem}" >
+                    <Expander x:Name="exp" IsExpanded="True"
+                              Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
+                              Foreground="Black" Padding="0,2,0,0">
+                      <Expander.Header>
+                        <DockPanel>
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                          <TextBlock Text=" (" FontWeight="Bold" />
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                          <TextBlock Text=")" FontWeight="Bold" />
+                        </DockPanel>
+                      </Expander.Header>
+                      <ItemsPresenter />
+                    </Expander>
 
-            <Style x:Key="Center" TargetType="{x:Type DataGridCell}">
-              <Setter Property="TextBlock.TextAlignment" Value="Center"/>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+
             </Style>
-
-            <Style x:Key="DubHeightColumn" TargetType="{x:Type DataGridColumnHeader}">
+            <Style x:Key="RightAligned" TargetType="DataGridCell">
+              <Setter Property="HorizontalAlignment" Value="Right" />
+            </Style>
+            <Style x:Key="Center" TargetType="DataGridCell">
+              <Setter Property="TextBlock.TextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="DubHeightColumn" TargetType="DataGridColumnHeader">
               <Setter Property="ContentTemplate">
                 <Setter.Value>
                   <DataTemplate>
@@ -49,1200 +199,1195 @@
               <Setter Property="Width" Value="Auto" />
               <Setter Property="Height" Value="42"/>
             </Style>
-
           </DataGrid.Resources>
 
-
+          <DataGrid.GroupStyle>
+            <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+              <GroupStyle.Panel>
+                <ItemsPanelTemplate >
+                  <DataGridRowsPresenter />
+                </ItemsPanelTemplate>
+              </GroupStyle.Panel>
+            </GroupStyle>
+          </DataGrid.GroupStyle>
 
           <DataGrid.Columns>
-            <DataGridTextColumn Header="T ID" IsReadOnly="True" Width="40" 
-                                HeaderStyle="{StaticResource DubHeightColumn}"
-                                Binding="{Binding mraT_TemplateID}"/>
-            <DataGridTextColumn Header="Name" IsReadOnly="True" Width="330" 
-                                Binding="{Binding mraT_TemplateName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            <DataGridTextColumn Header="Expires in ?? days" IsReadOnly="True" Width="60" 
-                                Binding="{Binding mraT_TemplateExpiryDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                CellStyle="{StaticResource Center}"/>
-            <DataGridTextColumn Header="Question Count" IsReadOnly="True" Width="60" 
-                                Binding="{Binding mraT_QCount}"
-                                HeaderStyle="{StaticResource DubHeightColumn}" 
-                                CellStyle="{StaticResource Center}" />
-            <!--<DataGridTextColumn Header="ID" IsReadOnly="True" Width="100" Binding="{Binding ID}"/>   -->
+            <DataGridTextColumn Header="Our Ref" Binding="{Binding EntityRefMN}" IsReadOnly="True" />
+            <DataGridTextColumn Header="Client Name" Binding="{Binding ClName}" IsReadOnly="True" Width="150"/>
+            <DataGridTextColumn Header="Matter Description" Binding="{Binding MatDesc}" IsReadOnly="True" Width="150"/>
+            <DataGridTextColumn Header="Fee Earner" Binding="{Binding FeeEarner}" IsReadOnly="True" />
+            <DataGridTextColumn Header="Department" Binding="{Binding Department}" IsReadOnly="True" />
+            <DataGridTextColumn Header="Matter Opened" Binding="{Binding MatterOpened, StringFormat='dd/MM/yyyy'}" CellStyle="{StaticResource RightAligned}" IsReadOnly="True" />
+            <DataGridTextColumn Header="Days Since Matter Open" 
+                                CellStyle="{StaticResource Center}"   
+                                Binding="{Binding DaysSinceMatterOpen}" IsReadOnly="True" 
+                                HeaderStyle="{StaticResource DubHeightColumn}" Width="80"/>
+            <DataGridTextColumn Header="EntityRef" Binding="{Binding EntityRef}" IsReadOnly="True" Visibility="Hidden"/>
+            <DataGridTextColumn Header="MatterNo" Binding="{Binding MatterNo}" IsReadOnly="True" Visibility="Hidden"/>
 
-            <DataGridTextColumn Header="ID" IsReadOnly="True" Width="60" 
-                                  Binding="{Binding mraT_ID}"
-                                  Visibility="Collapsed" />
-            <DataGridTextColumn Header="Med Score From" IsReadOnly="True" Width="60" 
-                                  Binding="{Binding mraT_ScoreMedFrom}"
-                                  Visibility="Collapsed" />
-            <DataGridTextColumn Header="High Score From" IsReadOnly="True" Width="60" 
-                                  Binding="{Binding mraT_ScoreHighFrom}"
-                                  Visibility="Collapsed" />
-
+            <!--<DataGridTextColumn Header="Expiry Date" Binding="{Binding MRA_ExpiryDate}" IsReadOnly="True" />-->
+            <DataGridTextColumn Header="MRA ID" Binding="{Binding MRA_ID}" 
+                                CellStyle="{StaticResource Center}" IsReadOnly="True" />
+            <DataGridTextColumn Header="MRA Name" Binding="{Binding MRA_Name}" IsReadOnly="True" />
+            <DataGridTextColumn Header="MRA Current Expiry Date" 
+                                Binding="{Binding MRA_ExpiryCurrent, StringFormat='dd/MM/yyyy'}" 
+                                HeaderStyle="{StaticResource DubHeightColumn}" Width="90" IsReadOnly="True" />
+            <DataGridTextColumn Header="Default Expiry Days" 
+                                Binding="{Binding MRA_TTExpiryDays}" IsReadOnly="True" 
+                                HeaderStyle="{StaticResource DubHeightColumn}" Width="70"/>
           </DataGrid.Columns>
         </DataGrid>
 
 
-        <StackPanel Orientation="Horizontal" Canvas.Left="690" Canvas.Top="41" HorizontalAlignment="Left" VerticalAlignment="Top" >
-          <Button x:Name="btn_MRATemplate_AddNew" Margin="0,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-              <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-            </StackPanel>
-          </Button>
+      </Canvas>
+    </TabItem>
 
-          <Button x:Name="btn_MRATemplate_CopySelected" IsEnabled="False"  Margin="12,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-              <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
-            </StackPanel>
-          </Button>
-
-          <Button x:Name="btn_MRATemplate_Preview" IsEnabled="False" Margin="12,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Test2.png"/>
-              <TextBlock Margin="3,4,0,4" Text="Preview Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-            </StackPanel>
-          </Button>
-
-          <Button x:Name="btn_MRATemplate_Edit" IsEnabled="False" Margin="12,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
-              <TextBlock Margin="3,4,0,4" Text="Edit Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-            </StackPanel>
-          </Button>
-
-          <Button x:Name="btn_MRATemplate_DeleteSelected" Background="#FFFFA7A7" IsEnabled="False" Margin="12,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-              <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-            </StackPanel>
-          </Button>
-
-        </StackPanel>
+    <TabItem Header="Configure Matter Risk Assessments" x:Name="ti_Defaults" Width="200">
+      <ScrollViewer Tag="VIEW:'00) MRAv2 Setup' UPDATE=YES" VerticalScrollBarVisibility="Disabled" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+    </TabItem>
 
 
-        <GroupBox Header="Meta-Data for the selected NMRA" Foreground="Gray" BorderBrush="Gray" Canvas.Left="602" Canvas.Top="90" 
-                    Width="520"  HorizontalAlignment="Left" VerticalAlignment="Top"  >
+    <TabItem Header="Configure File Reviews" x:Name="ti_Setup_FileReview" Width="200">
+      <Canvas>
+        <Label Content="Use this page to configure a File Review template and set which Case Types (or Departments) should use which" Foreground="Gray" Canvas.Left="10" Canvas.Top="10" Width="812" />
 
-          <StackPanel Orientation="Vertical">
-            <TextBlock x:Name="tb_MRA_NoneSelected" Visibility="Collapsed" TextAlignment="Center" 
-                         Text="A 'Matter Risk Assessment' is not currently selected!  (select from list or click 'Add New...')" 
-                         Foreground="Red" FontWeight="Bold" TextWrapping="Wrap"  />
+        <TabControl x:Name="tc_FR" Canvas.Left="10" Canvas.Top="40" Height="660" Width="1154" Background="#FFEFF1F1" BorderBrush="Gray" TabStripPlacement="Top" >
+          <TabItem Header="File Review Overview" x:Name="ti_FR_Overview" >
+            <Canvas>
+              <GroupBox Header="List of 'File Review' templates" BorderBrush="Gray" Foreground="Gray" Height="611" Width="443" Canvas.Left="10" Canvas.Top="10">
+                <StackPanel Orientation="Vertical">
 
-            <StackPanel Orientation="Vertical" x:Name="stk_ST_SelectedMRA" >
+                  <StackPanel Orientation="Horizontal" Margin="4" HorizontalAlignment="Center">
+                    <Button x:Name="btn_AddNew_FRTemplate">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                    
+                    <Button x:Name="btn_CopySelected_FRTemplate" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
+                    <Button x:Name="btn_Preview_FRTemplate" Margin="8,0,0,0" Visibility="Collapsed">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Test2.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Preview Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
-              <StackPanel  Orientation="Horizontal" Margin="0,2">
-                <Label Foreground="Gray" Content="Name" Width="96" HorizontalContentAlignment="Right" />
-                <TextBox x:Name="tb_MRATemplate_Name" Text="[MRA NAME]" VerticalAlignment="Center" Width="340" Height="23" VerticalContentAlignment="Center"/>
-                <Label Content="ID" Foreground="Gray" Margin="6,0,0,0" HorizontalContentAlignment="Right"/>
-                <Label x:Name="lbl_MRATemplate_ID" Content="0" Foreground="Gray" />
-              </StackPanel>
+                    <Button x:Name="btn_Edit_FRTemplate"  Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Edit Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
+                    <Button x:Name="btn_DeleteSelected_FRTemplate" Background="#FFFFA7A7" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
-
-              <StackPanel Orientation="Horizontal" Margin="0,2">
-                <Label Content="Expires in ? days" Foreground="Gray" Width="96"/>
-                <TextBox x:Name="tb_MRATemplate_ExpiresInXdays" VerticalAlignment="Center" Width="28" TextAlignment="Center" Height="23" VerticalContentAlignment="Center" />
-                <Label Content="(# of days that a High-Risk NMRA will last before a new one is needed)" Foreground="Gray" FontStyle="Italic" />
-              </StackPanel>
-
-              <GroupBox Header="Score Triggers" HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,4" >
-                <Grid x:Name="grd_Scores" >
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="60" />
-                    <ColumnDefinition Width="60" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="130" />
-
-                  </Grid.ColumnDefinitions>
-
-                  <Grid.RowDefinitions>
-                    <RowDefinition Height="18" />
-                    <RowDefinition Height="26" />
-                    <RowDefinition Height="26" />
-                    <RowDefinition Height="26" />
-
-                  </Grid.RowDefinitions>
-
-                  <TextBlock Text="FROM" FontWeight="Bold" TextAlignment="Center" Grid.Column="1" Grid.Row="0" />
-                  <TextBlock Text="TO"  FontWeight="Bold" TextAlignment="Left" Grid.Column="3" Grid.Row="0" />
-
-                  <TextBlock Text="Low" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center" Grid.Column="0" Grid.Row="1" />
-                  <TextBlock Text="0" TextAlignment="Center"  VerticalAlignment="Center" Grid.Column="1" Grid.Row="1" />
-                  <TextBlock Text="?Low To"  x:Name="tb_ScoreLowTo"
-                             VerticalAlignment="Center" 
-                             Grid.Column="3" Grid.Row="1" />
-
-                  <TextBlock Text="Medium" FontWeight="Bold" TextAlignment="Right"  VerticalAlignment="Center" Grid.Column="0" Grid.Row="2" />
-                  <TextBox x:Name="tb_ScoreMedFrom" VerticalAlignment="Center" Width="50" Height="23" 
-                           TextAlignment="Center" VerticalContentAlignment="Center"
-                           Grid.Column="1" Grid.Row="2"/>
-
-                  <TextBlock Text="?MedTo"  x:Name="tb_ScoreMedTo"
-                             VerticalAlignment="Center" Grid.Column="3" Grid.Row="2" />
-
-                  <TextBlock Text="High" FontWeight="Bold" TextAlignment="Right"  VerticalAlignment="Center" Grid.Column="0" Grid.Row="3" />
-                  <TextBox x:Name="tb_ScoreHighFrom" VerticalAlignment="Center" Width="50" Height="23" 
-                           TextAlignment="Center" VerticalContentAlignment="Center" 
-                           Grid.Column="1" Grid.Row="3"/>
-                  <TextBlock Text="this number or greater" 
-                             VerticalAlignment="Center" Grid.Column="3" Grid.Row="3" />
-
-                </Grid>
-
-                <!--<StackPanel Orientation="Vertical">
-                  <TextBlock Text="Low score is 0 to 'Medium (from)' minus 1" Foreground="Gray" Margin="0,2"/>
-                  <TextBlock Text="Medium score is 'Medium (from)' to 'High (from)' minus 1" Foreground="Gray" Margin="0,2"/>
-                  <TextBlock Text="High score is 'High (from)' or above" Foreground="Gray" Margin="0,2"/>
-
-                  <StackPanel Orientation="Horizontal" Margin="0,4">
-
-                    <Label Content="Medium (from)" Foreground="Gray" Width="96" HorizontalContentAlignment="Right"/>
-                    <TextBox x:Name="tb_ScoreMedFrom1" VerticalAlignment="Center" Width="50" Height="23" 
-                                 TextAlignment="Center" VerticalContentAlignment="Center" />
-                    <Label Content="High (from)" Foreground="Gray" Width="96" HorizontalContentAlignment="Right" Margin="6,0,0,0"/>
-                    <TextBox x:Name="tb_ScoreHighFrom1" VerticalAlignment="Center" Width="50" Height="23" 
-                                 TextAlignment="Center" VerticalContentAlignment="Center" />
                   </StackPanel>
-                </StackPanel>-->
+                  
+                  <StackPanel Orientation="Vertical" Canvas.Left="359" Canvas.Top="10" Width="69"  Visibility="Collapsed">
+                    <Label x:Name="lbl_FR_Template_ID" Content="-ID-" Foreground="Gray" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="lbl_FR_Template_Name" Content="-Name-" Foreground="Gray" HorizontalContentAlignment="Right"/>
+                  </StackPanel>
 
+                  <DataGrid x:Name="dg_FR_Templates" Height="528" Margin="4" BorderBrush="Gray" BorderThickness="1"
+                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" 
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                    <DataGrid.Resources>
+                      <Style x:Key="RightAligned" TargetType="DataGridCell">
+                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                      </Style>
+                      <Style x:Key="Center" TargetType="DataGridCell">
+                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                      </Style>
+                      <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="Green"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="BorderBrush" Value="Wheat"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Width" Value="Auto"/>
+                      </Style>
+                      <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                        <Setter Property="BorderBrush" Value="Black"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Width" Value="Auto"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
+                      </Style>
+                    </DataGrid.Resources>
 
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding mraT_Code}"/>
+                      <DataGridTextColumn Header="Friendly Name" IsReadOnly="False" Width="220" Binding="{Binding mraT_Desc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                HeaderStyle="{StaticResource EditableColumn}"/>
+                      <DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding CountUsed}"/>
+                      <DataGridTextColumn Header="Q Count" IsReadOnly="True" Width="100" 
+                                                                Binding="{Binding QCount}"/>
+                      <!--<DataGridTextColumn Header="ID" IsReadOnly="True" Width="100" Binding="{Binding ID}"/>-->
+
+                    </DataGrid.Columns>
+                  </DataGrid>
+
+                </StackPanel>
               </GroupBox>
 
+              <GroupBox Header="List of 'Case Types' or 'Departments' and 'File Review' Template to use" Foreground="Gray" BorderBrush="Gray" Height="611" Width="680" Canvas.Left="458" Canvas.Top="10">
+                <Grid x:Name="grd_MainFR"  >
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="260" MinWidth="90" MaxWidth="660" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition />
+                  </Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="26" />
+                    <RowDefinition Height="410" />
+                    <RowDefinition Height="35" />
+                    <RowDefinition  />
+                  </Grid.RowDefinitions>
 
+                  <Label Content="DEPARTMENTS" HorizontalContentAlignment="Center" Foreground="Gray" Grid.Row="0" Grid.Column="0" Margin="0,0,6,0" />
+                  <Label Content="CASE TYPES in selected Department" HorizontalContentAlignment="Center" Foreground="Gray" Grid.Row="0" Grid.Column="2" Margin="6,0,0,0" />
 
+                  <GridSplitter HorizontalAlignment="Center"   
+                                                  VerticalAlignment="Stretch"   
+                                                  Grid.Column="1"   
+                                                  Grid.RowSpan="4"
+                                                  Width="6" Background="Silver">
+                    <GridSplitter.Template>
+                      <ControlTemplate TargetType="{x:Type GridSplitter}">
+                        <Grid>
+                          <Button Content="⁞" FontWeight="Bold"/>
+                          <!-- Use vertical ellipsis character as the arrow -->
+                          <Rectangle Fill="#00FFFFFF" />
+                          <!-- Transparent background to allow resizing -->
+                        </Grid>
+                      </ControlTemplate>
+                    </GridSplitter.Template>
+                  </GridSplitter>
 
-              <Button x:Name="btn_MRATemplate_SaveHeaderDetails" Content="Save NMRA Header Details" 
-                      Height="30" Margin="90,6,90,14" Background="LightGreen" BorderBrush="DarkGreen"/>
+                  <DataGrid x:Name="dg_DepartmentsFR" Grid.Row="1" Grid.Column="0" BorderBrush="Gray" BorderThickness="1"
+                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0"
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
 
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Department Name" IsReadOnly="True" Width="Auto" Binding="{Binding mraTD_DeptN}"/>
+                      <DataGridTextColumn Header="Default Template" IsReadOnly="False" Width="Auto" Binding="{Binding mraTD_DeptDefaultN}"/>
+                      <DataGridTextColumn Header="TemplateID" IsReadOnly="False" Width="220" Binding="{Binding mraTD_DeptDefaultID}" Visibility="Hidden"/>
+                      <DataGridTextColumn Header="Department ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraTD_DeptID}" Visibility="Hidden"/>
+                      <DataGridTextColumn Header="CTG ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraTD_CTGID}" Visibility="Hidden"/>
+                    </DataGrid.Columns>
 
-              <GroupBox Header="Applicable to CaseType(s)..." HorizontalAlignment="Center" BorderBrush="Gray" Margin="0,0,0,4">
-                <StackPanel Orientation="Vertical" Margin="2,4">
+                  </DataGrid>
 
-                  <StackPanel Orientation="Horizontal">
+                  <DataGrid x:Name="dg_FR_CaseTypes_FRTemplate" Grid.Row="1" Grid.Column="2" BorderBrush="Gray" BorderThickness="1"
+                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="6,0,0,0" Grid.RowSpan="2" 
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
 
-                    <DataGrid x:Name="dg_MRATemplate_CaseTypes" Height="220" MaxWidth="280"
-                              AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
-                              AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0" 
-                              CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Case Type Name" IsReadOnly="True" Width="120" Binding="{Binding mraT_CTName}"/>
+                      <DataGridTextColumn Header="Template to use..." IsReadOnly="False" Width="220" Binding="{Binding mraT_CTTemplateToUse}"/>
 
-                      <DataGrid.Resources>
-                        <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                          <Setter Property="Margin" Value="0,2,0,4"/>
-                          <!--<Setter Property="Padding" Value="0,2,0,0" />-->
-                          <Setter Property="Template">
-                            <Setter.Value>
-                              <ControlTemplate TargetType="{x:Type GroupItem}" >
-                                <Expander x:Name="exp" IsExpanded="True"
-                                          Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
-                                          Foreground="Black" Padding="0,2,0,0">
-                                  <Expander.Header>
-                                    <DockPanel>
-                                      <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                                      <TextBlock Text=" (" FontWeight="Bold" />
-                                      <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                      <TextBlock Text=")" FontWeight="Bold" />
-                                    </DockPanel>
-                                  </Expander.Header>
-                                  <ItemsPresenter />
-                                </Expander>
+                      <DataGridTextColumn Header="RowID" IsReadOnly="False" Width="220" Binding="{Binding mraT_RowID}" Visibility="Hidden"/>
+                      <DataGridTextColumn Header="TemplateID" IsReadOnly="False" Width="220" Binding="{Binding mraT_TemplateID}" Visibility="Hidden"/>
+                      <DataGridTextColumn Header="CT ID" IsReadOnly="False" Width="220" Binding="{Binding mraT_CTid}" Visibility="Hidden"/>
+                      <DataGridTextColumn Header="CTG Name" IsReadOnly="False" Width="220" Binding="{Binding mraT_CTGName}" Visibility="Hidden"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
 
-                              </ControlTemplate>
-                            </Setter.Value>
-                          </Setter>
+                  <GroupBox Header="Edit Default for Department..." Foreground="Gray" BorderBrush="Gray" Grid.Row="2" Grid.Column="0" Margin="0,0,6,0" Grid.RowSpan="2" >
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                      </Grid.RowDefinitions>
 
-                        </Style>
+                      <Label Content="Selected Dept:" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="1" Grid.Column="0"/>
+                      <Label x:Name="lbl_SelectedDeptNameFR" Content="-Dept-" Foreground="#FF6150BE" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"/>
+                      <Label x:Name="lbl_SelectedDeptIDFR" Content="-ID-" Foreground="#FF6150BE" Grid.Row="5" Grid.Column="2" HorizontalContentAlignment="Right" Visibility="Hidden"/>
 
-                      </DataGrid.Resources>
-
-                      <DataGrid.GroupStyle>
-                        <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                          <GroupStyle.Panel>
-                            <ItemsPanelTemplate >
-                              <DataGridRowsPresenter />
-                            </ItemsPanelTemplate>
-                          </GroupStyle.Panel>
-                        </GroupStyle>
-                      </DataGrid.GroupStyle>
-
-                      <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="Case Type Name" IsReadOnly="True" Width="250" >
-                          <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                              <TextBlock Text="{Binding mraT_CaseTypeName}" TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center" Height="Auto"/>
-                            </DataTemplate>
-                          </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-
-                        <DataGridTextColumn Header="RowID" IsReadOnly="True" Width="220" Binding="{Binding mraT_RowID}" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="CaseType ID" IsReadOnly="True" Binding="{Binding mraT_CaseTypeID}" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Department Name" IsReadOnly="True" Binding="{Binding mraT_DeptName}" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Department ID" IsReadOnly="True"  Binding="{Binding mraT_DeptID}" Visibility="Collapsed"/>
-                      </DataGrid.Columns>
-                    </DataGrid>
-
-                    <Button x:Name="btn_CaseTypeLinkToTemplate_remove" Padding="4" VerticalAlignment="Center" Background="#FFFFA7A7" BorderBrush="DarkRed">
-                      <TextBlock Text="Remove Selected" TextWrapping="Wrap" Width="62" TextAlignment="Center"/>
-                    </Button>
-                  </StackPanel>
-
-
-
-                  <GroupBox Header="Add CaseType..." BorderBrush="Gray" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                      <Label Foreground="Gray" Content="Add for Case Type" HorizontalContentAlignment="Right" Visibility="Collapsed"/>
-
-                      <ComboBox x:Name="cbo_MRATemplate_CaseType" Width="240">
-                        <!-- Collapsible group headers -->
-                        <ComboBox.GroupStyle>
-                          <GroupStyle>
-                            <GroupStyle.ContainerStyle>
-                              <Style TargetType="{x:Type GroupItem}">
-                                <Setter Property="Template">
-                                  <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type GroupItem}">
-                                      <Expander IsExpanded="True" Margin="0,2,0,6">
-                                        <Expander.Header>
-                                          <StackPanel>
-                                            <TextBlock Text="{Binding Name}"
-                                                     FontWeight="SemiBold"
-                                                     Margin="2,4,2,2" />
-                                            <Separator Margin="0,0,0,2"/>
-                                          </StackPanel>
-                                        </Expander.Header>
-
-                                        <!-- The grouped items render here -->
-                                        <ItemsPresenter />
-                                      </Expander>
-                                    </ControlTemplate>
-                                  </Setter.Value>
-                                </Setter>
-                              </Style>
-                            </GroupStyle.ContainerStyle>
-                          </GroupStyle>
-                        </ComboBox.GroupStyle>
-
-                        <!-- Optional: light separator between items (within a group) -->
-                        <!--<ComboBox.ItemContainerStyle>
-                        <Style TargetType="ComboBoxItem">
-                          <Setter Property="Padding" Value="2,2,2,2"/>
-                          <Setter Property="Template">
-                            <Setter.Value>
-                              <ControlTemplate TargetType="ComboBoxItem">
-                                <Border>
-                                  <StackPanel>
-                                    <ContentPresenter />
-                                    <Separator Margin="0,2,0,0"/>
-                                  </StackPanel>
-                                </Border>
-                              </ControlTemplate>
-                            </Setter.Value>
-                          </Setter>
-                        </Style>
-                      </ComboBox.ItemContainerStyle>-->
-
-                        <!-- Your existing item template -->
+                      <Label Content="Template to use:" Foreground="#FF6150BE" Grid.Row="3" HorizontalContentAlignment="Right" />
+                      <ComboBox x:Name="cbo_FR_Department_TemplateToUse" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" >
                         <ComboBox.ItemTemplate>
                           <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                              <TextBlock Text="{Binding mraT_CaseTypeCode, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
-                              <TextBlock Text="{Binding mraT_CaseTypeName, Mode=TwoWay}" Width="Auto" />
-                              <TextBlock Text="{Binding mraT_DepartmentName, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                              <TextBlock Text="{Binding mraT_Code, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                              <TextBlock Text="{Binding mraT_Desc, Mode=TwoWay}" Width="Auto" />
+                              <TextBlock Text="{Binding CountUsed, Mode=TwoWay}" Width="0"  Visibility="Hidden"/>
+                              <TextBlock Text="{Binding QCount, Mode=TwoWay}" Width="0" Visibility="Hidden"/>
                             </StackPanel>
                           </DataTemplate>
                         </ComboBox.ItemTemplate>
                       </ComboBox>
-
-                      <Button x:Name="btn_CaseTypeLinkToTemplate_add" Content="Add" Padding="4" Margin="4,0,0,0"
-                            VerticalAlignment="Center" Background="LightGreen" BorderBrush="DarkGreen"/>
-                    </StackPanel>
+                      <CheckBox x:Name="chk_FR_ApplyToAllCaseTypes" IsChecked="True" Content="?Apply to all Case Types" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" VerticalAlignment="Center" FlowDirection="RightToLeft" Foreground="#FF6150BE" HorizontalAlignment="Center">
+                        <CheckBox.Resources>
+                          <Style TargetType="{x:Type Path}">
+                            <Setter Property="FlowDirection" Value="LeftToRight" />
+                          </Style>
+                        </CheckBox.Resources>
+                      </CheckBox>
+                      <Button x:Name="btn_Save_FR_TemplateToUseForDept" IsEnabled="False" MaxWidth="70" Content="Save" Grid.Row="7" Grid.Column="1"/>
+                    </Grid>
                   </GroupBox>
 
+                  <GroupBox Header="Edit selected CaseType..." Foreground="Gray" BorderBrush="Gray" Grid.Row="3" Grid.Column="2" Margin="6,0,0,0" >
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="2" />
+                      </Grid.RowDefinitions>
 
-                </StackPanel>
+                      <Label Content="Selected CaseType:" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="1" Grid.Column="0"/>
+                      <Label x:Name="lbl_SelectedCaseTypeFR" Content="-CaseType-" Foreground="#FF6150BE" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"/>
+                      <Label x:Name="lbl_SelectedCaseTypeIDFR" Content="-ID-" Foreground="#FF6150BE" Grid.Row="5" Grid.Column="2" HorizontalContentAlignment="Right" Visibility="Hidden"/>
 
+                      <Label Content="Template to use:" Foreground="#FF6150BE" Grid.Row="3" HorizontalContentAlignment="Right" />
+                      <ComboBox x:Name="cbo_FR_CaseType_TemplateToUse" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" >
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Text="{Binding mraT_Code, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                              <TextBlock Text="{Binding mraT_Desc, Mode=TwoWay}" Width="Auto" />
+                              <TextBlock Text="{Binding CountUsed, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                              <TextBlock Text="{Binding QCount, Mode=TwoWay}" Width="0" Visibility="Hidden"/>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <Button x:Name="btn_Save_FR_TemplateToUseForCaseType" Content="Save" MaxWidth="70" Grid.Row="5" Grid.Column="1" IsEnabled="False"/>
+                    </Grid>
+                  </GroupBox>
+
+                </Grid>
               </GroupBox>
 
-            </StackPanel>
+            </Canvas>
+          </TabItem>
+          <TabItem Header="Editing Questions" x:Name="ti_FR_Questions">
+            <Grid x:Name="grd_EditQs_FR"  >
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="700" MinWidth="100" MaxWidth="900" />
+                <ColumnDefinition Width="6"  />
+                <ColumnDefinition Width="98" x:Name="col_EditSelQ_FR"/>
+                <ColumnDefinition Width="200"  />
+                <ColumnDefinition   />
 
-          </StackPanel>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="35" />
+                <RowDefinition Height="105" />
+                <RowDefinition Height="35" />
+                <RowDefinition Height="105" />
+                <RowDefinition Height="60" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
 
-        </GroupBox>
+              <GridSplitter HorizontalAlignment="Center"   
+                            VerticalAlignment="Stretch"   
+                            Grid.Column="1"  
+                            Grid.Row="0"
+                            Grid.RowSpan="6"
+                            Width="6" Background="Silver"
+                            ToolTip="Click and drag me to view more or less of one particular side" Margin="0,0,0,2">
+                <GridSplitter.Template>
+                  <ControlTemplate TargetType="{x:Type GridSplitter}">
+                    <Grid>
+                      <Button Content="⁞" FontWeight="Bold"/>
+                      <!-- Use vertical ellipsis character as the arrow -->
+                      <Rectangle Fill="#00FFFFFF" />
+                      <!-- Transparent background to allow resizing -->
+                    </Grid>
+                  </ControlTemplate>
+                </GridSplitter.Template>
+              </GridSplitter>
+
+              <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                  <Label Content="Q's for FR:" Foreground="Gray"/>
+                  <Label x:Name="lbl_EditFileReview_Name" Content="-Example name-" Foreground="Gray" Canvas.Left="235" Canvas.Top="10" Height="25"  />
+                </StackPanel>
+                <Button x:Name="btn_AddNew_Q_FR" ToolTip="Add a new blank Question to the list" Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Add New..."   TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_CopySelected_Q_FR" ToolTip="Duplicate selected Question (adds to bottom of the list)"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_Edit_Q_FR" Visibility="Collapsed"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Edit Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_Q_MoveTop_FR" ToolTip="Move the currently selected Question to the top of the list" Visibility="Collapsed"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_Q_MoveUp_FR" ToolTip="Move the currently selected Question up one row" Visibility="Collapsed"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_Q_MoveDown_FR" ToolTip="Move the currently selected Question down one row" Visibility="Collapsed"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+
+                <Button x:Name="btn_Q_MoveBottom_FR" ToolTip="Move the currently selected Question to the bottom of the list" Visibility="Collapsed"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_DeleteSelected_Q_FR" Background="#FFFFA7A7" ToolTip="Deletes the currently selected Question (requires confirmation)"  Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Delete Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+
+                <Button x:Name="btn_BackToOverview_FR" ToolTip="Go back to the 'Overview' sheet"   Margin="4,4">
+                  <StackPanel Orientation="Vertical">
+                    <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
+                    <TextBlock Margin="3,4,0,4" Text="Back to Overview"  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                  </StackPanel>
+                </Button>
+                <Separator />
+                <Label x:Name="lbl_EditFileReview_ID" Content="-ID-" Foreground="#FF6150BE" Visibility="Collapsed" />
+
+              </StackPanel>
+              
+
+              <TextBlock x:Name="tb_NoQuestions_FR" Text="No questions currently exist for this File Review... click the 'Add New...' button to add a new question" 
+                                       Foreground="Red" FontWeight="Bold" FontSize="20" TextWrapping="Wrap" Grid.Row="1" Grid.Column="0" Grid.RowSpan="7" Visibility="Collapsed"/>
+
+              <DataGrid x:Name="dg_FR_Questions" Grid.Row="1" Grid.Column="0" Grid.RowSpan="5" Margin="0,0,4,2" BorderBrush="Gray" BorderThickness="1"
+                        AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"  Canvas.Left="10"
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                <DataGrid.Resources>
+                  <!--This one is just to ensure that the selected row stays 'visible' (highlighted) - as when going to another control/losing focus unhighlights-->
+                  <Style TargetType="{x:Type DataGridRow}">
+                    <Style.Resources>
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+                    </Style.Resources>
+                  </Style>
+
+                  <!--This is the style to be used by the 'Question Group'-->
+                  <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                    <Setter Property="Margin" Value="0,2,0,4"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type GroupItem}" >
+                          <Expander x:Name="exp" IsExpanded="True"
+                                    Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,2"
+                                    Foreground="Black" Padding="0,2,0,0">
+                            <Expander.Header>
+                              <DockPanel>
+                                <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                <TextBlock Text=" (" FontWeight="Bold" />
+                                <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                <TextBlock Text=")" FontWeight="Bold" />
+                              </DockPanel>
+                            </Expander.Header>
+                            <ItemsPresenter />
+                          </Expander>
+
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+
+                  </Style>
+
+                  <Style x:Key="RightAligned" TargetType="DataGridCell">
+                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                  </Style>
+                  <Style x:Key="Center" TargetType="DataGridCell">
+                    <!--<Setter Property="HorizontalAlignment" Value="Center"/>-->
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                  </Style>
+                  <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="Green"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="BorderBrush" Value="Wheat"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Width" Value="Auto"/>
+                  </Style>
+                  <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                    <Setter Property="Height" Value="40" />
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="TextBlock.TextWrapping" Value="Wrap"/>
+                  </Style>
+                </DataGrid.Resources>
+
+                <!--This just sets the group style-->
+                <DataGrid.GroupStyle>
+                  <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                    <GroupStyle.Panel>
+                      <ItemsPanelTemplate >
+                        <DataGridRowsPresenter />
+                      </ItemsPanelTemplate>
+                    </GroupStyle.Panel>
+                  </GroupStyle>
+                </DataGrid.GroupStyle>
+
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding fr_ID}" Visibility="Hidden"/>
+                  <DataGridTemplateColumn IsReadOnly="True" Width="42">
+                    <DataGridTemplateColumn.Header>
+                      <TextBlock Text="Order" TextAlignment="Center" TextWrapping="Wrap" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding fr_DO}" TextAlignment="Center" VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn Header="Question Text" IsReadOnly="False" Width="430" >
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding fr_QText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn IsReadOnly="True" Width="64">
+                    <DataGridTemplateColumn.Header>
+                      <TextBlock Text="Allow N/A answer?" TextAlignment="Center" TextWrapping="Wrap" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding fr_AllowNA}" TextAlignment="Center" VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn IsReadOnly="True" Width="74">
+                    <DataGridTemplateColumn.Header>
+                      <TextBlock Text="Allow Comments?" TextAlignment="Center" TextWrapping="Wrap" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding fr_AllowNotes}" TextAlignment="Center" VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn IsReadOnly="True" Width="48" >
+                    <DataGridTemplateColumn.Header>
+                      <TextBlock Text="C.A. Trigger" TextAlignment="Center" TextWrapping="Wrap" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding fr_CAtrigger}" TextAlignment="Center" VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTextColumn Header="Section/Group" IsReadOnly="True" Width="180" 
+                                      Binding="{Binding fr_Section, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Visibility="Hidden"/>
+
+                  <DataGridTemplateColumn Header="Default Corrective Action" IsReadOnly="True" Width="300"  >
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding fr_DefCA, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   VerticalAlignment="Center"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+
+                  <!--  <DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding clCountUsed}"/>-->
+                </DataGrid.Columns>
+              </DataGrid>
+
+              <Label x:Name="lbl_QID_FR" Content="ID" Foreground="#FF6150BE" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Grid.Row="0" Grid.Column="2" Visibility="Visible" />
+              <Label Content="Edit Selected Question Details" Foreground="Gray" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center" Grid.Row="0" Grid.Column="3"/>
+              <Button x:Name="btn_SaveQuestion_FR" Content="Save" Padding="4" Grid.Row="0" Grid.Column="4" MaxHeight="26" MaxWidth="50" />
+              <Label Content="Question Text" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" />
+              <TextBox x:Name="txt_QuestionText_FR" TextWrapping="Wrap" Width="Auto"  Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Padding="0" Margin="0,0,4,0"  />
+              <Label Content="Section / Group" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
+              <ComboBox x:Name="cbo_QuestionGroupFR" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="0" Visibility="Hidden" />
+                      <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="Auto" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="Default Corrective Action Text" Foreground="#FF6150BE" TextWrapping="Wrap" TextAlignment="Right" Padding="2,2" Grid.Row="3" Grid.Column="2"/>
+              <TextBox x:Name="txt_DefaultCA" Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2" TextWrapping="Wrap" Padding="2,2" Margin="0,0,4,0" TextAlignment="Left" />
+              <TextBlock Text="Tip: use 'dd/mm/yyyy' in the 'Default Corrective Action Text' to have this automatically replaced with the date 14 days from when a File Review is conducted."
+                         TextWrapping="Wrap" Grid.Row="4" Grid.Column="3" Grid.ColumnSpan="2" Foreground="Gray" FontStyle="Italic" />
+              <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="4" >
+                <Label Content="Order" Foreground="#FF6150BE" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                <TextBox x:Name="txt_FR_Order" VerticalAlignment="Center" TextAlignment="Center" Height="23" Width="60" />
+              </StackPanel>
+
+              <GroupBox Header="Answers" Foreground="Gray" Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="3"  Margin="12,6,12,10" BorderBrush="#FFD18C20">
+                <GroupBox.Resources>
+                  <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+                </GroupBox.Resources>
+                <StackPanel Orientation="Vertical">
+                  <Label Content="Which answer should trigger the Corrective Action?" Foreground="#FF6150BE" Margin="2,0,0,0"/>
+
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+                    <RadioButton x:Name="opt_FR_Yes" Content="Yes" GroupName="CATrigger" VerticalContentAlignment="Center" Margin="10,0,0,0" >
+                      <RadioButton.Style>
+                        <Style TargetType="RadioButton">
+                          <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True" >
+                              <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </RadioButton.Style>
+                    </RadioButton>
+                    <RadioButton x:Name="opt_FR_No" Content="No"  GroupName="CATrigger" VerticalContentAlignment="Center" Margin="20,0,0,0" IsChecked="True" >
+                      <RadioButton.Style>
+                        <Style TargetType="RadioButton">
+                          <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True" >
+                              <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </RadioButton.Style>
+                    </RadioButton>
+
+
+                  </StackPanel>
+
+                  <RadioButton x:Name="opt_FR_None" Content="A Corrective Action should NOT be triggered for this Question"  GroupName="CATrigger" VerticalContentAlignment="Center" Margin="0,0,0,0" HorizontalAlignment="Center" >
+                    <RadioButton.Style>
+                      <Style TargetType="RadioButton">
+                        <Style.Triggers>
+                          <Trigger Property="IsChecked" Value="True" >
+                            <Setter Property="FontWeight" Value="Bold" />
+                          </Trigger>
+                        </Style.Triggers>
+                      </Style>
+                    </RadioButton.Style>
+                  </RadioButton>
+
+                  <CheckBox x:Name="chk_FR_InclNAoption" Content="?Allow 'N/A' answer option" Width="170" Foreground="#FF6150BE" FlowDirection="RightToLeft" Margin="6,10,0,0" 
+                            HorizontalAlignment="Left" IsChecked="True">
+                    <CheckBox.Resources>
+                      <Style TargetType="{x:Type Path}">
+                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                      </Style>
+                    </CheckBox.Resources>
+                  </CheckBox>
+                  <CheckBox x:Name="chk_FR_InclComments" Content="?'Allow 'Comments" Width="170" Foreground="#FF6150BE" FlowDirection="RightToLeft" Margin="6,10,0,0" 
+                            HorizontalAlignment="Left" IsChecked="True">
+                    <CheckBox.Resources>
+                      <Style TargetType="{x:Type Path}">
+                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                      </Style>
+                    </CheckBox.Resources>
+                  </CheckBox>
+                  <GroupBox Header="'Answers' preview..." BorderBrush="Gray" Margin="24,4,24,2">
+                    <StackPanel Orientation="Vertical">
+                      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="2,4,2,2">
+                        <RadioButton Content="Yes" Foreground="Gray" />
+                        <RadioButton Content="No" Foreground="Gray"  Margin="20,0,20,0"/>
+                        <RadioButton Content="N/A" Foreground="Gray" Visibility="{Binding IsChecked, ElementName=chk_FR_InclNAoption, Converter={StaticResource BoolToVisConverter}}"/>
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Margin="2,4,0,2" HorizontalAlignment="Center"
+                              Visibility="{Binding IsChecked, ElementName=chk_FR_InclComments, Converter={StaticResource BoolToVisConverter}}">
+                        <Label Content="Comments" Foreground="Gray"  />
+                        <TextBox Text="enter comments here..." FontStyle="Italic" Padding="2" Foreground="Gray" VerticalAlignment="Center" Width="200" IsEnabled="False"/>
+                      </StackPanel>
+
+                    </StackPanel>
+                  </GroupBox>
+                </StackPanel>
+              </GroupBox>
+
+            </Grid>
+          </TabItem>
+          <TabItem Header="Preview" x:Name="ti_FR_Preview" >
+            <Canvas Background="LemonChiffon">
+              <Label Content="PREVIEWING File Review: " Foreground="Red" Canvas.Left="10" Canvas.Top="10" />
+
+              <CheckBox x:Name="chk_FRPreview_AutoSelectNext" Content="?Automatically go to next Question" IsChecked="True" FlowDirection="RightToLeft" Canvas.Left="427" Canvas.Top="15">
+                <CheckBox.Resources>
+                  <Style TargetType="{x:Type Path}">
+                    <Setter Property="FlowDirection" Value="LeftToRight" />
+                  </Style>
+                </CheckBox.Resources>
+              </CheckBox>
+
+              <Label x:Name="lbl_FR_Preview_ID" Content="ID" Canvas.Left="1116" Canvas.Top="13"/>
+              <Label x:Name="lbl_FR_Preview_Name" Content="NAME" Canvas.Left="155" Canvas.Top="10" Width="236" />
+              <TextBlock x:Name="tb_NoFR_PreviewQs" Text="There aren't any questions for this File Review!" Foreground="Red" FontWeight="Bold" FontSize="20" Canvas.Left="225" Canvas.Top="85" />
+
+              <DataGrid x:Name="dg_FRPreview" Height="541" Width="1102" Canvas.Left="10" Canvas.Top="43" 
+                        AlternatingRowBackground="#FFAEDEB9" 
+                        SelectionMode="Single" 
+                        AutoGenerateColumns="False" 
+                        IsTextSearchEnabled="True" 
+                        BorderBrush="Gray" BorderThickness="1"
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+                <DataGrid.Resources>
+                  <Style x:Key="RightAligned" TargetType="DataGridCell">
+                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                  </Style>
+                  <Style x:Key="Center" TargetType="DataGridCell">
+                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                  </Style>
+                  <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="Green"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="BorderBrush" Value="Wheat"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Width" Value="Auto"/>
+                  </Style>
+                  <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                    <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                    <Setter Property="BorderBrush" Value="Black"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                  </Style>
+                  <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                  </Style>
+                </DataGrid.Resources>
+
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding pvDO}" />
+                  <DataGridTextColumn Header="Question" IsReadOnly="True" Width="600"
+                                                        Binding="{Binding pvQuestion}" HeaderStyle="{StaticResource CenterCol}"/>
+                  <DataGridTextColumn Header="AnswerList" IsReadOnly="True" Width="100"
+                                                        Binding="{Binding pvAnswerList}" Visibility="Hidden"/>
+
+                  <DataGridTemplateColumn Header="Your Answer"  HeaderStyle="{StaticResource EditableColumn}" Width="Auto" MinWidth="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <!--<ComboBox ItemsSource="{Binding pvSourceAnswers}" SelectedItem="{Binding pvAnswer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />-->
+                        <TextBlock Text="{Binding pvAnswerText, Mode=TwoWay}" TextAlignment="Center" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                      <DataTemplate>
+                        <ComboBox ItemsSource="{Binding pvSourceAnswers}" 
+                                                          SelectedValue="{Binding pvAnswerText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                          IsDropDownOpen="True"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTextColumn Header="AnswerID" IsReadOnly="True" Width="100"
+                                                        Binding="{Binding pvAnswer}" Visibility="Hidden"/>
+                  <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40"
+                                                        Binding="{Binding pvID}" Visibility="Hidden" />
+                </DataGrid.Columns>
+
+              </DataGrid>
+
+              <Button Content="Save" IsEnabled="False" ToolTip="Button disabled as preview only" Canvas.Left="391" Canvas.Top="589" Height="32" Width="89" />
+              <Button x:Name="btn_FRPreview_BackToOverview" Content="Back to Overview" Canvas.Left="485" Canvas.Top="589" Height="32" Width="121" />
+
+              <StackPanel Orientation="Vertical" Canvas.Left="872" Canvas.Top="471" Visibility="Hidden">
+                <Label x:Name="lbl_FRPreview_DGID" Content="Selected DG ID" />
+                <Label x:Name="lbl_FRPreview_CurrVal" Content="Selected DG Value" />
+              </StackPanel>
+
+
+            </Canvas>
+          </TabItem>
+        </TabControl>
+
 
       </Canvas>
     </TabItem>
 
+    <TabItem Header="Manage Global Answers" x:Name="ti_DDL" Width="200">
+      <Canvas>
+        <TabControl Canvas.Left="10" Canvas.Top="10" Height="690" Width="1154" Background="#FFEFF1F1" BorderBrush="Gray">
+          <TabItem Header="Global Answers...">
+            <Canvas>
+              <Label Content="Use this page to configure 'Answer Groups' that can be used by the Matter Risk Assessment, or the File Review.  Note: Scores only apply to the Matter Risk Assessment and are ignored on File Reviews." Foreground="Gray" Canvas.Left="10" Canvas.Top="5" />
+              <GroupBox Header="1: Select a List..." Foreground="#FF6150BE" BorderBrush="Gray" Height="612" Width="1128" Canvas.Left="10" Canvas.Top="30"  >
+                <Canvas>
 
-    <TabItem Header="Edit MRA Template..." x:Name="ti_MRA_Questions" >
-      <TabItem.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-      </TabItem.Resources>
-
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="1*" />
-          <ColumnDefinition Width="1*" />
-        </Grid.ColumnDefinitions>
-
-        <Grid.RowDefinitions>
-          <RowDefinition Height="1*" />
-          <RowDefinition Height="14*" />
-        </Grid.RowDefinitions>
-
-
-        <!-- TOP Toolbar section -->
-        <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
-          <GroupBox Header="This Matter Risk Assessment..." BorderBrush="Gray"  MaxWidth="550"
-                    Margin="2" VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-
-              <TextBlock x:Name="tb_ThisMRAid" Text="-1" Foreground="Gray" Margin="4,0" FontWeight="Bold" />
-              <TextBlock x:Name="tb_ThisMRAname" Text="Name of NMRA" Margin="4,0" FontWeight="Bold"
-                         Foreground="Gray" TextTrimming="CharacterEllipsis"  />
-            </StackPanel>
-
-          </GroupBox>
-
-
-          <Button x:Name="btn_BackToOverview_FromEditQs" ToolTip="Go back to the 'Overview' sheet"
-                  Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod"
-                  Height="34" Margin="20,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
-              <TextBlock Margin="4,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="50" TextWrapping="Wrap" />
-            </StackPanel>
-          </Button>
-
-
-          <ToggleButton x:Name="btn_Clipboard_Copy" ClickMode="Press" VerticalAlignment="Center" Margin="90,0,0,0" Padding="4,0">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\clipboard1.png" />
-              <TextBlock Text="Clipboard - Copy..." Margin="3,4,0,4" TextAlignment="Left"/>
-            </StackPanel>
-          </ToggleButton>
-          <Popup x:Name="Clipboard_Popup_Copy" 
-                  PlacementTarget="{Binding ElementName=btn_Clipboard_Copy}"
-                  Placement="Bottom"
-                  StaysOpen="False"
-                  AllowsTransparency="True"
-                  PopupAnimation="Slide">
-
-            <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="2">
-              <StackPanel>
-                <Button x:Name="btn_CopyToClipboard_QuestionOnly" 
-                        Content="Current Question only"
-                        Padding="8,4"
-                        HorizontalContentAlignment="Left"
-                        BorderThickness="0"
-                        Background="Transparent"/>
-
-                <Separator/>
-
-                <Button x:Name="btn_CopyToClipboard_QuestionAndAnswers" 
-                        Content="Current Question and all its Answers"
-                        Padding="8,4"
-                        HorizontalContentAlignment="Left"
-                        BorderThickness="0"
-                        Background="Transparent"/>
-
-                <Separator/>
-
-                <Button x:Name="btn_CopyToClipboard_AnswersAll" 
-                        Content="All Answers for current Question"
-                        Padding="8,4"
-                        HorizontalContentAlignment="Left"
-                        BorderThickness="0"
-                        Background="Transparent"/>
-
-                <Separator/>
-
-                <Button x:Name="btn_CopyToClipboard_AnswerOnly" 
-                        Content="Current Answer only"
-                        Padding="8,4"
-                        HorizontalContentAlignment="Left"
-                        BorderThickness="0"
-                        Background="Transparent"/>
-
-                <Separator />
-
-                <Button x:Name="btn_CopyToClipboard_Clear" 
-                       Content="(Clear Clipboard)"
-                       Padding="8,4"
-                       HorizontalContentAlignment="Left"
-                       BorderThickness="0"
-                       Background="Transparent"/>
-              </StackPanel>
-
-            </Border>
-
-          </Popup>
-            
-          <GroupBox x:Name="grp_MRA_Clipboard" Header="'Copy' Clipboard..." VerticalAlignment="Center"
-                    Foreground="Gray" BorderBrush="DarkGoldenrod"  Margin="10,0,0,0">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Copied what:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_CopiedWhat" 
-                         Text="Question|One-Answer|All-Answers" Foreground="Gray" HorizontalAlignment="Left"  Margin="2,0"/>
-              <TextBlock Text="TID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceTemplateID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="QID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceQuestionID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock Text="AID:" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-              <TextBlock x:Name="tb_MRA_SourceAnswerID" 
-                         Text="-1" Foreground="Gray" HorizontalAlignment="Right" Margin="2,0"/>
-
-              <Button x:Name="btn_Clipboard_Paste" Content="Paste" VerticalAlignment="Center" Margin="8,0,0,0" Padding="6,0"/>
-
-            </StackPanel>
-          </GroupBox>
-
-          <Button x:Name="btn_EditMRA_SaveToDB" Content="Commit Changes" 
-                  Background="LightGreen" Padding="4" VerticalAlignment="Center" Margin="74,0,0,0"/>
-        </StackPanel>
-
-
-
-        <!-- LEFT: Tree -->
-        <Border Grid.Column="0" Grid.Row="1"
-                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
-                CornerRadius="10">
-
-
-          <TreeView x:Name="tvTemplate"
-                    ItemsSource="{Binding Groups}" 
-                    ScrollViewer.HorizontalScrollBarVisibility="Auto" 
-                    ScrollViewer.VerticalScrollBarVisibility="Auto" >
-
-            <TreeView.ItemTemplate>
-              <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
-                <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="530"/>
-
-                <HierarchicalDataTemplate.ItemTemplate>
-                  <HierarchicalDataTemplate ItemsSource="{Binding Answers}">
-                    <TextBlock Text="{Binding QuestionText}" TextWrapping="Wrap" MaxWidth="500"/>
-
-                    <HierarchicalDataTemplate.ItemTemplate>
-                      <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                          <TextBlock Text="{Binding AnswerText}" />
-                          <TextBlock Text="  (" />
-                          <TextBlock Text="{Binding Score}" />
-                          <TextBlock Text=")" />
-                        </StackPanel>
-                      </DataTemplate>
-                    </HierarchicalDataTemplate.ItemTemplate>
-
-                  </HierarchicalDataTemplate>
-                </HierarchicalDataTemplate.ItemTemplate>
-
-              </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
-          </TreeView>
-
-        </Border>
-
-        <!-- RIGHT: Editor -->
-        <Border Grid.Column="1" Grid.Row="1"
-                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
-                CornerRadius="10">
-          <DockPanel>
-
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
-              <TextBlock Text="Edit details" FontSize="16" FontWeight="Bold" />
-              <Button Content="Update"
-                        Margin="12,0,0,0"
-                        Width="90" Visibility="Collapsed"/>
-
-
-            </StackPanel>
-
-            <StackPanel>
-
-              <!-- GROUP EDITOR -->
-              <GroupBox BorderBrush="Gray" Margin="0,4">
-                <GroupBox.Header>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Question Group Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
-                    <Border Width="0" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4" Visibility="Collapsed"/>
-
-                    <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray" />
-                      <Button x:Name="btn_EditMRA_Group_MoveTop" Margin="4,0,0,0" 
-                              ToolTip="Move the currently selected Question to the top of the list">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Group_MoveUp" Margin="4,0,0,0" 
-                              ToolTip="Move the currently selected Question up one row">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Group_MoveDown" Margin="4,0,0,0"
-                              ToolTip="Move the currently selected Question down one row">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Group_MoveBottom" Margin="4,0,0,0"
-                              ToolTip="Move the currently selected Question to the bottom of the list">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                    </StackPanel>
-
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Group_Add" Content="Add New Group"  Width="114" Padding="6,2"/>
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Group_DeleteSelected" 
-                            Background="#FFFFA7A7" BorderBrush="DarkRed"
-                            ToolTip="Deletes the currently selected Group (requires confirmation)">
+                  <StackPanel Orientation="Horizontal" Margin="4,2">
+                    <Button x:Name="btn_AddNewList">
                       <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Add New..." TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
                       </StackPanel>
                     </Button>
-                  </StackPanel>
 
-                </GroupBox.Header>
+                    <Button x:Name="btn_CopySelectedList" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
 
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0" >
-                  <TextBlock Text="Question Group" VerticalAlignment="Center"/>
-                  <TextBox Text="{Binding SelectedGroup.GroupName, UpdateSourceTrigger=LostFocus}" Padding="2"
-                           Width="400" Height="23" Margin="4,0,0,0"/>
-                </StackPanel>
-
-              </GroupBox>
-
-              <!-- QUESTION EDITOR -->
-              <GroupBox BorderBrush="Gray" Margin="0,4" >
-                <GroupBox.Header>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Question Details..." VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
-                    <Border Width="40" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray" />
-                      <Button x:Name="btn_EditMRA_Question_MoveTop" Margin="4,0,0,0" 
-                              ToolTip="Move the currently selected Question to the top of the list">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...to Top" TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Question_MoveUp" Margin="4,0,0,0" 
-                              ToolTip="Move the currently selected Question up one row">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...Up"  TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Question_MoveDown" Margin="4,0,0,0"
-                              ToolTip="Move the currently selected Question down one row">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...Down" TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Question_MoveBottom" Margin="4,0,0,0"
-                              ToolTip="Move the currently selected Question to the bottom of the list">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="...to Bottom"  TextAlignment="Left" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                    </StackPanel>
-                    
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Question_Add"  Content="Add New Question" Width="114" Padding="6,2"/>
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-
-                    <Button x:Name="btn_EditMRA_Question_DeleteSelected" 
-                            Background="#FFFFA7A7" BorderBrush="DarkRed"
-                            ToolTip="Deletes the currently selected Question (requires confirmation)">
+                    <Button x:Name="btn_DeleteSelectedList" Background="#FFFFA7A7" IsEnabled="False" Margin="8,0,0,0">
                       <StackPanel Orientation="Horizontal">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Margin="4,0,4,0" Text="Delete Selected"  TextAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center"/>
+                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_RefreshAnswerList" ToolTip="Click here to refresh this list" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <Image MaxHeight="22" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\refresh2.png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Refresh List" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
                       </StackPanel>
                     </Button>
 
                   </StackPanel>
-
-                </GroupBox.Header>
-
-                <StackPanel Margin="0,4,0,0">
-
-                  <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Right">
-                    <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
-                             Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
-
-                  </StackPanel>
-
-                  <TextBlock Text="Question Text:" />
-                  <TextBox Text="{Binding SelectedQuestion.QuestionText, UpdateSourceTrigger=LostFocus}"
-                           AcceptsReturn="True"
-                           Height="80"
-                           TextWrapping="Wrap"/>
-
-                </StackPanel>
-
-              </GroupBox>
-
-              <!-- ANSWER EDITOR -->
-              <GroupBox BorderBrush="Gray" Margin="0,4" >
-                <GroupBox.Header>
-                  <StackPanel Orientation="Horizontal" >
-                    <TextBlock Text="Answer Details..." VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
                   
-                    <Border Width="50" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="Move:" VerticalAlignment="Center" Foreground="Gray"/>
-                      <Button x:Name="btn_EditMRA_Answer_MoveTop" Margin="4,0,0,0"
-                              ToolTip="Move selected answer item to the top of the list">
-                        <StackPanel Orientation="Vertical">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                  <TextBlock TextWrapping="Wrap" Text="You can edit the 'Description' or add new items using the '+' button." Foreground="Gray" Width="398" Height="19" Canvas.Top="70"/>
+
+                  <Label x:Name="lbl_List_SelID" Height="26" Width="30" Canvas.Left="109" Canvas.Top="413" />
+                  <Label x:Name="lbl_List_SelDesc" Canvas.Left="144" Height="26" Width="230" Canvas.Top="413" />
+
+                  <TextBlock x:Name="lbl_NoGlobalGroups" Text="No 'Global Groups' currently exist - click the '+' (Add New...) button to create a new group" Foreground="Red" 
+                                               FontWeight="Bold" FontSize="16" TextWrapping="Wrap" Canvas.Top="89" Height="66" Width="388" Canvas.Left="10" Visibility="Collapsed"/>
+
+                  <DataGrid x:Name="dg_Lists" Canvas.Top="89" Width="454" Height="501" BorderBrush="Gray" BorderThickness="1"
+                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                    <DataGrid.Resources>
+                      <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="Green"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="BorderBrush" Value="Wheat"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Width" Value="Auto"/>
+                      </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="ID" IsReadOnly="True" Width="26"
+                                                    Binding="{Binding QID}"/>
+                      <DataGridTextColumn Header="List Name" IsReadOnly="False" Width="340"
+                                                    Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    HeaderStyle="{StaticResource EditableColumn}"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
+
+                  <GroupBox Header="2: Edit List Items..." Foreground="#FF6150BE" BorderBrush="Gray" Height="588" Width="656" Canvas.Left="459" Canvas.Top="2"  >
+                    <Canvas>
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Canvas.Left="10" Canvas.Top="5">
+                        <TextBlock Text=" Selected List:" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Label x:Name="lbl_SelectedList" Content="-NOT SELECTED-"  Foreground="Gray" VerticalContentAlignment="Center"/>
+                        <Label x:Name="lbl_SelectedListQID" Content="-NOT SELECTED-"  Foreground="Gray" VerticalContentAlignment="Center" Visibility="Collapsed"/>
+                      </StackPanel>
+
+                      <StackPanel Orientation="Horizontal" Canvas.Top="35" Margin="4,0,0,0">
+                        <Button x:Name="btn_AddNewListItem" ToolTip="Add new item to end of the list" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+                        <Button x:Name="btn_CopySelectedListItem" ToolTip="Copy selected item (adds to the bottom of the list with '(copy)' appended)" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+                        <Button x:Name="btn_A_MoveTop" ToolTip="Move the currently selected item to the top of the list" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="btn_A_MoveUp" ToolTip="Move the currently selected item up one row" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+                        <Button x:Name="btn_A_MoveDown" ToolTip="Move the currently selected item down one row" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+                        <Button x:Name="btn_A_MoveBottom" ToolTip="Move the currently selected item to the bottom of the list" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+                        <Button x:Name="btn_DeleteSelectedListItem" Background="#FFFFA7A7" ToolTip="Deletes the currently selected item (asks for confirmation first)" Margin="8,0,0,0">
+                          <StackPanel Orientation="Vertical">
+                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                            <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                          </StackPanel>
+                        </Button>
+
+
+                      </StackPanel>
+                      
+
+                      <Label x:Name="lbl_ListItemText" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
+                      <Label x:Name="lbl_ListItemScore" Content="list item score" Canvas.Left="546" Canvas.Top="35" Visibility="Hidden"/>
+                      <Label x:Name="lbl_ListItemEC" Content="list item EmailComment" Canvas.Left="546" Canvas.Top="35" Visibility="Hidden"/>
+                      <TextBlock x:Name="tb_NoAnswerItems" Text="There are no Answer list items matching the selected List Group.  First make sure a list group is selected from the list on the left, then click 'Add New' here to add an item" Foreground="Red" TextWrapping="Wrap" Canvas.Top="75" Width="629" Height="92" FontSize="20" FontWeight="Bold" />
+
+                      <DataGrid x:Name="dg_ListItems" Canvas.Top="70" Width="643" Height="496" 
+                                AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
+                                AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
+                                BorderBrush="Gray" BorderThickness="1">
+                        <DataGrid.Resources>
+                          <Style x:Key="RightAligned" TargetType="DataGridCell">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                          </Style>
+                          <Style x:Key="Center" TargetType="DataGridCell">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                          </Style>
+                          <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="Green"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            <Setter Property="BorderBrush" Value="Wheat"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Width" Value="Auto"/>
+                          </Style>
+                          <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                            <Setter Property="BorderBrush" Value="Black"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Width" Value="Auto"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                          </Style>
+                        </DataGrid.Resources>
+
+                        <DataGrid.Columns>
+                          <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding liDO}" />
+                          <DataGridTextColumn Header="Item Text" IsReadOnly="False" Width="Auto" MinWidth="60"
+                                                            Binding="{Binding liText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            HeaderStyle="{StaticResource EditableColumn}"/>
+                          <DataGridTextColumn Header="Item Score" IsReadOnly="False" Width="70"
+                                                            Binding="{Binding liScore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            HeaderStyle="{StaticResource EditableColumn}"/>
+                          <DataGridTextColumn Header="Email Comment" IsReadOnly="False" Width="Auto" MinWidth="100"
+                                                            Binding="{Binding liEmailComment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            HeaderStyle="{StaticResource EditableColumn}"/>
+                          <DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding liCountUsed}" Visibility="Hidden"/>
+                          <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding liCode}" Visibility="Hidden"/>
+                        </DataGrid.Columns>
+                      </DataGrid>
+
+                    </Canvas>
+                  </GroupBox>
+                </Canvas>
+              </GroupBox>
+
+            </Canvas>
+
+          </TabItem>
+
+          <TabItem Header="'Groups'..." Height="30">
+            <Canvas>
+              <Label Content="Use this page to configure 'Section / Groups' that can be used by the MRA and File Reviews to group a set of questions together." Foreground="Gray" Canvas.Left="10" Canvas.Top="5" />
+              <GroupBox Header="Manage 'Groups'..." Foreground="#FF6150BE" BorderBrush="Gray"  Canvas.Left="10" Canvas.Top="35" Height="607" Width="546">
+                <Canvas>
+
+                  <StackPanel Orientation="Horizontal">
+
+                    <StackPanel Orientation="Vertical">
+                      <Button x:Name="btn_AddNewGroupItem">
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="New MRA Group"  TextWrapping="Wrap" Width="126" TextAlignment="Left"/>
                         </StackPanel>
                       </Button>
 
-                      <Button x:Name="btn_EditMRA_Answer_MoveUp" Margin="4,0,0,0"
-                              ToolTip="Move selected answer item up one row">
-                        <StackPanel Orientation="Vertical">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
+                      <Button x:Name="btn_AddNewGroupItemFR" Margin="0,4,0,0" >
+                        <StackPanel Orientation="Horizontal">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                          <TextBlock Margin="3,4,0,4" Text="New File Review Group"  TextWrapping="Wrap" Width="126" TextAlignment="Left"/>
                         </StackPanel>
                       </Button>
-
-                      <Button x:Name="btn_EditMRA_Answer_MoveDown" Margin="4,0,0,0"
-                              ToolTip="Move selected answer item dowm one row">
-                        <StackPanel Orientation="Vertical">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_EditMRA_Answer_MoveBottom" Margin="4,0,0,0"
-                              ToolTip="Move selected answer item to the bottom of the list" >
-                        <StackPanel Orientation="Vertical">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-                        </StackPanel>
-                      </Button>
-
                     </StackPanel>
-                    
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
-                    <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer"  Width="114" Padding="6,2"/>
-                    <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
 
-                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Background="#FFFFA7A7"  
-                            ToolTip="Delete the selected answer item (requires confirmation)...">
+                    <Button x:Name="btn_CopySelectedGroupItem" Margin="8,0,0,0">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                        <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Group_MoveTop" Visibility="Collapsed">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                        <TextBlock Padding="2" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Group_MoveUp" Margin="8,0,0,0">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                        <TextBlock Padding="2" Text="Move Up"  TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Group_MoveDown" Margin="8,0,0,0">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                        <TextBlock Padding="2" Text="Move Down" TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_Group_MoveBottom" Visibility="Collapsed">
+                      <StackPanel Orientation="Vertical">
+                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                        <TextBlock Padding="2" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button x:Name="btn_DeleteSelectedGroupItem" Background="#FFFFA7A7" Margin="8,0,0,0">
                       <StackPanel Orientation="Vertical">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
+                        <TextBlock Padding="2" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
                       </StackPanel>
                     </Button>
-                    
                   </StackPanel>
-                </GroupBox.Header>
+                  
 
-                <StackPanel Margin="0,4,0,0" >
+                  <Label x:Name="lbl_GroupItemText" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
+                  <Label x:Name="lbl_GroupItemGroup" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
 
-                  <!-- Label shows only when no selection -->
-                  <TextBlock Text="No Answers exist for this Question - click 'Add New Answer' or copy/paste from another Question"
-                              Foreground="Red" FontWeight="Bold" TextWrapping="Wrap">
-                    <TextBlock.Style>
-                      <Style TargetType="TextBlock">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding SelectedAnswer}" Value="{x:Null}">
-                            <Setter Property="Visibility" Value="Visible"/>
-                          </DataTrigger>
-                        </Style.Triggers>
+                  <TextBlock x:Name="tb_NoGroupItems" Text="There are no Section/Group items - click 'Add New' to add an item" Foreground="Red" TextWrapping="Wrap" Canvas.Top="75" Width="435" Height="92" FontSize="20" FontWeight="Bold" />
+
+                  <DataGrid x:Name="dg_GroupItems" Canvas.Top="70" Width="532" Height="516" BorderBrush="Gray" BorderThickness="1"
+                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" >
+                    <DataGrid.Resources>
+                      <Style x:Key="RightAligned" TargetType="DataGridCell">
+                        <Setter Property="HorizontalAlignment" Value="Right"/>
                       </Style>
-                    </TextBlock.Style>
-                  </TextBlock>
-
-                  <StackPanel Margin="0,4,0,0">
-                    <StackPanel.Style>
-                      <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Visible"/>
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding SelectedAnswer}" Value="{x:Null}">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                          </DataTrigger>
-
-                        </Style.Triggers>
+                      <Style x:Key="Center" TargetType="DataGridCell">
+                        <Setter Property="HorizontalAlignment" Value="Center"/>
                       </Style>
-                    </StackPanel.Style>
-
-                    <!-- Put your dependent controls here -->
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" HorizontalAlignment="Right">
-                      <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                      <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
-                               Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
-
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                      <TextBlock Text="Score"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                      <TextBox Text="{Binding SelectedAnswer.Score, UpdateSourceTrigger=LostFocus}" 
-                               Width="80" Height="23" Margin="4,0,0,0" Padding="2"/>
-
-
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="Answer Text"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
-
-                      <TextBox Text="{Binding SelectedAnswer.AnswerText, UpdateSourceTrigger=LostFocus}"
-                               AcceptsReturn="False"
-                               Height="23" Width="400"
-                               TextWrapping="Wrap"
-                               Margin="4,0,0,0" Padding="2" />
-
-                    </StackPanel>
-
-
-                    <StackPanel Orientation="Horizontal" Margin="0,4">
-                      <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
-                      <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=LostFocus}" 
-                                Width="400" Height="46" Margin="4,0,0,0" />
-                    </StackPanel>
-
-                  </StackPanel>
-
-
-                </StackPanel>
-                
-              </GroupBox>
-
-              <Expander IsExpanded="False" Margin="0,8,0,0" x:Name="exp_DebugMRA" 
-                        DataContext="{Binding DataContext, ElementName=tvTemplate}"
-                        Background="LightGray" BorderBrush="Gray" ExpandDirection="Down" >
-                <Expander.Header>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Debug" FontWeight="Bold" VerticalAlignment="Center" Foreground="Gray"/>
-                    <Button x:Name="btn_DumpVM" Content="Export Current MRA Structure to file" 
-                            Margin="50,0,0,0" Padding="4,0"
-                            Visibility="{Binding IsExpanded,
-                                          ElementName=exp_DebugMRA,
-                                          Converter={StaticResource BoolToVis}}"/>
-                    <Button x:Name="btn_EditMRA_CopyDebugLog"
-                            Content="Copy Debug Log to Clipboard"
-                            Margin="20,0,0,0" Width="170"
-                            Visibility="{Binding IsExpanded,
-                                          ElementName=exp_DebugMRA,
-                                          Converter={StaticResource BoolToVis}}"/>
-
-                    <TextBlock Text="{Binding DebugLines.Count, StringFormat=x{0}}"
-                                Foreground="Gray" Margin="8,0,0,0" TextAlignment="Center" Width="30"/>
-                  </StackPanel>
-
-                </Expander.Header>
-
-                <DockPanel>
-                  <ListBox ItemsSource="{Binding DebugLines}"
-                           FontFamily="Consolas"
-                           FontSize="12"
-                           Height="130" Margin="2"
-                           ScrollViewer.VerticalScrollBarVisibility="Auto">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate>
-                        <TextBlock Text="{Binding Path=.}" />
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                </DockPanel>
-              </Expander>
-
-
-            </StackPanel>
-
-
-          </DockPanel>
-        </Border>
-      </Grid>
-
-
-    </TabItem>
-
-    <!-- E N D   O F   A N S W E R S   S E C T I O N -->
-
-
-
-    <TabItem Header="Preview" x:Name="ti_MRA_Preview" >
-      <StackPanel Background="LightGray">
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4">
-          
-          <GroupBox  BorderBrush="Black" VerticalAlignment="Center">
-            <GroupBox.Header>
-              <StackPanel Orientation="Horizontal" >
-                <TextBlock Text="Previewing: " />
-                <TextBlock x:Name="tb_MRAPreview_ID" Text="ID" Margin="4,0,0,0"/>
-                <TextBlock x:Name="tb_MRAPreview_Name" Text="NAME"  MaxWidth="300" Margin="8,0"/>
-
-              </StackPanel>
-              
-            </GroupBox.Header>
-
-            <StackPanel Orientation="Horizontal" Margin="4,2">
-              <TextBlock Text="Medium Trigger:" />
-              <TextBlock x:Name="tb_MRAPreview_ScoreTriggerMedium" Margin="4,0,0,0" Text="100"/>
-
-              <TextBlock Text="High Trigger:" Margin="20,0,0,0"/>
-              <TextBlock x:Name="tb_MRAPreview_ScoreTriggerHigh" Margin="4,0,0,0" Text="500"/>
-
-            </StackPanel>
-
-          </GroupBox>
-
-          <GroupBox Header="Current Scoring" BorderBrush="Black" Margin="50,0,0,0" VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal" Margin="4,0" VerticalAlignment="Center">
-              <TextBlock Text="Total: " VerticalAlignment="Center" />
-              <TextBlock x:Name="tb_MRAPreview_Score" Text="-1"  Margin="4,0,0,0" VerticalAlignment="Center"/>
-
-              <TextBlock Text="Risk Category: "  Margin="30,0,0,0" VerticalAlignment="Center"/>
-              <TextBlock x:Name="tb_MRAPreview_RiskCategory" Padding="4,2" Text="Low" VerticalAlignment="Center">
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <!-- optional default background -->
-                    <Setter Property="Background" Value="Transparent"/>
-
-                    <Style.Triggers>
-
-                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
-                                   Value="Low">
+                      <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
                         <Setter Property="Background" Value="Green"/>
-                      </DataTrigger>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="BorderBrush" Value="Wheat"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Width" Value="Auto"/>
+                      </Style>
+                      <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                        <Setter Property="BorderBrush" Value="Black"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Width" Value="Auto"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
+                      </Style>
 
-                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
-                                   Value="Medium">
-                        <Setter Property="Background" Value="Yellow"/>
-                      </DataTrigger>
+                      <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                        <Setter Property="Margin" Value="0,2,0,4"/>
+                        <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type GroupItem}" >
+                              <Expander x:Name="exp" IsExpanded="True"
+                                                            Background="LightGray" BorderBrush="#FF4E4E4E" BorderThickness="1,1,1,1"
+                                                            Foreground="Black" Padding="0,2,0,0" Margin="2,0">
+                                <Expander.Header>
+                                  <DockPanel>
+                                    <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                    <TextBlock Text=" (" FontWeight="Bold" />
+                                    <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                    <TextBlock Text=")" FontWeight="Bold" />
+                                  </DockPanel>
+                                </Expander.Header>
+                                <ItemsPresenter />
+                              </Expander>
 
-                      <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}"
-                                   Value="High">
-                        <Setter Property="Background" Value="Red"/>
-                      </DataTrigger>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
 
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
+                        <!-- Trigger to set background colour to GREEN for Matter Risk Assessment -->
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Path=Name}" Value="MRA">
+                            <Setter Property="Template">
+                              <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type GroupItem}">
+                                  <Expander x:Name="expander"
+                                                              IsExpanded="True"
+                                                              Background="#FF58B940"
+                                                              BorderBrush="#FF306323"
+                                                              BorderThickness="1,1,1,1"
+                                                              Foreground="Black"
+                                                              Padding="0,2,0,0"
+                                                              Margin="2,0">
+                                    <Expander.Header>
+                                      <DockPanel>
+                                        <TextBlock FontWeight="Bold" Text="Matter Risk Assessment" Margin="5,0,0,0" />
+                                        <TextBlock Text=" (" FontWeight="Bold" />
+                                        <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                        <TextBlock Text=")" FontWeight="Bold" />
+                                      </DockPanel>
+                                    </Expander.Header>
+                                    <ItemsPresenter />
+                                  </Expander>
+                                </ControlTemplate>
+                              </Setter.Value>
+                            </Setter>
+                          </DataTrigger>
 
-              <TextBlock x:Name="tb_MRAPreview_RiskCategoryID" Text="1/2/3"  Margin="4,0,0,0" VerticalAlignment="Center"/>
+                          <!-- Trigger to set background colour to Red for File Reviews -->
+                          <DataTrigger Binding="{Binding Path=Name}" Value="FR">
+                            <Setter Property="Template">
+                              <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type GroupItem}">
+                                  <Expander x:Name="expander"
+                                                              IsExpanded="True"
+                                                              Background="#FFFF9797"
+                                                              BorderBrush="#FF6E3C3C"
+                                                              BorderThickness="1,1,1,1"
+                                                              Foreground="Black"
+                                                              Padding="0,2,0,0"
+                                                              Margin="2,0">
+                                    <Expander.Header>
+                                      <DockPanel>
+                                        <TextBlock FontWeight="Bold" Text="File Review" Margin="5,0,0,0" />
+                                        <TextBlock Text=" (" FontWeight="Bold" />
+                                        <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                        <TextBlock Text=")" FontWeight="Bold" />
+                                      </DockPanel>
+                                    </Expander.Header>
+                                    <ItemsPresenter />
+                                  </Expander>
+                                </ControlTemplate>
+                              </Setter.Value>
+                            </Setter>
+                          </DataTrigger>
+                        </Style.Triggers>
 
-            </StackPanel>
+                      </Style>
 
-          </GroupBox>
+                    </DataGrid.Resources>
 
+                    <DataGrid.GroupStyle>
+                      <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                        <GroupStyle.Panel>
+                          <ItemsPanelTemplate >
+                            <DataGridRowsPresenter />
+                          </ItemsPanelTemplate>
+                        </GroupStyle.Panel>
+                      </GroupStyle>
+                    </DataGrid.GroupStyle>
 
-          <Button x:Name="btn_MRAPreview_BackToOverview"
-                  VerticalAlignment="Center"  Margin="80,4,0,0" 
-                  Height="34">
-            <StackPanel Orientation="Horizontal">
-              <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png" Margin="4,0,4,0"/>
-              <TextBlock Margin="0,0,4,0" Text="Back to Overview"  TextAlignment="Center" Visibility="Visible" VerticalAlignment="Center" Width="100" TextWrapping="Wrap" />
-            </StackPanel>
-          </Button>
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding gDO}" />
+                      <DataGridTextColumn Header="Description" IsReadOnly="False" Width="300"
+                                                            Binding="{Binding gDesc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            HeaderStyle="{StaticResource EditableColumn}"/>
+                      <DataGridTextColumn Header="Belongs to" IsReadOnly="False" Width="100"
+                                                                Binding="{Binding gGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                HeaderStyle="{StaticResource EditableColumn}" />
+                      <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding gID}" Visibility="Hidden"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </Canvas>
+              </GroupBox>
+            </Canvas>
+          </TabItem>
+        </TabControl>
 
-        </StackPanel>
-
-        <TextBlock x:Name="tb_NoMRA_PreviewQs" HorizontalAlignment="Center" Visibility="Collapsed"
-                    Text="There aren't any questions for this Matter Risk Assessment!" 
-                    Foreground="Red" FontWeight="Bold" FontSize="20" />
-
-
-        <Grid x:Name="grid_Preview_MRA" Height="554" Width="1128" Canvas.Left="10" Canvas.Top="67">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="30"/>
-            <RowDefinition/>
-          </Grid.RowDefinitions>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition MinWidth="300" MaxWidth="900" Width="800" />
-            <ColumnDefinition Width="6" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-
-          <GridSplitter HorizontalAlignment="Center"   
-                        VerticalAlignment="Stretch"   
-                        Grid.Column="1"   
-                        Grid.RowSpan="2"
-                        Width="6" Background="Silver">
-            <GridSplitter.Template>
-              <ControlTemplate TargetType="{x:Type GridSplitter}">
-                <Grid>
-                  <Button Content="⁞" FontWeight="Bold"/>
-                  <!-- Use vertical ellipsis character as the arrow -->
-                  <Rectangle Fill="#00FFFFFF" />
-                  <!-- Transparent background to allow resizing -->
-                </Grid>
-              </ControlTemplate>
-            </GridSplitter.Template>
-          </GridSplitter>
-
-          
-          <DataGrid x:Name="dg_MRAPreview" Grid.Row="1" Grid.Column="0" 
-                    AlternatingRowBackground="#FFAEDEB9" 
-                    SelectionMode="Single" SelectionUnit="FullRow"
-                    AutoGenerateColumns="False" 
-                    IsTextSearchEnabled="True" Margin="0,0,6,2" 
-                    IsSynchronizedWithCurrentItem="True"
-                    CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
-                    VirtualizingPanel.IsVirtualizing="False"
-                    EnableRowVirtualization="False"
-                    EnableColumnVirtualization="False"
-                    >
-
-            <DataGrid.Resources>
-              <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
-                                  In VBA, this is done with a setting property 'HideSelection' to false but
-                                  no equivilent in WPF/XAML -->
-              <Style TargetType="{x:Type DataGridRow}">
-                <Style.Resources>
-                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
-                  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
-                </Style.Resources>
-              </Style>
-
-              <!-- Grouping Style (for when 'View All' selected) -->
-              <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                <Setter Property="Margin" Value="0,2,0,4"/>
-                <!--<Setter Property="Padding" Value="0,2,0,0" />-->
-                <Setter Property="Template">
-                  <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type GroupItem}" >
-                      <Expander x:Name="exp" IsExpanded="True"
-                                Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
-                                Foreground="Black" Padding="0,2,0,0">
-                        <Expander.Header>
-                          <DockPanel>
-                            <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                            <TextBlock Text=" (" FontWeight="Bold" />
-                            <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                            <TextBlock Text=")" FontWeight="Bold" />
-                          </DockPanel>
-                        </Expander.Header>
-                        <ItemsPresenter />
-                      </Expander>
-
-                    </ControlTemplate>
-                  </Setter.Value>
-                </Setter>
-
-              </Style>
-
-              <!-- Display TextBlock styling for DataGridTextColumn -->
-              <Style x:Key="DGTextBlockPadded" TargetType="TextBlock">
-                <Setter Property="Margin" Value="6,0,6,0"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-              </Style>
-
-              <!-- Edit TextBox styling for DataGridTextColumn -->
-              <Style x:Key="DGTextBoxPadded" TargetType="TextBox">
-                <Setter Property="Padding" Value="4,2,4,2"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-              </Style>
-
-              <!-- Cell padding (applies around whatever content is inside the cell) -->
-              <Style x:Key="DGCellPadded" TargetType="DataGridCell">
-                <Setter Property="Padding" Value="2,0"/>
-                <!-- let TextBlock margin do the visible work -->
-              </Style>
-
-              <!-- Right aligned numeric cell -->
-              <Style x:Key="DGRightCell" TargetType="DataGridCell" BasedOn="{StaticResource DGCellPadded}">
-                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-              </Style>
-
-              <!-- Right aligned numeric TextBlock -->
-              <Style x:Key="DGRightTextBlock" TargetType="TextBlock" BasedOn="{StaticResource DGTextBlockPadded}">
-                <Setter Property="TextAlignment" Value="Right"/>
-              </Style>
-
-              <Style x:Key="RightAlignedCell" TargetType="DataGridCell">
-                <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Padding" Value="6,2,6,2"/>
-              </Style>
-
-              <Style x:Key="Center" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-              </Style>
-              <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                <Setter Property="BorderBrush" Value="Black"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Width" Value="Auto"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-              </Style>
-              <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
-                <Setter Property="HorizontalContentAlignment" Value="Center" />
-              </Style>
-            </DataGrid.Resources>
-
-            <!-- Setting the 'Group Style' to use -->
-            <DataGrid.GroupStyle>
-              <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                <GroupStyle.Panel>
-                  <ItemsPanelTemplate >
-                    <DataGridRowsPresenter />
-                  </ItemsPanelTemplate>
-                </GroupStyle.Panel>
-              </GroupStyle>
-            </DataGrid.GroupStyle>
-
-            <DataGrid.Columns>
-
-              <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100"
-                                  Binding="{Binding QuestionGroup}" Visibility="Collapsed"/>
-
-
-              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" 
-                                  Binding="{Binding QuestionOrder}"
-                                  CellStyle="{StaticResource DGRightCell}"
-                                  ElementStyle="{StaticResource DGRightTextBlock}"/>
-              
-              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="500" 
-                                      HeaderStyle="{StaticResource CenterCol}"
-                                      CellStyle="{StaticResource DGCellPadded}">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding QuestionText}" TextAlignment="Left" TextWrapping="Wrap" Height="Auto" Padding="2,0"/>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-
-
-              <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100"
-                                  Binding="{Binding QuestionID}" Visibility="Collapsed"/>
-
-
-              <DataGridTemplateColumn Header="Your Answer"  IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200"
-                                      CellStyle="{StaticResource DGCellPadded}">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding SelectedAnswerText}" TextAlignment="Left" 
-                               VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto" Padding="2,0"/>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-
-              <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50" 
-                                  Binding="{Binding SelectedAnswerScore}"
-                                  HeaderStyle="{StaticResource TotalColumn}"
-                                  CellStyle="{StaticResource DGRightCell}"
-                                  ElementStyle="{StaticResource DGRightTextBlock}"/>
-                              
-              <DataGridTextColumn Header="SelectedAnswerID" IsReadOnly="True" Width="100"
-                                  Binding="{Binding SelectedAnswerID}" Visibility="Visible"
-                                  CellStyle="{StaticResource DGCellPadded}"
-                                  ElementStyle="{StaticResource DGRightTextBlock}"/>
-
-              <DataGridTemplateColumn Header="Email Comment"  IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600"
-                                      CellStyle="{StaticResource DGCellPadded}">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextAlignment="Left" 
-                               VerticalAlignment="Center" TextWrapping="Wrap" Height="Auto" Padding="2,0"/>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-            </DataGrid.Columns>
-
-          </DataGrid>
-
-          <StackPanel Grid.Row="1" Grid.Column="2" 
-                      DataContext="{Binding ElementName=dg_MRAPreview, Path=Items.CurrentItem}"
-                      Margin="6,0,4,4">
-
-            <GroupBox Header="Selected Question:"  BorderBrush="Gray">
-              <StackPanel Orientation="Vertical" >
-                <!--x:Name="tb_MRAPreview_QuestionText"-->
-                <TextBlock Text="{Binding QuestionText}"
-                           VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="340" 
-                           Margin="4,0,0,0" FontSize="22" />
-
-              </StackPanel>
-            </GroupBox>
-
-            <GroupBox Header="Your Answer:" Margin="0,6,0,0" BorderBrush="Gray">
-              <StackPanel>
-
-                <!--x:Name="cbo_MRAPreview_SelectedComboAnswer"-->
-                <ComboBox x:Name="cbo_MRAPreview_SelectedComboAnswer"
-                          Height="23" VerticalAlignment="Center" Visibility="Visible" 
-                          ItemsSource="{Binding AvailableAnswers}"
-                          DisplayMemberPath="AnswerText"
-                           />
-                <!--SelectedValuePath="AnswerID"
-                                SelectedItem="{Binding SelectedAnswer, 
-                       Mode=TwoWay, 
-                       UpdateSourceTrigger=PropertyChanged}"-->
-                <TextBlock Text="{Binding SelectedAnswerID}" />
-
-
-                <Button x:Name="btn_MRAPreview_SaveAnswer" HorizontalAlignment="Center" Content="Save" Height="30" MinWidth="60" MaxWidth="90" Margin="4,4,0,0"/>
-                <CheckBox x:Name="chk_MRAPreview_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center" 
-                          IsChecked="True" FlowDirection="RightToLeft" 
-                          HorizontalAlignment="Center" Margin="0,4,0,0">
-                  <CheckBox.Resources>
-                    <Style TargetType="{x:Type Path}">
-                      <Setter Property="FlowDirection" Value="LeftToRight" />
-                    </Style>
-                  </CheckBox.Resources>
-                </CheckBox>
-
-                <Label Content="Email Comment:" />
-                <TextBlock x:Name="tb_MRAPreview_EC" VerticalAlignment="Top" 
-                           Text="{Binding SelectedAnswerEmailComment}" 
-                           TextWrapping="Wrap" Height="Auto"/>
-
-              </StackPanel>
-              
-            </GroupBox>
-
-
-
-          </StackPanel>
-
-
-          <Label Content="All Questions" Foreground="Gray" Grid.Row="0" Grid.Column="0"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
-          <Label Content="Selected Question" Foreground="Gray" Grid.Row="0" Grid.Column="2"  HorizontalContentAlignment="Center" FontWeight="Bold"/>
-
-        </Grid>
-
-        <StackPanel Orientation="Vertical" Canvas.Left="872" Canvas.Top="471" Visibility="Hidden">
-          <Label x:Name="lbl_MRAPreview_DGID" Content="Selected DG ID" />
-          <Label x:Name="lbl_MRAPreview_CurrVal" Content="Selected DG Value" />
-        </StackPanel>
-      </StackPanel>
+      </Canvas>
     </TabItem>
-  </TabControl>
 
+    <TabItem Header="HODs and Access Privileges" Width="200" >
+      <Canvas>
+        <TextBlock Text="Use this page to manage Heads of Department (HOD), and configure who has access to certain 'Locks'" TextWrapping="Wrap" Foreground="Gray" Canvas.Top="10" Height="20" Width="708" Canvas.Left="10"/>
+
+        <GroupBox Header="HODs" Foreground="Gray" Canvas.Left="10" Canvas.Top="22" Height="230" Width="695">
+
+        </GroupBox>
+        <GroupBox Header="Access Privileges - Who has Keys to Locks..." Foreground="Gray" Canvas.Left="10" Canvas.Top="258" Height="442" Width="1154" >
+
+        </GroupBox>
+      </Canvas>
+
+    </TabItem>
+    <TabItem Header="Reporting" Width="100">
+      <Canvas>
+        <TextBlock Text="Please see the in-built report for Corrective Actions, under the 'Reporting' ribbon tab, and then 'Risk Management > Audit History'.       If you would like any bespoke / custom reports added to this tab here, please contact the IT Department.   " TextWrapping="Wrap" Foreground="Gray" Canvas.Top="10" Height="40" Width="708" Canvas.Left="18"/>
+      </Canvas>
+    </TabItem>
+
+  </TabControl>
 </Canvas>
