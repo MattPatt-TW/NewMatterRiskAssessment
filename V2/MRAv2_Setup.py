@@ -2267,7 +2267,11 @@ def norm_text(s):
   return s
 
 def get_or_create_question_id(vm, q):
-
+  # here we lookup the Question Text provided to see if there's an existing QuestionID we can reuse, or if we need to create a new one.
+  # Note: we don't delete old Questions, and we don't amend (UPDATE) existing ones because they might be shared across templates 
+  # - we just add new ones as needed. This means the Question bank can grow over time, but it avoids accidental data loss and complex dependency checks.
+  # A potential downside here is that we can't correct spelling of a question, it will create a new QuestionID rather than updating the old one - but this is a safer approach overall.
+  
   txt = norm_text(q.QuestionText)
   if txt == "":
     raise Exception("Question text cannot be blank.")
@@ -3084,11 +3088,10 @@ stk_ST_SelectedMRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_ST_Sel
 tb_MRATemplate_Name = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_Name')            # TextBox for editing the name of the selected NMRA template 
 lbl_MRATemplate_ID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRATemplate_ID')              # Label to store ID of selected NMRA template
 tb_MRATemplate_ExpiresInXdays = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRATemplate_ExpiresInXdays')
-
-#tb_ScoreLowTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreLowTo')
 tb_ScoreMedFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedFrom')
-#tb_ScoreMedTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedTo')
 tb_ScoreHighFrom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreHighFrom')
+#tb_ScoreLowTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreLowTo')
+#tb_ScoreMedTo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_ScoreMedTo')
 
 #! Buttons for MRA Template management
 btn_MRATemplate_AddNew = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_AddNew')
@@ -3100,8 +3103,6 @@ btn_MRATemplate_Preview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_M
 btn_MRATemplate_Preview.Click += btn_MRATemplate_Preview_Click
 btn_MRATemplate_Edit = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_Edit')
 btn_MRATemplate_Edit.Click += btn_MRATemplate_Edit_Click
-
-# still to do below
 btn_MRATemplate_CopySelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_CopySelected')
 btn_MRATemplate_CopySelected.Click += btn_MRATemplate_CopySelected_Click
 btn_MRATemplate_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRATemplate_DeleteSelected')
@@ -3240,6 +3241,26 @@ btn_DumpVM = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DumpVM')
 btn_DumpVM.Click += btn_DumpVM_Click
 btn_EditMRA_SaveToDB = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_SaveToDB')
 btn_EditMRA_SaveToDB.Click += btn_EditMRA_SaveToDB_Click
+
+#################################################################################################
+# code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
+# (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
+# Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
+myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
+myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
+myGrid = LogicalTreeHelper.GetParent(myDockPanel)
+
+tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
+tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
+tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
+tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
+
+tikitCancel.Content = 'Close'
+tikitOK.Visibility = Visibility.Collapsed
+tikitApply.Visibility = Visibility.Collapsed
+tikitContact.Visibility = Visibility.Collapsed
+#################################################################################################
+
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')

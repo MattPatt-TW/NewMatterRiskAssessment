@@ -31,8 +31,8 @@
       </Style>
 
     </TabControl.Resources>
-    
-    <TabItem Header="Manage Locks" x:Name="ti_ManageLocks" Height="26" Width="200" >
+
+    <TabItem Header="Unlock Matters" x:Name="ti_ManageLocks" Height="26" Width="200" >
       <Canvas>
         <TextBlock Text="Use this page to unlock matters which were automatically locked, to allow the Fee Earner to complete one now (this resets the timer to allow another 2 weeks)." Foreground="Gray" TextWrapping="Wrap" Height="18" Width="909" Canvas.Left="10" Canvas.Top="10" />
         <TextBlock Text="NB: Matters are automatically locked after 14 days if there isn't a completed 'Matter Risk Assessment' on file. This prevents any activity on the matter from taking place (eg: Fee Earner cannot Time Record to the matter; secretaries unable to create documents etc)." Foreground="Gray" TextWrapping="Wrap" Height="38" Width="856" Canvas.Left="10" Canvas.Top="28" HorizontalAlignment="Left" VerticalAlignment="Center" />
@@ -41,7 +41,7 @@
         <ToggleButton x:Name="btn_UnlockMatters2" Canvas.Top="73" Height="79" Width="100" Canvas.Left="1012" HorizontalAlignment="Center" VerticalAlignment="Top">
           <StackPanel Orientation="Vertical">
             <Image MaxHeight="30" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Unlock.png"/>
-            <TextBlock Text="Unlock selected matter(s)" TextWrapping="Wrap" TextAlignment="Center" Width="90"/>
+            <TextBlock Text="Unlock selected matter(s) ⇩" TextWrapping="Wrap" TextAlignment="Center" Width="90"/>
           </StackPanel>
         </ToggleButton>
 
@@ -128,8 +128,9 @@
             <Label Content="/" Foreground="#FF6150BE" Canvas.Top="31" Width="15" HorizontalContentAlignment="Left"  Canvas.Left="504"  />
             <TextBox x:Name="txtMatterNo" Width="40" Canvas.Left="519" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
 
-            <Button x:Name="btn_RefreshLockedMatters" Content="Search" Background="#FF91E888" Canvas.Left="718" Height="26" Width="70" Canvas.Top="31" />
-            <Button x:Name="btn_ClearLockedMattersFilters" Content="Clear Filters - View All" Background="#FFF0B8B8" ToolTip="Click here to clear all filter criteria and view all locked matters" Canvas.Left="572" Height="26" Width="128" Canvas.Top="31" />
+            <Button x:Name="btn_RefreshLockedMatters" Content="Search" Background="#FF91E888" BorderBrush="DarkGreen"  Canvas.Left="718" Height="26" Width="70" Canvas.Top="31" />
+            <Button x:Name="btn_ClearLockedMattersFilters" Content="Clear Filters - View All" Background="#FFF0B8B8" BorderBrush="DarkRed"
+                    ToolTip="Click here to clear all filter criteria and view all locked matters" Canvas.Left="572" Height="26" Width="128" Canvas.Top="31" />
 
             <StackPanel Orientation="Vertical" Canvas.Left="816" Canvas.Top="6" Visibility="Visible">
               <Label Content="Group By" Foreground="#FF6150BE" />
@@ -264,7 +265,7 @@
                         <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
                       </StackPanel>
                     </Button>
-                    
+
                     <Button x:Name="btn_CopySelected_FRTemplate" Margin="8,0,0,0">
                       <StackPanel Orientation="Horizontal">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
@@ -286,7 +287,7 @@
                       </StackPanel>
                     </Button>
 
-                    <Button x:Name="btn_DeleteSelected_FRTemplate" Background="#FFFFA7A7" Margin="8,0,0,0">
+                    <Button x:Name="btn_DeleteSelected_FRTemplate" Background="#FFFFA7A7" BorderBrush="DarkRed" Margin="8,0,0,0">
                       <StackPanel Orientation="Horizontal">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                         <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
@@ -294,7 +295,7 @@
                     </Button>
 
                   </StackPanel>
-                  
+
                   <StackPanel Orientation="Vertical" Canvas.Left="359" Canvas.Top="10" Width="69"  Visibility="Collapsed">
                     <Label x:Name="lbl_FR_Template_ID" Content="-ID-" Foreground="Gray" HorizontalContentAlignment="Right"/>
                     <Label x:Name="lbl_FR_Template_Name" Content="-Name-" Foreground="Gray" HorizontalContentAlignment="Right"/>
@@ -509,6 +510,7 @@
                 <RowDefinition Height="35" />
                 <RowDefinition Height="105" />
                 <RowDefinition Height="35" />
+                <RowDefinition Height="35" />
                 <RowDefinition Height="105" />
                 <RowDefinition Height="60" />
                 <RowDefinition Height="*" />
@@ -518,7 +520,7 @@
                             VerticalAlignment="Stretch"   
                             Grid.Column="1"  
                             Grid.Row="0"
-                            Grid.RowSpan="6"
+                            Grid.RowSpan="7"
                             Width="6" Background="Silver"
                             ToolTip="Click and drag me to view more or less of one particular side" Margin="0,0,0,2">
                 <GridSplitter.Template>
@@ -588,14 +590,14 @@
                   </StackPanel>
                 </Button>
 
-                <Button x:Name="btn_DeleteSelected_Q_FR" Background="#FFFFA7A7" ToolTip="Deletes the currently selected Question (requires confirmation)"  Margin="4,4">
+                <Button x:Name="btn_DeleteSelected_Q_FR" Background="#FFFFA7A7" BorderBrush="DarkRed" ToolTip="Deletes the currently selected Question (requires confirmation)"  Margin="4,4">
                   <StackPanel Orientation="Vertical">
                     <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                     <TextBlock Margin="3,4,0,4" Text="Delete Selected"  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
                   </StackPanel>
                 </Button>
 
-                <Button x:Name="btn_BackToOverview_FR" ToolTip="Go back to the 'Overview' sheet"   Margin="4,4">
+                <Button x:Name="btn_BackToOverview_FR" ToolTip="Go back to the 'Overview' sheet"   Margin="4,4" Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod">
                   <StackPanel Orientation="Vertical">
                     <Image MaxHeight="24" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Back.png"/>
                     <TextBlock Margin="3,4,0,4" Text="Back to Overview"  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
@@ -605,12 +607,12 @@
                 <Label x:Name="lbl_EditFileReview_ID" Content="-ID-" Foreground="#FF6150BE" Visibility="Collapsed" />
 
               </StackPanel>
-              
+
 
               <TextBlock x:Name="tb_NoQuestions_FR" Text="No questions currently exist for this File Review... click the 'Add New...' button to add a new question" 
                                        Foreground="Red" FontWeight="Bold" FontSize="20" TextWrapping="Wrap" Grid.Row="1" Grid.Column="0" Grid.RowSpan="7" Visibility="Collapsed"/>
 
-              <DataGrid x:Name="dg_FR_Questions" Grid.Row="1" Grid.Column="0" Grid.RowSpan="5" Margin="0,0,4,2" BorderBrush="Gray" BorderThickness="1"
+              <DataGrid x:Name="dg_FR_Questions" Grid.Row="1" Grid.Column="0" Grid.RowSpan="6" Margin="0,0,4,2" BorderBrush="Gray" BorderThickness="1"
                         AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"  Canvas.Left="10"
                         CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
                 <DataGrid.Resources>
@@ -758,11 +760,13 @@
 
               <Label x:Name="lbl_QID_FR" Content="ID" Foreground="#FF6150BE" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Grid.Row="0" Grid.Column="2" Visibility="Visible" />
               <Label Content="Edit Selected Question Details" Foreground="Gray" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center" Grid.Row="0" Grid.Column="3"/>
-              <Button x:Name="btn_SaveQuestion_FR" Content="Save" Padding="4" Grid.Row="0" Grid.Column="4" MaxHeight="26" MaxWidth="50" />
+              <Button x:Name="btn_SaveQuestion_FR" Content="Save" Padding="4" Grid.Row="0" Grid.Column="4" MaxHeight="26" MaxWidth="50" 
+                      Background="LightGreen" BorderBrush="DarkGreen"/>
               <Label Content="Question Text" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" />
               <TextBox x:Name="txt_QuestionText_FR" TextWrapping="Wrap" Width="Auto"  Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Padding="0" Margin="0,0,4,0"  />
-              <Label Content="Section / Group" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
-              <ComboBox x:Name="cbo_QuestionGroupFR" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center">
+
+              <Label Content="Section / Group" Foreground="#FF6150BE" HorizontalContentAlignment="Right" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"/>
+              <ComboBox x:Name="cbo_QuestionGroupFR" Grid.Row="3" Grid.Column="3" VerticalAlignment="Center">
                 <ComboBox.ItemTemplate>
                   <DataTemplate>
                     <StackPanel Orientation="Horizontal">
@@ -772,16 +776,146 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Text="Default Corrective Action Text" Foreground="#FF6150BE" TextWrapping="Wrap" TextAlignment="Right" Padding="2,2" Grid.Row="3" Grid.Column="2"/>
-              <TextBox x:Name="txt_DefaultCA" Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2" TextWrapping="Wrap" Padding="2,2" Margin="0,0,4,0" TextAlignment="Left" />
+
+              <ToggleButton x:Name="tog_EditGroups" Grid.Row="3" Grid.Column="4" Margin="26,4" >
+                <StackPanel Orientation="Horizontal">
+                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+                  <TextBlock Margin="3,4" Text="Edit Groups"  TextWrapping="Wrap" Width="Auto" TextAlignment="Center"/>
+                </StackPanel>
+              </ToggleButton>
+
+              <Popup x:Name="popGroups" 
+                      PlacementTarget="{Binding ElementName=tog_EditGroups}"
+                      StaysOpen="False"
+                      AllowsTransparency="True"
+                      PopupAnimation="Fade"  >
+
+                <Border CornerRadius="16" Padding="8" BorderBrush="DarkGoldenrod" BorderThickness="1" Background="LightYellow" >
+                  <StackPanel Orientation="Vertical">
+                    <TextBlock Text="Section/Groups Edit Panel" HorizontalAlignment="Center" Margin="0,4" FontWeight="Bold" Foreground="Gray"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+                      <Button x:Name="btn_AddNewGroupItemFR" >
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                          <TextBlock Margin="3,4,4,4" Text="Add"  TextWrapping="Wrap" TextAlignment="Left"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_CopySelectedGroupItem" Margin="8,0,0,0">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                          <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_Group_MoveTop" Visibility="Collapsed">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
+                          <TextBlock Padding="2" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_Group_MoveUp" Margin="8,0,0,0">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
+                          <TextBlock Padding="2" Text="Move Up"  TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_Group_MoveDown" Margin="8,0,0,0">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
+                          <TextBlock Padding="2" Text="Move Down" TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_Group_MoveBottom" Visibility="Collapsed">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
+                          <TextBlock Padding="2" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+                      <Button x:Name="btn_DeleteSelectedGroupItem" Background="#FFFFA7A7" BorderBrush="DarkRed" Margin="8,0,0,0">
+                        <StackPanel Orientation="Vertical">
+                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                          <TextBlock Padding="2" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+
+
+                    </StackPanel>
+
+                    <Label x:Name="lbl_GroupItemText" Content="list item text"  Visibility="Collapsed"/>
+                    <Label x:Name="lbl_GroupItemGroup" Content="list item text"  Visibility="Collapsed"/>
+
+                    <TextBlock x:Name="tb_NoGroupItems" Text="There are no Section/Group items - click 'Add' to add an item" 
+                                Foreground="Red" TextWrapping="Wrap" Width="340" FontSize="20" FontWeight="Bold" Visibility="Collapsed"/>
+
+                    <DataGrid x:Name="dg_GroupItems"  Height="200" BorderBrush="Gray" BorderThickness="1" Margin="0,4"
+                              AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                              CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" >
+
+                      <DataGrid.Resources>
+                        <Style x:Key="RightAligned" TargetType="DataGridCell">
+                          <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                        <Style x:Key="Center" TargetType="DataGridCell">
+                          <Setter Property="HorizontalAlignment" Value="Center"/>
+                        </Style>
+                        <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
+                          <Setter Property="Background" Value="Green"/>
+                          <Setter Property="Foreground" Value="White"/>
+                          <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                          <Setter Property="BorderBrush" Value="Wheat"/>
+                          <Setter Property="BorderThickness" Value="1"/>
+                          <Setter Property="Width" Value="Auto"/>
+                        </Style>
+                        <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                          <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                          <Setter Property="BorderBrush" Value="Black"/>
+                          <Setter Property="BorderThickness" Value="1"/>
+                          <Setter Property="Width" Value="Auto"/>
+                          <Setter Property="FontWeight" Value="Bold"/>
+                        </Style>
+
+                      </DataGrid.Resources>
+
+
+                      <DataGrid.Columns>
+                        <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding gDO}" />
+                        <DataGridTextColumn Header="Description" IsReadOnly="False" Width="Auto" MaxWidth="300"
+                                            Binding="{Binding gDesc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            HeaderStyle="{StaticResource EditableColumn}"/>
+                        <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding gID}" Visibility="Hidden"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+
+
+                  </StackPanel>
+                </Border>
+
+              </Popup>
+
+
+              <Label Content="Order" Foreground="#FF6150BE" VerticalAlignment="Center" Margin="4,0,0,0" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Right"/>
+              <TextBox x:Name="txt_FR_Order" TextAlignment="Center" Height="23" Width="60" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left"/>
+
+
+              <TextBlock Text="Default Corrective Action Text" Foreground="#FF6150BE" 
+                         TextWrapping="Wrap" TextAlignment="Right" Padding="2,2" Grid.Row="4" Grid.Column="2"/>
+              <TextBox x:Name="txt_DefaultCA" Grid.Row="4" Grid.Column="3" Grid.ColumnSpan="2" 
+                       TextWrapping="Wrap" Padding="2,2" Margin="0,0,4,0" TextAlignment="Left" />
               <TextBlock Text="Tip: use 'dd/mm/yyyy' in the 'Default Corrective Action Text' to have this automatically replaced with the date 14 days from when a File Review is conducted."
-                         TextWrapping="Wrap" Grid.Row="4" Grid.Column="3" Grid.ColumnSpan="2" Foreground="Gray" FontStyle="Italic" />
+                         TextWrapping="Wrap" Grid.Row="5" Grid.Column="3" Grid.ColumnSpan="2" Foreground="Gray" FontStyle="Italic" />
+
               <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="4" >
-                <Label Content="Order" Foreground="#FF6150BE" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                <TextBox x:Name="txt_FR_Order" VerticalAlignment="Center" TextAlignment="Center" Height="23" Width="60" />
+
               </StackPanel>
 
-              <GroupBox Header="Answers" Foreground="Gray" Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="3"  Margin="12,6,12,10" BorderBrush="#FFD18C20">
+              <GroupBox Header="Answers" Foreground="Gray" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="3"  Margin="12,6,12,10" BorderBrush="#FFD18C20">
                 <GroupBox.Resources>
                   <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
                 </GroupBox.Resources>
@@ -947,7 +1081,8 @@
               </DataGrid>
 
               <Button Content="Save" IsEnabled="False" ToolTip="Button disabled as preview only" Canvas.Left="391" Canvas.Top="589" Height="32" Width="89" />
-              <Button x:Name="btn_FRPreview_BackToOverview" Content="Back to Overview" Canvas.Left="485" Canvas.Top="589" Height="32" Width="121" />
+              <Button x:Name="btn_FRPreview_BackToOverview" Content="Back to Overview" Canvas.Left="485" Canvas.Top="589" Height="32" Width="121" 
+                      Background="LightGoldenrodYellow" BorderBrush="DarkGoldenrod"/>
 
               <StackPanel Orientation="Vertical" Canvas.Left="872" Canvas.Top="471" Visibility="Hidden">
                 <Label x:Name="lbl_FRPreview_DGID" Content="Selected DG ID" />
@@ -963,309 +1098,158 @@
       </Canvas>
     </TabItem>
 
-    <TabItem Header="Manage Global Answers" x:Name="ti_DDL" Width="200">
-      <Canvas>
-        <TabControl Canvas.Left="10" Canvas.Top="10" Height="690" Width="1154" Background="#FFEFF1F1" BorderBrush="Gray">
-          <TabItem Header="Global Answers...">
-            <Canvas>
-              <Label Content="Use this page to configure 'Answer Groups' that can be used by the Matter Risk Assessment, or the File Review.  Note: Scores only apply to the Matter Risk Assessment and are ignored on File Reviews." Foreground="Gray" Canvas.Left="10" Canvas.Top="5" />
-              <GroupBox Header="1: Select a List..." Foreground="#FF6150BE" BorderBrush="Gray" Height="612" Width="1128" Canvas.Left="10" Canvas.Top="30"  >
-                <Canvas>
 
-                  <StackPanel Orientation="Horizontal" Margin="4,2">
-                    <Button x:Name="btn_AddNewList">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Add New..." TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
 
-                    <Button x:Name="btn_CopySelectedList" Margin="8,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
+    <TabItem Header="HODs and Access Privileges" Width="200" >
+      <StackPanel>
+        <TextBlock Text="Use this page to manage who can access 'Heads of Department (HOD)' Screens (WIP Review WriteOff; NMRA HOD Approvals)" 
+                   TextWrapping="Wrap" Foreground="Gray" Canvas.Top="10" Height="20" Width="708" Canvas.Left="10"/>
 
-                    <Button x:Name="btn_DeleteSelectedList" Background="#FFFFA7A7" IsEnabled="False" Margin="8,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
+        <GroupBox Header="Screen 'Lock'  Details..." BorderBrush="#FF515151" BorderThickness="1"  HorizontalAlignment="Center">
+          <StackPanel Orientation="Vertical" >
+            <StackPanel Orientation="Horizontal" >
+              <TextBlock Text="Lock Code:" Foreground="Gray" Width="90" TextAlignment="Right"/>
+              <TextBlock x:Name="tb_LockCode" Foreground="Gray" Margin="4,0,0,0" Text="57 (Dev) | 146 (Live)"/>
+            </StackPanel>
 
-                    <Button x:Name="btn_RefreshAnswerList" ToolTip="Click here to refresh this list" Margin="8,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="22" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\refresh2.png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Refresh List" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
+            <StackPanel Orientation="Horizontal" >
+              <TextBlock Text="Lock Description:" Foreground="Gray" Width="90" TextAlignment="Right"/>
+              <TextBlock x:Name="tb_LockDesc" Foreground="Gray" Margin="4,0,0,0" Text="XAML_Screen_HOD_AccessOnly"/>
+            </StackPanel>
 
-                  </StackPanel>
-                  
-                  <TextBlock TextWrapping="Wrap" Text="You can edit the 'Description' or add new items using the '+' button." Foreground="Gray" Width="398" Height="19" Canvas.Top="70"/>
+          </StackPanel>
+        </GroupBox>
 
-                  <Label x:Name="lbl_List_SelID" Height="26" Width="30" Canvas.Left="109" Canvas.Top="413" />
-                  <Label x:Name="lbl_List_SelDesc" Canvas.Left="144" Height="26" Width="230" Canvas.Top="413" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
 
-                  <TextBlock x:Name="lbl_NoGlobalGroups" Text="No 'Global Groups' currently exist - click the '+' (Add New...) button to create a new group" Foreground="Red" 
-                                               FontWeight="Bold" FontSize="16" TextWrapping="Wrap" Canvas.Top="89" Height="66" Width="388" Canvas.Left="10" Visibility="Collapsed"/>
+          <Border CornerRadius="16" Padding="8" BorderBrush="DarkRed" Background="#FFCE3F3F" BorderThickness="1">
+            <StackPanel Orientation="Vertical">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Users who cannot access HOD screens" FontSize="14" VerticalAlignment="Center" Foreground="White"/>
 
-                  <DataGrid x:Name="dg_Lists" Canvas.Top="89" Width="454" Height="501" BorderBrush="Gray" BorderThickness="1"
-                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
-                    <DataGrid.Resources>
-                      <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="Green"/>
-                        <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                        <Setter Property="BorderBrush" Value="Wheat"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Setter Property="Width" Value="Auto"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="50,0,0,0">
+                  <TextBox x:Name="txt_Search" Width="151" Height="23" VerticalContentAlignment="Center"  Text="" Padding="2,0,0,0"/>
+                  <TextBlock IsHitTestVisible="False" Text="Search here..." VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="DarkGray" Margin="-222,0,0,0">
+                    <TextBlock.Style>
+                      <Style TargetType="{x:Type TextBlock}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Text, ElementName=txt_Search}" Value="">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
                       </Style>
-                    </DataGrid.Resources>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </StackPanel>
 
-                    <DataGrid.Columns>
-                      <DataGridTextColumn Header="ID" IsReadOnly="True" Width="26"
-                                                    Binding="{Binding QID}"/>
-                      <DataGridTextColumn Header="List Name" IsReadOnly="False" Width="340"
-                                                    Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    HeaderStyle="{StaticResource EditableColumn}"/>
-                    </DataGrid.Columns>
-                  </DataGrid>
+              </StackPanel>
 
-                  <GroupBox Header="2: Edit List Items..." Foreground="#FF6150BE" BorderBrush="Gray" Height="588" Width="656" Canvas.Left="459" Canvas.Top="2"  >
-                    <Canvas>
-                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Canvas.Left="10" Canvas.Top="5">
-                        <TextBlock Text=" Selected List:" Foreground="Gray" VerticalAlignment="Center"/>
-                        <Label x:Name="lbl_SelectedList" Content="-NOT SELECTED-"  Foreground="Gray" VerticalContentAlignment="Center"/>
-                        <Label x:Name="lbl_SelectedListQID" Content="-NOT SELECTED-"  Foreground="Gray" VerticalContentAlignment="Center" Visibility="Collapsed"/>
-                      </StackPanel>
+              <DataGrid x:Name="dg_UsersWithoutKey"  AllowDrop="True"
+                        AlternatingRowBackground="#FFAEDEB9" BorderBrush="Gray"
+                        AutoGenerateColumns="False" 
+                        IsTextSearchEnabled="True" 
+                        SelectionMode="Extended" 
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" 
+                        Margin="0,4,0,0" Height="544" Width="440">
 
-                      <StackPanel Orientation="Horizontal" Canvas.Top="35" Margin="4,0,0,0">
-                        <Button x:Name="btn_AddNewListItem" ToolTip="Add new item to end of the list" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Add New..."  TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
+                <!-- Keep selected row highlighted -->
+                <DataGrid.Resources>
+                  <Style TargetType="{x:Type DataGridRow}">
+                    <Style.Resources>
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+                    </Style.Resources>
+                  </Style>
+                </DataGrid.Resources>
 
-                        <Button x:Name="btn_CopySelectedListItem" ToolTip="Copy selected item (adds to the bottom of the list with '(copy)' appended)" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Code" Binding="{Binding iCode}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" />
 
-                        <Button x:Name="btn_A_MoveTop" ToolTip="Move the currently selected item to the top of the list" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
-                        
-                        <Button x:Name="btn_A_MoveUp" ToolTip="Move the currently selected item up one row" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Move Up"  TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
+                </DataGrid.Columns>
+              </DataGrid>
 
-                        <Button x:Name="btn_A_MoveDown" ToolTip="Move the currently selected item down one row" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Move Down" TextWrapping="Wrap" Width="32" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
+            </StackPanel>
+            
+          </Border>
+          
 
-                        <Button x:Name="btn_A_MoveBottom" ToolTip="Move the currently selected item to the bottom of the list" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
-
-                        <Button x:Name="btn_DeleteSelectedListItem" Background="#FFFFA7A7" ToolTip="Deletes the currently selected item (asks for confirmation first)" Margin="8,0,0,0">
-                          <StackPanel Orientation="Vertical">
-                            <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                            <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center" Visibility="Collapsed"/>
-                          </StackPanel>
-                        </Button>
+          <StackPanel Orientation="Vertical" Margin="8" VerticalAlignment="Center">
+            <Button x:Name="btn_AddUserKey" Content="Add &gt;&gt;"  Height="38"  Background="#FF409040" BorderBrush="DarkGreen" Foreground="White" Padding="4"/>
+            <Button x:Name="btn_RemoveUserKey" Content="&lt;&lt; Remove"  Height="38" Background="#FFCE3F3F" BorderBrush="DarkRed" Foreground="White" Margin="0,24,0,0" Padding="4"/>
+          </StackPanel>
 
 
-                      </StackPanel>
-                      
+          <Border CornerRadius="16" Padding="8" BorderBrush="DarkGreen" Background="#FF409040" BorderThickness="1">
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Users who CAN access HOD screens" FontSize="14" Foreground="White"/>
 
-                      <Label x:Name="lbl_ListItemText" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
-                      <Label x:Name="lbl_ListItemScore" Content="list item score" Canvas.Left="546" Canvas.Top="35" Visibility="Hidden"/>
-                      <Label x:Name="lbl_ListItemEC" Content="list item EmailComment" Canvas.Left="546" Canvas.Top="35" Visibility="Hidden"/>
-                      <TextBlock x:Name="tb_NoAnswerItems" Text="There are no Answer list items matching the selected List Group.  First make sure a list group is selected from the list on the left, then click 'Add New' here to add an item" Foreground="Red" TextWrapping="Wrap" Canvas.Top="75" Width="629" Height="92" FontSize="20" FontWeight="Bold" />
+              <DataGrid x:Name="dg_UsersWithKey"  AllowDrop="True"
+                        AlternatingRowBackground="#FFAEDEB9" BorderBrush="Gray"
+                        AutoGenerateColumns="False" 
+                        IsTextSearchEnabled="True" 
+                        SelectionMode="Extended" 
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"  
+                        Margin="0,4,0,0" Height="548" Width="458">
 
-                      <DataGrid x:Name="dg_ListItems" Canvas.Top="70" Width="643" Height="496" 
-                                AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
-                                AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                                CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
-                                BorderBrush="Gray" BorderThickness="1">
-                        <DataGrid.Resources>
-                          <Style x:Key="RightAligned" TargetType="DataGridCell">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                          </Style>
-                          <Style x:Key="Center" TargetType="DataGridCell">
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                          </Style>
-                          <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                            <Setter Property="Background" Value="Green"/>
-                            <Setter Property="Foreground" Value="White"/>
-                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                            <Setter Property="BorderBrush" Value="Wheat"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="Width" Value="Auto"/>
-                          </Style>
-                          <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                            <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                            <Setter Property="BorderBrush" Value="Black"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="Width" Value="Auto"/>
-                            <Setter Property="FontWeight" Value="Bold"/>
-                          </Style>
-                        </DataGrid.Resources>
+                <!--Need to add DataGrid Grouping here to go off our 'IT, Risk, Accounts...' group vs individually added users-->
+                <DataGrid.Resources>
+                  <!-- Keep selected row highlighted -->
+                  <Style TargetType="{x:Type DataGridRow}">
+                    <Style.Resources>
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                      <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+                    </Style.Resources>
+                  </Style>
 
-                        <DataGrid.Columns>
-                          <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding liDO}" />
-                          <DataGridTextColumn Header="Item Text" IsReadOnly="False" Width="Auto" MinWidth="60"
-                                                            Binding="{Binding liText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            HeaderStyle="{StaticResource EditableColumn}"/>
-                          <DataGridTextColumn Header="Item Score" IsReadOnly="False" Width="70"
-                                                            Binding="{Binding liScore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            HeaderStyle="{StaticResource EditableColumn}"/>
-                          <DataGridTextColumn Header="Email Comment" IsReadOnly="False" Width="Auto" MinWidth="100"
-                                                            Binding="{Binding liEmailComment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            HeaderStyle="{StaticResource EditableColumn}"/>
-                          <DataGridTextColumn Header="Num times used" IsReadOnly="True" Width="100" Binding="{Binding liCountUsed}" Visibility="Hidden"/>
-                          <DataGridTextColumn Header="Code" IsReadOnly="True" Width="40" Binding="{Binding liCode}" Visibility="Hidden"/>
-                        </DataGrid.Columns>
-                      </DataGrid>
+                  <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                    <Setter Property="Margin" Value="0,2,0,4"/>
+                    <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type GroupItem}" >
+                          <Expander x:Name="exp" IsExpanded="True"
+                                    Background="LightGray" BorderBrush="#FF4E4E4E" BorderThickness="1,1,1,1"
+                                    Foreground="Black" Padding="0,2,0,0" Margin="2,0">
+                            <Expander.Header>
+                              <DockPanel>
+                                <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                <TextBlock Text=" (" FontWeight="Bold" />
+                                <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                                <TextBlock Text=")" FontWeight="Bold" />
+                              </DockPanel>
+                            </Expander.Header>
+                            <ItemsPresenter />
+                          </Expander>
 
-                    </Canvas>
-                  </GroupBox>
-                </Canvas>
-              </GroupBox>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
 
-            </Canvas>
-
-          </TabItem>
-
-          <TabItem Header="'Groups'..." Height="30">
-            <Canvas>
-              <Label Content="Use this page to configure 'Section / Groups' that can be used by the MRA and File Reviews to group a set of questions together." Foreground="Gray" Canvas.Left="10" Canvas.Top="5" />
-              <GroupBox Header="Manage 'Groups'..." Foreground="#FF6150BE" BorderBrush="Gray"  Canvas.Left="10" Canvas.Top="35" Height="607" Width="546">
-                <Canvas>
-
-                  <StackPanel Orientation="Horizontal">
-
-                    <StackPanel Orientation="Vertical">
-                      <Button x:Name="btn_AddNewGroupItem">
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="New MRA Group"  TextWrapping="Wrap" Width="126" TextAlignment="Left"/>
-                        </StackPanel>
-                      </Button>
-
-                      <Button x:Name="btn_AddNewGroupItemFR" Margin="0,4,0,0" >
-                        <StackPanel Orientation="Horizontal">
-                          <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                          <TextBlock Margin="3,4,0,4" Text="New File Review Group"  TextWrapping="Wrap" Width="126" TextAlignment="Left"/>
-                        </StackPanel>
-                      </Button>
-                    </StackPanel>
-
-                    <Button x:Name="btn_CopySelectedGroupItem" Margin="8,0,0,0">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                        <TextBlock Margin="3,4,0,4" Text="Duplicate Selected" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_Group_MoveTop" Visibility="Collapsed">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to top.png"/>
-                        <TextBlock Padding="2" Text="Move to Top" TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_Group_MoveUp" Margin="8,0,0,0">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow up.png"/>
-                        <TextBlock Padding="2" Text="Move Up"  TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_Group_MoveDown" Margin="8,0,0,0">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\arrow down.png"/>
-                        <TextBlock Padding="2" Text="Move Down" TextWrapping="Wrap" Width="36" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_Group_MoveBottom" Visibility="Collapsed">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Move to bottom.png"/>
-                        <TextBlock Padding="2" Text="Move to Bottom"  TextWrapping="Wrap" Width="46" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_DeleteSelectedGroupItem" Background="#FFFFA7A7" Margin="8,0,0,0">
-                      <StackPanel Orientation="Vertical">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Padding="2" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                  
-
-                  <Label x:Name="lbl_GroupItemText" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
-                  <Label x:Name="lbl_GroupItemGroup" Content="list item text" Canvas.Left="546" Canvas.Top="10" Visibility="Hidden"/>
-
-                  <TextBlock x:Name="tb_NoGroupItems" Text="There are no Section/Group items - click 'Add New' to add an item" Foreground="Red" TextWrapping="Wrap" Canvas.Top="75" Width="435" Height="92" FontSize="20" FontWeight="Bold" />
-
-                  <DataGrid x:Name="dg_GroupItems" Canvas.Top="70" Width="532" Height="516" BorderBrush="Gray" BorderThickness="1"
-                            AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" >
-                    <DataGrid.Resources>
-                      <Style x:Key="RightAligned" TargetType="DataGridCell">
-                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                      </Style>
-                      <Style x:Key="Center" TargetType="DataGridCell">
-                        <Setter Property="HorizontalAlignment" Value="Center"/>
-                      </Style>
-                      <Style x:Key="EditableColumn" TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="Green"/>
-                        <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                        <Setter Property="BorderBrush" Value="Wheat"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Setter Property="Width" Value="Auto"/>
-                      </Style>
-                      <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                        <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                        <Setter Property="BorderBrush" Value="Black"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Setter Property="Width" Value="Auto"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
-                      </Style>
-
-                      <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                        <Setter Property="Margin" Value="0,2,0,4"/>
-                        <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+                    <!-- Trigger to set background colour to GREEN for 'Accounts, Archiving, Risk, Management, IT' -->
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Path=Name}" Value="Accounts, Archiving, Risk, Management, IT">
                         <Setter Property="Template">
                           <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type GroupItem}" >
-                              <Expander x:Name="exp" IsExpanded="True"
-                                                            Background="LightGray" BorderBrush="#FF4E4E4E" BorderThickness="1,1,1,1"
-                                                            Foreground="Black" Padding="0,2,0,0" Margin="2,0">
+                            <ControlTemplate TargetType="{x:Type GroupItem}">
+                              <Expander x:Name="expander"
+                                        IsExpanded="True"
+                                        Background="#FF58B940"
+                                        BorderBrush="#FF306323"
+                                        BorderThickness="1,1,1,1"
+                                        Foreground="Black"
+                                        Padding="0,2,0,0"
+                                        Margin="2,0">
                                 <Expander.Header>
                                   <DockPanel>
-                                    <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                                    <TextBlock FontWeight="Bold" Text="Accounts, Archiving, Risk, Management, IT" Margin="5,0,0,0" />
                                     <TextBlock Text=" (" FontWeight="Bold" />
                                     <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
                                     <TextBlock Text=")" FontWeight="Bold" />
@@ -1273,120 +1257,276 @@
                                 </Expander.Header>
                                 <ItemsPresenter />
                               </Expander>
-
                             </ControlTemplate>
                           </Setter.Value>
                         </Setter>
+                      </DataTrigger>
+                    </Style.Triggers>
 
-                        <!-- Trigger to set background colour to GREEN for Matter Risk Assessment -->
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding Path=Name}" Value="MRA">
-                            <Setter Property="Template">
-                              <Setter.Value>
-                                <ControlTemplate TargetType="{x:Type GroupItem}">
-                                  <Expander x:Name="expander"
-                                                              IsExpanded="True"
-                                                              Background="#FF58B940"
-                                                              BorderBrush="#FF306323"
-                                                              BorderThickness="1,1,1,1"
-                                                              Foreground="Black"
-                                                              Padding="0,2,0,0"
-                                                              Margin="2,0">
-                                    <Expander.Header>
-                                      <DockPanel>
-                                        <TextBlock FontWeight="Bold" Text="Matter Risk Assessment" Margin="5,0,0,0" />
-                                        <TextBlock Text=" (" FontWeight="Bold" />
-                                        <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                        <TextBlock Text=")" FontWeight="Bold" />
-                                      </DockPanel>
-                                    </Expander.Header>
-                                    <ItemsPresenter />
-                                  </Expander>
-                                </ControlTemplate>
-                              </Setter.Value>
-                            </Setter>
-                          </DataTrigger>
+                  </Style>
 
-                          <!-- Trigger to set background colour to Red for File Reviews -->
-                          <DataTrigger Binding="{Binding Path=Name}" Value="FR">
-                            <Setter Property="Template">
-                              <Setter.Value>
-                                <ControlTemplate TargetType="{x:Type GroupItem}">
-                                  <Expander x:Name="expander"
-                                                              IsExpanded="True"
-                                                              Background="#FFFF9797"
-                                                              BorderBrush="#FF6E3C3C"
-                                                              BorderThickness="1,1,1,1"
-                                                              Foreground="Black"
-                                                              Padding="0,2,0,0"
-                                                              Margin="2,0">
-                                    <Expander.Header>
-                                      <DockPanel>
-                                        <TextBlock FontWeight="Bold" Text="File Review" Margin="5,0,0,0" />
-                                        <TextBlock Text=" (" FontWeight="Bold" />
-                                        <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                        <TextBlock Text=")" FontWeight="Bold" />
-                                      </DockPanel>
-                                    </Expander.Header>
-                                    <ItemsPresenter />
-                                  </Expander>
-                                </ControlTemplate>
-                              </Setter.Value>
-                            </Setter>
-                          </DataTrigger>
-                        </Style.Triggers>
+                </DataGrid.Resources>
 
-                      </Style>
+                <DataGrid.GroupStyle>
+                  <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                    <GroupStyle.Panel>
+                      <ItemsPanelTemplate >
+                        <DataGridRowsPresenter />
+                      </ItemsPanelTemplate>
+                    </GroupStyle.Panel>
+                  </GroupStyle>
+                </DataGrid.GroupStyle>
 
-                    </DataGrid.Resources>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Code" Binding="{Binding iCode}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Group" Binding="{Binding iGroup}" Width="auto" IsReadOnly="True" Visibility="Collapsed"/>
+                </DataGrid.Columns>
+              </DataGrid>
 
-                    <DataGrid.GroupStyle>
-                      <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                        <GroupStyle.Panel>
-                          <ItemsPanelTemplate >
-                            <DataGridRowsPresenter />
-                          </ItemsPanelTemplate>
-                        </GroupStyle.Panel>
-                      </GroupStyle>
-                    </DataGrid.GroupStyle>
+            </StackPanel>
+            
+          </Border>
 
-                    <DataGrid.Columns>
-                      <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40" Binding="{Binding gDO}" />
-                      <DataGridTextColumn Header="Description" IsReadOnly="False" Width="300"
-                                                            Binding="{Binding gDesc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            HeaderStyle="{StaticResource EditableColumn}"/>
-                      <DataGridTextColumn Header="Belongs to" IsReadOnly="False" Width="100"
-                                                                Binding="{Binding gGroup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                HeaderStyle="{StaticResource EditableColumn}" />
-                      <DataGridTextColumn Header="ID" IsReadOnly="True" Width="40" Binding="{Binding gID}" Visibility="Hidden"/>
-                    </DataGrid.Columns>
-                  </DataGrid>
-                </Canvas>
-              </GroupBox>
-            </Canvas>
-          </TabItem>
-        </TabControl>
-
-      </Canvas>
-    </TabItem>
-
-    <TabItem Header="HODs and Access Privileges" Width="200" >
-      <Canvas>
-        <TextBlock Text="Use this page to manage Heads of Department (HOD), and configure who has access to certain 'Locks'" TextWrapping="Wrap" Foreground="Gray" Canvas.Top="10" Height="20" Width="708" Canvas.Left="10"/>
-
-        <GroupBox Header="HODs" Foreground="Gray" Canvas.Left="10" Canvas.Top="22" Height="230" Width="695">
-
-        </GroupBox>
-        <GroupBox Header="Access Privileges - Who has Keys to Locks..." Foreground="Gray" Canvas.Left="10" Canvas.Top="258" Height="442" Width="1154" >
-
-        </GroupBox>
-      </Canvas>
+        </StackPanel>
+      </StackPanel>
 
     </TabItem>
-    <TabItem Header="Reporting" Width="100">
-      <Canvas>
-        <TextBlock Text="Please see the in-built report for Corrective Actions, under the 'Reporting' ribbon tab, and then 'Risk Management > Audit History'.       If you would like any bespoke / custom reports added to this tab here, please contact the IT Department.   " TextWrapping="Wrap" Foreground="Gray" Canvas.Top="10" Height="40" Width="708" Canvas.Left="18"/>
-      </Canvas>
+
+    
+    <TabItem Header="Reporting - Blindspots" Width="150">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+        <Border CornerRadius="16" Padding="8" BorderBrush="DarkGoldenrod" Margin="4" BorderThickness="1">
+          <StackPanel Orientation="Vertical" >
+            <StackPanel.Resources>
+              <Style x:Key="SegmentedChip" TargetType="RadioButton">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                      <Border CornerRadius="16" Padding="10,6" BorderThickness="1"
+                              Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}">
+                        <ContentPresenter/>
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                          <Setter Property="Background" Value="#A992C1"/>
+                          <Setter Property="BorderBrush" Value="#2E1A47"/>
+                          <Setter Property="Foreground" Value="White" />
+                          <Setter Property="FontWeight" Value="Bold" />
+                        </Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Setter Property="BorderBrush" Value="#CCC"/>
+                <Setter Property="Background" Value="#FFF"/>
+                <Setter Property="Foreground" Value="Black" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+              </Style>
+            </StackPanel.Resources>
+            
+            <TextBlock Text="Matter Risk Assessment templates assigned to CaseTypes:" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            
+            <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Center">
+              <Button x:Name="btn_Refresh_CaseTypesWithoutTemplate" Content="Refresh"  Padding="4"/>
+
+              <Border CornerRadius="20" Padding="4" BorderThickness="1" BorderBrush="DarkGray" Margin="30,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <Label Content="View:" Foreground="Gray" VerticalAlignment="Center" />
+                  <StackPanel Orientation="Horizontal" >
+                    <RadioButton x:Name="opt_ViewMissingCaseTypes" Content="Missing Only"  IsChecked="True"
+                                 Style="{StaticResource SegmentedChip}"
+                                 Margin="2,0,2,0" VerticalAlignment="Center"/>
+                    <RadioButton x:Name="opt_ViewAllCaseTypeMappings" Content="All"  
+                                 Style="{StaticResource SegmentedChip}"
+                                 Margin="2,0,2,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </StackPanel>
+
+              </Border>
+            </StackPanel>
+
+            <DataGrid x:Name="dg_CaseTypesWithoutDefault" Width="470" Height="610" BorderBrush="Gray" BorderThickness="1" Margin="0,4"
+                      AlternatingRowBackground="#FFAEDEB9" HorizontalAlignment="Left"
+                      SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+              <DataGrid.Resources>
+                <!-- Status cell highlight -->
+                <Style x:Key="HighlightMissing" TargetType="DataGridCell">
+                  <Setter Property="Background" Value="{x:Null}" />
+                  <Setter Property="Foreground" Value="Black" />
+                  <Setter Property="FontWeight" Value="Normal" />
+
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding MRATemplateName}" Value="">
+                      <Setter Property="Background" Value="Yellow" />
+                      <Setter Property="Foreground" Value="Red" />
+                      <Setter Property="FontWeight" Value="Bold" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+
+                <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                  <Setter Property="Margin" Value="0,2,0,4"/>
+                  <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="{x:Type GroupItem}" >
+                        <Expander x:Name="exp" IsExpanded="True"
+                                  Background="LightGray" BorderBrush="Gray" BorderThickness="1"
+                                  Foreground="Black" Padding="2" Margin="2,0">
+                          <Expander.Header>
+                            <DockPanel>
+                              <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                              <TextBlock Text=" (" FontWeight="Bold" />
+                              <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                              <TextBlock Text=")" FontWeight="Bold" />
+                            </DockPanel>
+                          </Expander.Header>
+                          <ItemsPresenter />
+                        </Expander>
+
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+
+              </DataGrid.Resources>
+
+              <DataGrid.GroupStyle>
+                <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                  <GroupStyle.Panel>
+                    <ItemsPanelTemplate >
+                      <DataGridRowsPresenter />
+                    </ItemsPanelTemplate>
+                  </GroupStyle.Panel>
+                </GroupStyle>
+              </DataGrid.GroupStyle>
+
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="CaseType" IsReadOnly="True" 
+                                    Binding="{Binding CaseType}"
+                                    CellStyle="{StaticResource HighlightMissing}"
+                                    Width="180">
+                  <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="TextWrapping" Value="Wrap"/>
+                    </Style>
+                  </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="MRA Template Name(s)" IsReadOnly="True" 
+                                    Binding="{Binding MRATemplateName}"
+                                    CellStyle="{StaticResource HighlightMissing}"
+                                    Width="250">
+                  <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="TextWrapping" Value="Wrap"/>
+                    </Style>
+                  </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Department Name" IsReadOnly="True" Width="340" Visibility="Collapsed"
+                                    Binding="{Binding DeptName}"/>
+              </DataGrid.Columns>
+            </DataGrid>
+
+          </StackPanel>
+          
+        </Border>
+
+        <Border CornerRadius="16" Padding="8" BorderBrush="DarkGoldenrod" Margin="4" BorderThickness="1">
+          <StackPanel Orientation="Vertical" >
+            <TextBlock Text="Top 100 Active Matters without a Matter Risk Assessment:" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4">
+              <Button x:Name="btn_Refresh_MattersWithoutMRA" Content="Refresh"  Padding="4"/>
+              <Button x:Name="btn_Add_MRATemplate_ToMatter"  Content="Add Default MRA Template(s) to Matter" Margin="40,0,0,0" Padding="4"/>
+            </StackPanel>
+
+            <DataGrid x:Name="dg_MattersWithoutMRA" Width="600" Height="630" BorderBrush="Gray" BorderThickness="1" 
+                      AlternatingRowBackground="#FFAEDEB9" HorizontalAlignment="Left"
+                      SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+
+              <DataGrid.Resources>
+                <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
+                  <Setter Property="Margin" Value="0,2,0,4"/>
+                  <!--<Setter Property="Padding" Value="4,0,0,0" />-->
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="{x:Type GroupItem}" >
+                        <Expander x:Name="exp" IsExpanded="True"
+                                  Background="LightGray" BorderBrush="Gray" BorderThickness="1"
+                                  Foreground="Black" Padding="2" Margin="2,0">
+                          <Expander.Header>
+                            <DockPanel>
+                              <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                              <TextBlock Text=" (" FontWeight="Bold" />
+                              <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                              <TextBlock Text=")" FontWeight="Bold" />
+                            </DockPanel>
+                          </Expander.Header>
+                          <ItemsPresenter />
+                        </Expander>
+
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+
+              </DataGrid.Resources>
+
+              <DataGrid.GroupStyle>
+                <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
+                  <GroupStyle.Panel>
+                    <ItemsPanelTemplate >
+                      <DataGridRowsPresenter />
+                    </ItemsPanelTemplate>
+                  </GroupStyle.Panel>
+                </GroupStyle>
+              </DataGrid.GroupStyle>
+              
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Dept" IsReadOnly="True" Visibility="Collapsed"
+                                    Binding="{Binding DeptName}"/>
+                <DataGridTextColumn Header="OurRef" IsReadOnly="True" 
+                                    Binding="{Binding OurRef}"/>
+                <DataGridTextColumn Header="Matter Desc" IsReadOnly="True" 
+                                    Binding="{Binding MatterDesc}">
+                  <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                    </Style>
+                  </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="CaseType" IsReadOnly="True" 
+                                    Binding="{Binding CaseTypeName}">
+                  <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                    </Style>
+                  </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <DataGridTextColumn Header="TemplateIDs" IsReadOnly="True" Visibility="Collapsed"
+                                    Binding="{Binding TemplateIDs}"/>
+                <DataGridTextColumn Header="TemplateNames" IsReadOnly="True" Visibility="Collapsed"
+                                    Binding="{Binding TemplateNames}"/>
+              </DataGrid.Columns>
+            </DataGrid>
+
+
+          </StackPanel>
+
+        </Border>
+
+
+      </StackPanel>
     </TabItem>
 
   </TabControl>

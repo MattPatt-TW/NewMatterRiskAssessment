@@ -2760,7 +2760,7 @@ def FileReview_Load_Questions_DataGrid():
   FR_QUESTIONS_LIST = []
 
   # load questions for template into in-memory list of 'FileReview_MatterQuestionItem' objects, which we can then bind to the datagrid in the UI; we'll also link to the relevant corrective actions for each question at this point (using the FR_CORRACTIONS_BY_QID dict we populated in 'FileReview_Load_CorrectiveActions_toMemory' function)
-  mySQL = """SELECT'0-QGroup' = QG.Name,
+  mySQL = """SELECT'0-QGroup' = TQ.QuestionGroup,
                   '1-QuestionID' = TQ.QuestionID, 
                   '2-QuestionText' = TQ.QuestionText,
                   '3-AllowsNA' = ISNULL(TQ.FR_Allow_NA_Answer, 'Y'), 
@@ -2769,9 +2769,8 @@ def FileReview_Load_Questions_DataGrid():
                   '6-DisplayOrder' = TQ.DisplayOrder, 
                   '7-DefaultCAText' = ISNULL(TQ.FR_Default_Corrective_Action, '')
               FROM Usr_MRA_TemplateQs TQ 
-                LEFT OUTER JOIN Usr_MRA_QGroups QG ON TQ.QGroupID = QG.ID
               WHERE TQ.TypeID = (SELECT TypeID FROM Usr_MRA_Overview WHERE ID = {0}) 
-              ORDER BY QG.DisplayOrder, TQ.DisplayOrder""".format(tb_FR_ID.Text)
+              ORDER BY TQ.QuestionGroup, TQ.DisplayOrder""".format(tb_FR_ID.Text)
 
   _tikitDbAccess.Open(mySQL)
   dr = _tikitDbAccess._dr

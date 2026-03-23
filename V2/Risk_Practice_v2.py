@@ -18,7 +18,7 @@ from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
 from System.Collections.ObjectModel import ObservableCollection
 from System.Windows import Controls, Forms, LogicalTreeHelper, RoutedEventHandler
-from System.Windows import Data, UIElement, Visibility, Window
+from System.Windows import Data, UIElement, Visibility, Window, FrameworkElement
 from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
@@ -44,12 +44,15 @@ def myOnLoadEvent(s, event):
   refresh_FR_Templates(s, event)              # File Review (main overview / templates)
   refresh_FR_Department_Defaults(s, event)    # FR Default Template for Department
   refresh_FR_CaseType_Defaults(s, event)      # FR Default Template for Case Type
-  refresh_AnswerListGroups(s, event)          # Answers list (shared for both MRA and FR)
-  refresh_GroupItems(s, event)                # New 'Group' items (for MRA 'Section/Group')
+  refresh_GroupItems(s, event)                # New 'Group' items (for FR 'Section/Group')
 
-  set_Visibility_ofAnswerItemsDG()  
-  
-  # wire up new 'New' button popup
+  set_HOD_Screen_LockID()
+  refresh_UsersWithoutKeys()
+  refresh_UsersWithKeys()
+  populate_MattersWithoutMRA()
+  populate_CaseTypesWithoutTemplate()
+
+  # wire up new 'unlock reason' button popup
   icTemplates.AddHandler(Button.ClickEvent,
                          RoutedEventHandler(TemplateButton_Click))
 
@@ -452,17 +455,6 @@ def unlockMatter(withReason = ''):
     MessageBox.Show("There was an error unlocking matter: " + str(tmpOurRef), "Error: Unlock Selected Matter...")
     return
   
-
-  # iterate over items in list and extend ALL MRA's expiry date
-  #for dgRow in dg_LockedMatters.Items:
-  #  if dgRow.EntityRef == tmpEntity and str(dgRow.MatterNo) == str(tmpMatter):
-  #    tmpMRAid = dgRow.MRA_ID
-  #    tmpTTDefDays = dgRow.MRA_TTExpiryDays
-  #
-  #    tmpSQL = "UPDATE Usr_MRA_Overview SET ExpiryDate = DATEADD(day, " + str(tmpTTDefDays) + ", GETDATE()) WHERE ID = " + str(tmpMRAid) 
-  #    #MessageBox.Show(tmpSQL, "DEBUGGING")
-  #    runSQL(tmpSQL, True, "There was an error extending the Matter Risk Assessment 'Expiry Date'", "Error: Unlock Selected Matter - Extending MRA ExpiryDate...")
-
   # extend expiry date by number of expiry days (disabled above as unsure why I thought we should extend expiry date for ALL MRAs)
   tmpSQL = "UPDATE Usr_MRA_Overview SET ExpiryDate = DATEADD(day, {0}, GETDATE()) WHERE ID = {1}".format(tmpExpDays, tmpOVID)
   runSQL(tmpSQL, True, "There was an error extending the Matter Risk Assessment 'Expiry Date'", "Error: Unlock Selected Matter - Extending MRA ExpiryDate...")
@@ -506,689 +498,6 @@ def add_Missing_CaseTypeDefaults(forWhat=''):
          errorMsgTitle="Error: Adding missing CaseTypes...")
 
   return
-
-
-class CopyAnswersFrom(object):
-  def __init__(self, myCode, myName):
-    self.QID = myCode
-    self.Name = myName
-    return
-    
-  def __getitem__(self, index):
-    if index == 'ID':
-      return self.QID
-    elif index == 'Name':
-      return self.Name
-    else:
-      return ''
-
-
-
-# # # #   M A N A G E   D R O P   D O W N   L I S T S   # # # #
-
-def addNewList(s, event):
-  #! Manage Global Answers - Main List - Add New button
-  # This function will add a dummy answer with 'newGroup' name and refresh lists
-  # Get the next NEGATIVE number (negative numbers are representing our 'global' lists)
-  newID = _tikitResolver.Resolve("[SQL: SELECT MIN(QuestionID) - 1 FROM Usr_MRA_TemplateAs]")
-  insert_SQL = """INSERT INTO Usr_MRA_TemplateAs (GroupName, AnswerText, Score, DisplayOrder, QuestionID) 
-                  VALUES ('NewList', 'example', 0, 1, {0})""".format(newID)
-  runSQL(insert_SQL, True, "There was an error adding a new list group", "Error: Add new Answer List group...")
-  
-  # refresh list and select FIRST item
-  refresh_AnswerListGroups(s, event)
-  dg_Lists.SelectedIndex = 0  #(dg_Lists.Items.Count - 1)
-  return
-
-
-def duplicateSelectedList(s, event):
-  #! Manage Global Answers - Main List - Duplicate Selected button
-  # This function will duplicate the currently selected list, as a new list with '(copy)' appended to the name
-  # and with a new GLOBAL ID (QuestionID) assigned to it. (NB: copies all current answers)
-  if dg_Lists.SelectedIndex == -1:
-    MessageBox.Show("Nothing is selected that can be duplicated!", "Error: Duplicate selected list...")
-    return
-
-  currID = dg_Lists.SelectedItem['ID']
-  newID = _tikitResolver.Resolve("[SQL: SELECT MIN(QuestionID) - 1 FROM Usr_MRA_TemplateAs]")
-  insert_SQL = """INSERT INTO Usr_MRA_TemplateAs (GroupName, AnswerText, Score, DisplayOrder, QuestionID) 
-                  SELECT GroupName + ' (copy)', AnswerText, Score, DisplayOrder, {0} FROM Usr_MRA_TemplateAs WHERE QuestionID = {1}""".format(newID, currID)
-  runSQL(insert_SQL, True, "There was an error duplicating the selected list group", "Error: Duplicate Selected Answer List group...")
-  
-  # refresh list and select FIRST item
-  refresh_AnswerListGroups(s, event)
-  dg_Lists.SelectedIndex = 0  #(dg_Lists.Items.Count - 1)
-  return
-
-
-def deleteSelectedList(s, event):
-  #! Function being disabled for now - as we shouln't really be able to delete a list that is used in a Question
-  #! This is for historic purposes only, because when looking at old data, and if you delete a list/question/answer, it will break the data integrity (no information anymore!!)
-  #! Therefore need to be clever with a new solution - firstly, perhaps just have the ability for a MRA/Question/Answer to be able to be 'de-activated' to the effect that it will
-  #! not be seen anymore (unless you select 'Show Inactive' or something like that on NMRA Setup perhaps?). This will achive the desired result of Amy not having to see item anymore, 
-  #! but we also keep any old data that could be referring to it. We can still have functionality to delete UNUSED items though, but will need checks.
-  #! Perhaps then, when Amy wants to amend an NMRA, instead of working directly on the 'Live' one, she makes a duplicate of the one she wishes to edit, and proceed to edit that one.
-  #! This also means any historical NMRA's aren't inadvertantly changed by her changes. Maybe we even add 'EffecitiveFrom' date to the NMRA template, to allow Risk to specify when
-  #! a new one applies for a Department/CaseType - eg: meaning that she doesn't need to manually go into the 'Case Type Defaults' manually setting the new 'template' to use.
-  #! (could also have a button to apply that too).  Also: just thought of, wouldn't it make sense to move the 'CaseType Defaults' to within the editing of the NMRA template,
-  #! again, feels like it would flow better - but still keep other existing screen around as this provides an overall of all for the department/case type.
-  #! This will be a big change, so will need to think about it more, but I think this is the way to go.
-
-  # This function will delete the currently selected list
-  if dg_Lists.SelectedIndex == -1:
-    MessageBox.Show("Nothing is selected that can be deleted!", "Error: Delete selected list...")
-    return
-  
-  sel_Name = dg_Lists.SelectedItem['Name']
-  sel_ID = dg_Lists.SelectedItem['ID']
-  msg = "Are you sure you want to delete the following item:\n{0}?".format(sel_Name)
-  myResult = MessageBox.Show(msg, 'Delete item...', MessageBoxButtons.YesNo)
-  
-  if myResult == DialogResult.Yes:
-    # Form the SQL to delete row and execute the SQL 
-    Delete_SQL = "[SQL: DELETE FROM Usr_MRA_TemplateAs WHERE QuestionID = '{0}']".format(sel_ID)
-    try:
-      _tikitResolver.Resolve(Delete_SQL)
-      refresh_AnswerListGroups(s, event)
-    except:
-      MessageBox.Show("There was an error trying to delete answer group, using SQL:\n" + sql_MoveUp, "Error: Delete Selected...")
-  return
-
-
-def ListGroup_SelectionChanged(s, event):
-  # This function will update list of 'items'
-  if dg_Lists.SelectedIndex > -1:
-    lbl_SelectedList.Content = dg_Lists.SelectedItem['Name']
-    lbl_SelectedListQID.Content = dg_Lists.SelectedItem['ID']
-    refresh_AnswerListItems(s, event)
-  else:
-    lbl_SelectedList.Content = ''
-    lbl_SelectedListQID.Content = ''
-  return
-
-
-def ListGroup_CellEditEnding(s, event):
-  # This function will commit changes to the list name (update all records that use this name)
-  tmpCol = event.Column
-  tmpColName = tmpCol.Header
-  
-  # Get Initial values updated
-  qID = dg_Lists.SelectedItem['ID']
-  newName = dg_Lists.SelectedItem['Name']
-  newName1 = newName.replace("'", "''")
-  oldName = lbl_SelectedList.Content
-
-  # Conditionally add parts depending on column updated and whether value has changed
-  if tmpColName != 'List Name':
-    return
-
-  if newName != oldName:
-    # Added: 25/07/2025 - I've accidentally changed the name of a list without indending to, and when speaking to Amy, she
-    # mentioned the same, so I suggested adding a 'confirmation' prompt before blindly changing
-    tmpMessage = "Are you sure you want to change the name of the list from:\n{0}\nto:\n{1}?".format(oldName, newName)
-    myResult = MessageBox.Show(tmpMessage, "Change List Name", MessageBoxButtons.YesNo)
-    if myResult != DialogResult.Yes:
-      updateSQL = "UPDATE Usr_MRA_TemplateAs SET GroupName = '" + str(newName1) + "' WHERE QuestionID = " + str(qID) 
-      runSQL(updateSQL, True, "There was an error trying to update Answer list item name", "Error: Updating Answer list item...")
-
-    # we refresh the list of items to make sure we show what the actual name is (saved new name / retained old name)
-    refresh_AnswerListItems(s, event)
-  return
-
-
-def ListItems_SelectionChanged(s, event):
-  # This function temp stores selected item
-  if dg_ListItems.SelectedIndex > -1:
-    lbl_ListItemText.Content = dg_ListItems.SelectedItem['Item Text']
-    lbl_ListItemScore.Content = dg_ListItems.SelectedItem['Score']
-    lbl_ListItemEC.Content = dg_ListItems.SelectedItem['EmailComment']
-  else:
-    lbl_ListItemText.Content = ''
-    lbl_ListItemScore.Content = ''
-    lbl_ListItemEC.Content = ''
-  return
-
-  
-def ListItems_CellEditEnding(s, event):
-  # This function commits changes to list item
-  tmpCol = event.Column
-  tmpColName = tmpCol.Header
-  
-  # Get Initial values updated
-  updateSQL = '[SQL: UPDATE Usr_MRA_TemplateAs SET '
-  countOfUpdates = 0
-  itemID = dg_ListItems.SelectedItem['RowID']
-  newName = dg_ListItems.SelectedItem['Item Text']
-  newName1 = newName.replace("'", "''")
-  newScore = dg_ListItems.SelectedItem['Score']
-  newEC = dg_ListItems.SelectedItem['EmailComment']
-
-  if itemID == 'x':
-    return
-
-  # Conditionally add parts depending on column updated and whether value has changed
-  if tmpColName == 'Item Text':
-    if newName != lbl_ListItemText.Content:
-      updateSQL += "AnswerText = '{0}' ".format(newName1)
-      countOfUpdates += 1
-
-  elif tmpColName == 'Item Score':
-    if newScore != lbl_ListItemScore.Content:
-      updateSQL += "Score = {0} ".format(newScore)
-      countOfUpdates += 1
-
-  elif tmpColName == 'Email Comment':
-    if newEC != lbl_ListItemEC.Content:
-      updateSQL += "EmailComment = '{0}' ".format(newEC.replace("'","''"))
-      countOfUpdates += 1
-
-  # Add WHERE clause
-  updateSQL += "WHERE ID = {0}]".format(itemID)
-  #MessageBox.Show("UpdateSQL = " + updateSQL + "\nNewEC (list item): " + str(newEC) + "\nPrev value (in label): " + str(lbl_ListItemEC.Content))
-
-  # Only run if something was changed
-  if countOfUpdates > 0:
-    runSQL(updateSQL, True, "There was an error trying to update Answer list item", "Error: Updating Answer list item...")
-    refresh_AnswerListItems(s, event)
-  return
-
-
-def refresh_AnswerListGroups(s, event):
-  # This function refreshes the 'ANSWER LIST GROUP' data drid
-  # Currently doing tripple-duty as updates: DataGrid (Manage Answers tab), 'Copy Answers From' on Editing Qs MRA, and 'Answer List' on Editing Qs on FR
-  # 'Manage Answers > Global Answers' is now only for editing 'Global' (or template) Answers and shouldn't show items for existing Q's
-  # No longer interested in 'Count Used' as these are only TEMPLATE answers to be COPIED onto actual Questions
-  
-  getTableSQL = """SELECT CASE WHEN TAs.QuestionID < 0 THEN TAs.GroupName ELSE (SELECT QuestionText FROM Usr_MRA_TemplateQs WHERE ID = TAs.QuestionID) END, 
-                  TAs.QuestionID, CASE WHEN TAs.QuestionID < 0 THEN '(GLOBAL) ' + TAs.GroupName ELSE (SELECT QuestionText FROM Usr_MRA_TemplateQs WHERE ID = TAs.QuestionID) END 
-                  FROM Usr_MRA_TemplateAs TAs GROUP BY GroupName, QuestionID ORDER BY QuestionID"""
-  
-  tmpItem = []
-  tmpItem2 = []
-  
-  _tikitDbAccess.Open(getTableSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpGName = '' if dr.IsDBNull(0) else dr.GetString(0)
-          tmpID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          tmpGName2 = '' if dr.IsDBNull(2) else dr.GetString(2)
-
-          # new - as we only want to see 'Global' template Answers on Manage Answers tab, we'll only add to list if ID is below zero
-          if tmpID < 0:
-            tmpItem.append(CopyAnswersFrom(tmpID, tmpGName))
-          # we'll still want to see all other questions (I think) in 'Copy Answers From' drop-downs, so always add these
-          tmpItem2.append(CopyAnswersFrom(tmpID, tmpGName2))
-
-    dr.Close()
-  
-  #close db connection
-  _tikitDbAccess.Close()
-  dg_Lists.ItemsSource = tmpItem
-  #cbo_QuestionAnswerList.ItemsSource = tmpItem2
-  
-  if dg_Lists.Items.Count == 0:
-    lbl_NoGlobalGroups.Visibility = Visibility.Visible
-    dg_Lists.Visibility = Visibility.Hidden
-  else:
-    lbl_NoGlobalGroups.Visibility = Visibility.Collapsed
-    dg_Lists.Visibility = Visibility.Visible
-  return 
-
-
-class AnswerListItems(object):
-  def __init__(self, myDO, myText, myScore, myRowID, myEC):
-    self.liDO = myDO
-    self.liText = myText
-    self.liScore = myScore
-    self.liCode = myRowID
-    self.liEmailComment = myEC
-    return
-    
-  def __getitem__(self, index):
-    if index == 'Order':
-      return self.liDO
-    elif index == 'Item Text':
-      return self.liText
-    elif index == 'Score':
-      return self.liScore
-    elif index == 'RowID':
-      return self.liCode
-    elif index == 'EmailComment':
-      return self.liEmailComment
-    else: 
-      return ''
-
-
-def refresh_AnswerListItems(s, event):
-  # This function refreshes the 'ANSWER LIST ITEMS' data grid
-  selID = dg_Lists.SelectedItem['ID']
-  getTableSQL = "SELECT DisplayOrder, AnswerText, Score, ID, EmailComment FROM Usr_MRA_TemplateAs WHERE QuestionID = {0} ORDER BY DisplayOrder".format(selID)
-  
-  tmpItem = []
-  _tikitDbAccess.Open(getTableSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpDO = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          tmpAText = '' if dr.IsDBNull(1) else dr.GetString(1)
-          tmpScore = 0 if dr.IsDBNull(2) else dr.GetValue(2)
-          tmpID = 0 if dr.IsDBNull(3) else dr.GetValue(3)
-          tmpEC = '' if dr.IsDBNull(4) else dr.GetString(4)
-
-          tmpItem.append(AnswerListItems(tmpDO, tmpAText, tmpScore, tmpID, tmpEC))
-    else:
-      tmpItem.append(AnswerListItems(0, 'No items currently exist', 0, 0, ''))
-
-    dr.Close()
-  
-  #close db connection
-  _tikitDbAccess.Close()
-  dg_ListItems.ItemsSource = tmpItem
-  set_Visibility_ofAnswerItemsDG()
-  return
-
-
-def set_Visibility_ofAnswerItemsDG():
-  # This function will hide the Answer list items datagrid if no items exist and show a help label
-  
-  if dg_ListItems.Items.Count == 0:
-    dg_ListItems.Visibility = Visibility.Hidden
-    tb_NoAnswerItems.Visibility = Visibility.Visible
-  else:
-    dg_ListItems.Visibility = Visibility.Visible
-    tb_NoAnswerItems.Visibility = Visibility.Hidden
-  return
-
-
-def addNewListItem(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will add a new list item to the currently selected group
-  selID = dg_Lists.SelectedItem['ID']
-  newDO = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(DisplayOrder) + 1, 1) FROM Usr_MRA_TemplateAs WHERE QuestionID = {0}]".format(selID))
-  insert_SQL = """INSERT INTO Usr_MRA_TemplateAs (GroupName, AnswerText, Score, DisplayOrder, QuestionID) 
-                  VALUES('{0}', '(new)', 0, {1}, {2})""".format(lbl_SelectedList.Content, newDO, selID)
-  runSQL(insert_SQL, True, "There was an error adding a new list item", "Error: Add New Answer List item...")
-  
-  # auto select last item...
-  refresh_AnswerListItems(s, event)
-  dg_ListItems.SelectedIndex = (dg_ListItems.Items.Count - 1)
-  return
-  
-  
-def duplicateSelectedListItem(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will duplicate the currently selected list item
-  if dg_ListItems.SelectedIndex == -1:
-    MessageBox.Show("Nothing selected to duplicate!", "Error: Duplicating Selected Answer item...")
-    return
-  
-  selectedID = dg_ListItems.SelectedItem['ID']
-  insert_SQL = """INSERT INTO Usr_MRA_TemplateAs (GroupName, AnswerText, Score, DisplayOrder, EmailComment, QuestionID) 
-                  SELECT TA.GroupName, TA.AnswerText + ' (copy)', TA.Score, (SELECT MAX(TA1.DisplayOrder) + 1 FROM Usr_MRA_TemplateAs TA1 WHERE TA1.GroupName = TA.GroupName), 
-                    EmailComment, QuestionID FROM Usr_MRA_TemplateAs TA WHERE TA.ID = {0}""".format(selectedID)   
-  runSQL(insert_SQL, True, "There was an error duplicating the selected list item", "Error: Duplicate Selected Answer List item...")
-  
-  # auto select last item...
-  refresh_AnswerListItems(s, event)
-  dg_ListItems.SelectedIndex = (dg_ListItems.Items.Count - 1)
-  return
-
-  
-def deleteSelectedListItem(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  
-  #! As mentioned on other 'Delete' functions - we really need to re-consider this functionality as it will break data integrity
-  #! We should really be able to 'de-activate' items, rather than delete, and hide from view (unless 'Show Inactive' is ticked)
-  #! (this prevents ruining old completed NMRAs). So two things, get/display count used so that we can check that and prevent delete until
-  #! 2) we provide option to update all 'old' NMRAs to a new value or something)
-
-  # This function will delete the currently selected list item
-  tmpNewFocusRow = dgItem_DeleteSelected(dgControl=dg_ListItems, 
-                                         tableToUpdate='Usr_MRA_TemplateAs', 
-                                         sqlOrderColName='DisplayOrder', 
-                                         dgIDcolName='RowID', 
-                                         dgOrderColName='Order', 
-                                         dgNameDescColName='Item Text', 
-                                         sqlOtherCheckCol='QuestionID', 
-                                         sqlOtherCheckValue=lbl_SelectedListQID.Content)
-  if tmpNewFocusRow > -1:
-    refresh_AnswerListItems(s, event)
-    dg_ListItems.Focus()
-    dg_ListItems.SelectedIndex = tmpNewFocusRow  
-  return
-  
-  
-def Answers_MoveItemToTop(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will move the selected ANSWER to the top row (and all other items down one)
-  tmpNewFocusRow = dgItem_MoveToTop(dgControl=dg_ListItems, 
-                                    tableToUpdate='Usr_MRA_TemplateAs', 
-                                    sqlOrderColName='DisplayOrder', 
-                                    dgIDcolName='RowID', 
-                                    dgOrderColName='Order', 
-                                    sqlOtherCheckCol='QuestionID', 
-                                    sqlOtherCheckValue=lbl_SelectedListQID.Content)
-  if tmpNewFocusRow > -1:
-    refresh_AnswerListItems(s, event)
-    dg_ListItems.Focus()
-    dg_ListItems.SelectedIndex = tmpNewFocusRow
-  return
-  
-  
-def Answers_MoveItemUp(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will move the selected ANSWER up one row (and all other items down one)
-  tmpNewFocusRow = dgItem_MoveUp(dgControl=dg_ListItems, 
-                                 tableToUpdate='Usr_MRA_TemplateAs', 
-                                 sqlOrderColName='DisplayOrder', 
-                                 dgIDcolName='RowID', 
-                                 dgOrderColName='Order', 
-                                 sqlOtherCheckCol='QuestionID', 
-                                 sqlOtherCheckValue=lbl_SelectedListQID.Content)
-  if tmpNewFocusRow > -1: 
-    refresh_AnswerListItems(s, event)
-    dg_ListItems.Focus()
-    dg_ListItems.SelectedIndex = tmpNewFocusRow
-  return
-  
-
-def Answers_MoveItemDown(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will move the selected Answer down one row (and all other items up one)
-  tmpNewFocusRow = dgItem_MoveDown(dgControl=dg_ListItems, 
-                                   tableToUpdate='Usr_MRA_TemplateAs', 
-                                   sqlOrderColName='DisplayOrder', 
-                                   dgIDcolName='RowID', 
-                                   dgOrderColName='Order', 
-                                   sqlOtherCheckCol='QuestionID', 
-                                   sqlOtherCheckValue=lbl_SelectedListQID.Content)
-  if tmpNewFocusRow > -1: 
-    refresh_AnswerListItems(s, event)
-    dg_ListItems.Focus()
-    dg_ListItems.SelectedIndex = tmpNewFocusRow  
-  return
-  
-  
-def Answers_MoveItemToBottom(s, event):
-  #! [Manage Global Answers] tab > [Global Answers...] tab > [2. Edit List Items] section (DataGrid on right... the items in the main 'global' list)
-  # This function will move the selected Answer to the bottom row (and all other items up one)
-  tmpNewFocusRow = dgItem_MoveToBottom(dgControl=dg_ListItems, 
-                                       tableToUpdate='Usr_MRA_TemplateAs', 
-                                       sqlOrderColName='DisplayOrder', 
-                                       dgIDcolName='RowID', 
-                                       dgOrderColName='Order', 
-                                       sqlOtherCheckCol='QuestionID', 
-                                       sqlOtherCheckValue=lbl_SelectedListQID.Content)
-  if tmpNewFocusRow > -1:
-    refresh_AnswerListItems(s, event)
-    dg_ListItems.Focus()
-    dg_ListItems.SelectedIndex = tmpNewFocusRow  
-  return
-  
-
-
-class SectionGroups(object):
-  def __init__(self, myDO, myDesc, myID, myGroup):
-    self.gDO = myDO
-    self.gDesc = myDesc
-    self.gGroup = myGroup
-    self.gID = myID
-    return
-    
-  def __getitem__(self, index):
-    if index == 'Order':
-      return self.gDO
-    elif index == 'Desc':
-      return self.gDesc
-    elif index == 'Group':
-      return self.gGroup
-    elif index == 'ID':
-      return self.gID
-    else: 
-      return ''
-
-
-def refresh_GroupItems(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # ! Linked to XAML control: dg_GroupItems  (Manage Global Answers > Groups tab)
-  # This function refreshes the 'Group Items' data grid
-  getTableSQL = "SELECT DisplayOrder, ID, Name, ForWhat FROM Usr_MRA_QGroups ORDER BY ForWhat, DisplayOrder"
-  
-  tmpItem = []
-
-  _tikitDbAccess.Open(getTableSQL)
-  if _tikitDbAccess._dr is not None:
-    dr = _tikitDbAccess._dr
-    if dr.HasRows:
-      while dr.Read():
-        if not dr.IsDBNull(0):
-          tmpDO = 0 if dr.IsDBNull(0) else dr.GetValue(0)
-          tmpID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
-          tmpDesc = '' if dr.IsDBNull(2) else dr.GetString(2)
-          tmpGroup = '' if dr.IsDBNull(3) else dr.GetString(3)
-
-          tmpItem.append(SectionGroups(tmpDO, tmpDesc, tmpID, tmpGroup))
-    dr.Close()
-  #close db connection
-  _tikitDbAccess.Close()
-
-  # now we have all our items in a propert Python list, we can add to DataGrid (and add 'Grouping')
-  tmpC = ListCollectionView(tmpItem)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription("gGroup"))
-  dg_GroupItems.ItemsSource = tmpC #tmpItem
-  
-  if dg_GroupItems.Items.Count == 0:
-    dg_GroupItems.Visibility = Visibility.Hidden
-    tb_NoGroupItems.Visibility = Visibility.Visible
-  else:
-    dg_GroupItems.Visibility = Visibility.Visible
-    tb_NoGroupItems.Visibility = Visibility.Hidden
-
-  # finally update the drop-downs on the 'Edit Questions' tabs
-  populate_FR_QGroups(s, event)
-  return
-
-
-
-def Group_SelectionChanged(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function temp stores selected item
-  if dg_GroupItems.SelectedIndex > -1:
-    lbl_GroupItemText.Content = dg_GroupItems.SelectedItem['Desc']
-    lbl_GroupItemGroup.Content = dg_GroupItems.SelectedItem['Group']
-  else:
-    lbl_GroupItemText.Content = ''
-    lbl_GroupItemGroup.Content = ''
-  return
-
-
-def Group_CellEditEnding(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function commits changes to list item
-  tmpCol = event.Column
-  tmpColName = tmpCol.Header
-  
-  # Get Initial values updated
-  updateSQL = "[SQL: UPDATE Usr_MRA_QGroups SET "
-  countOfUpdates = 0
-  itemID = dg_GroupItems.SelectedItem['ID']
-  newName = dg_GroupItems.SelectedItem['Desc']
-  newName1 = newName.replace("'", "''")
-  newGroup = dg_GroupItems.SelectedItem['Group']
-  newGroup = newGroup.replace("'", "''")
-
-  if itemID != 'x':
-    # Conditionally add parts depending on column updated and whether value has changed
-    if tmpColName == 'Description':
-      if newName != lbl_GroupItemText.Content:
-        updateSQL += "Name = '{0}' ".format(newName1)
-        countOfUpdates += 1
-    if tmpColName == 'Group':
-      if newGroup != lbl_GroupItemGroup.Content:
-        updateSQL += "ForWhat = '{0}' ".format(newGroup)
-        countOfUpdates += 1
-    # Add WHERE clause
-    updateSQL += "WHERE ID = {0}]".format(itemID)
-  
-    # Only run if something was changed
-    if countOfUpdates > 0:
-      try:
-        _tikitResolver.Resolve(updateSQL)
-      except:
-        MessageBox.Show("There was an error trying to update Section/Group item, with SQL:\n" + updateSQL, "Error: Updating 'Section/Group' item...")
-      refresh_GroupItems(s, event)
-  return
-
-
-def addNewGroup(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will add a new GROUP item for Matter Risk Assessments
-  newDO = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(DisplayOrder) + 1, 1) FROM Usr_MRA_QGroups WHERE ForWhat = 'MRA']")
-  insert_SQL = """INSERT INTO Usr_MRA_QGroups (Name, DisplayOrder, ForWhat) 
-                  VALUES('(new)', {0}, 'MRA')""".format(newDO)
-  runSQL(insert_SQL, True, "There was an error adding a new Group", "Error: Add New Group item...")
-  
-  # auto select last item...
-  refresh_GroupItems(s, event)
-  dg_GroupItems.SelectedIndex = (dg_GroupItems.Items.Count - 1)
-  return
-  
-def addNewGroupFR(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will add a new GROUP item for File Reviews
-  newDO = _tikitResolver.Resolve("[SQL: SELECT ISNULL(MAX(DisplayOrder) + 1, 1) FROM Usr_MRA_QGroups WHERE ForWhat = 'FR']")
-  insert_SQL = """INSERT INTO Usr_MRA_QGroups (Name, DisplayOrder, ForWhat) 
-                  VALUES('(new)', {0}, 'FR')""".format(newDO)
-  runSQL(insert_SQL, True, "There was an error adding a new Group", "Error: Add New Group item...")
-  
-  # auto select last item...
-  refresh_GroupItems(s, event)
-  dg_GroupItems.SelectedIndex = (dg_GroupItems.Items.Count - 1)
-  return  
-  
-def duplicateSelectedGroup(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will duplicate the currently selected list item
-  if dg_GroupItems.SelectedIndex == -1:
-    MessageBox.Show("Nothing selected to duplicate!", "Error: Duplicating Selected Group...")
-    return
-  
-  selectedID = dg_GroupItems.SelectedItem['ID']
-  insert_SQL = """INSERT INTO Usr_MRA_QGroups (Name, DisplayOrder, ForWhat) 
-                  SELECT TA.Name + ' (copy)', (SELECT MAX(TA1.DisplayOrder) + 1 FROM Usr_MRA_QGroups TA1 WHERE TA1.ForWhat = TA.ForWhat), TA.ForWhat 
-                  FROM Usr_MRA_QGroups TA WHERE TA.ID = {0}""".format(selectedID) 
-  runSQL(insert_SQL, True, "There was an error duplicating the selected Group", "Error: Duplicate Selected Group item...")
-  
-  # auto select last item...
-  refresh_GroupItems(s, event)
-  dg_GroupItems.SelectedIndex = (dg_GroupItems.Items.Count - 1)
-  return
-
-  
-def deleteSelectedGroup(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  #! NOTE: Another 'Delete' function - see notes added to other 'Delete' ('def deleteSelectedList') for new plan
-  # This function will delete the currently selected list item
-  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
-  tmpNewFocusRow = dgItem_DeleteSelected(dgControl=dg_GroupItems, 
-                                         tableToUpdate='Usr_MRA_QGroups', 
-                                         sqlOrderColName='DisplayOrder', 
-                                         dgIDcolName='ID', 
-                                         dgOrderColName='Order', 
-                                         dgNameDescColName='Desc', 
-                                         sqlOtherCheckCol='ForWhat', 
-                                         sqlOtherCheckValue=tmpGroup)
-  if tmpNewFocusRow > -1:
-    refresh_GroupItems(s, event)
-    dg_GroupItems.Focus()
-    dg_GroupItems.SelectedIndex = tmpNewFocusRow  
-  return
-  
-  
-def Group_MoveItemUp(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will move the selected ANSWER up one row (and all other items down one)
-  #                dgItem_MoveUp(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
-  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
-  tmpNewFocusRow = dgItem_MoveUp(dgControl=dg_GroupItems, 
-                                 tableToUpdate='Usr_MRA_QGroups', 
-                                 sqlOrderColName='DisplayOrder',
-                                 dgIDcolName='ID', 
-                                 dgOrderColName='Order', 
-                                 sqlOtherCheckCol='ForWhat', 
-                                 sqlOtherCheckValue=tmpGroup)
-  if tmpNewFocusRow > -1: 
-    refresh_GroupItems(s, event)
-    dg_GroupItems.Focus()
-    dg_GroupItems.SelectedIndex = tmpNewFocusRow
-  return
-  
-
-def Group_MoveItemDown(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will move the selected Answer down one row (and all other items up one)
-  #                dgItem_MoveDown(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
-  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
-  tmpNewFocusRow = dgItem_MoveDown(dgControl=dg_GroupItems, 
-                                   tableToUpdate='Usr_MRA_QGroups', 
-                                   sqlOrderColName='DisplayOrder', 
-                                   dgIDcolName='ID', 
-                                   dgOrderColName='Order', 
-                                   sqlOtherCheckCol='ForWhat', 
-                                   sqlOtherCheckValue=tmpGroup)
-  if tmpNewFocusRow > -1: 
-    refresh_GroupItems(s, event)
-    dg_GroupItems.Focus()
-    dg_GroupItems.SelectedIndex = tmpNewFocusRow  
-  return
-  
-  
-# Move to Top / Bottom not practical here as those functions don't take into account the 'grouping' (it gets total number of items in DG, rather than just those in the group)
-# Don't want to spend time fixing up now, so will just disable those buttons for now.  
-def Group_MoveItemToTop(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will move the selected ANSWER to the top row (and all other items down one)
-  #                dgItem_MoveToTop(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
-  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
-  tmpNewFocusRow = dgItem_MoveToTop(dgControl=dg_GroupItems, 
-                                    tableToUpdate='Usr_MRA_QGroups', 
-                                    sqlOrderColName='DisplayOrder', 
-                                    dgIDcolName='ID', 
-                                    dgOrderColName='Order', 
-                                    sqlOtherCheckCol='ForWhat', 
-                                    sqlOtherCheckValue=tmpGroup)
-  if tmpNewFocusRow > -1:
-    refresh_GroupItems(s, event)
-    dg_GroupItems.Focus()
-    dg_GroupItems.SelectedIndex = tmpNewFocusRow
-  return
-  
-def Group_MoveItemToBottom(s, event):
-  #! [Manage Global Answers] tab > [Groups] tab 
-  # This function will move the selected Answer to the bottom row (and all other items up one)
-  #                dgItem_MoveToBottom(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
-  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
-  tmpNewFocusRow = dgItem_MoveToBottom(dgControl=dg_GroupItems, 
-                                       tableToUpdate='Usr_MRA_QGroups', 
-                                       sqlOrderColName='DisplayOrder',
-                                       dgIDcolName='ID', 
-                                       dgOrderColName='Order', 
-                                       sqlOtherCheckCol='ForWhat', 
-                                       sqlOtherCheckValue=tmpGroup)
-  if tmpNewFocusRow > -1:
-    refresh_GroupItems(s, event)
-    dg_GroupItems.Focus()
-    dg_GroupItems.SelectedIndex = tmpNewFocusRow  
-  return
-
-
-
-# # # #   END OF:  M A N A G E   D R O P   D O W N   L I S T S   # # # #
 
 
 # # # #   C O N F I G U R E   F I L E   R E V I E W S   TAB   # # # #
@@ -1754,11 +1063,11 @@ def refresh_FR_Questions(s, event):
   dg_FR_Questions.ItemsSource = tmpC
 
   if dg_FR_Questions.Items.Count > 0:
-    tb_NoQuestions_FR.Visibility = Visibility.Hidden
+    tb_NoQuestions_FR.Visibility = Visibility.Collapsed
     dg_FR_Questions.Visibility = Visibility.Visible
   else:
     tb_NoQuestions_FR.Visibility = Visibility.Visible
-    dg_FR_Questions.Visibility = Visibility.Hidden
+    dg_FR_Questions.Visibility = Visibility.Collapsed
   return
 
 
@@ -2101,11 +1410,11 @@ def refresh_Preview_FR(s, event):
   dg_FRPreview.ItemsSource = myItems
   
   if dg_FRPreview.Items.Count == 0:
-    dg_FRPreview.Visibility = Visibility.Hidden
+    dg_FRPreview.Visibility = Visibility.Collapsed
     tb_NoFR_PreviewQs.Visibility = Visibility.Visible
   else:
     dg_FRPreview.Visibility = Visibility.Visible
-    tb_NoFR_PreviewQs.Visibility = Visibility.Hidden
+    tb_NoFR_PreviewQs.Visibility = Visibility.Collapsed
   return
 
 
@@ -2666,6 +1975,658 @@ def runSQL(codeToRun = '', showError = False, errorMsgText = '', errorMsgTitle =
     
 ###################################################################################################################################################
 
+def mainGrid_PreviewKeyDown(sender, e):
+  # This is the 'PreviewKeyDown' event for the main grid.
+  # We use this event to capture if a user presses the 'Enter/Return' key, so we can prevent screen from closing (as this appears to be the default action!!)
+  
+  try:
+    k = str(e.Key)
+  except:
+    k = ''
+  
+  if k == 'Return' or k == 'Enter':
+    e.Handled = True
+
+################################################################################################
+# Moved 'Edit Sections / Groups' to a popup panel on the File Review tab
+def tog_EditGroups_Checked(sender, e):
+  # tiggkeButton behaviour: use IsChecked to decide open state
+  is_open = bool(sender.IsChecked)
+  if is_open:
+    popGroups.IsOpen = True
+  else:
+    popGroups.IsOpen = False
+
+
+def popGroups_Closed(sender, e):
+  if tog_EditGroups is not None:
+    tog_EditGroups.IsChecked = False
+
+class SectionGroups(object):
+  def __init__(self, myDO, myDesc, myID, myGroup):
+    self.gDO = myDO
+    self.gDesc = myDesc
+    self.gGroup = myGroup
+    self.gID = myID
+    return
+    
+  def __getitem__(self, index):
+    if index == 'Order':
+      return self.gDO
+    elif index == 'Desc':
+      return self.gDesc
+    elif index == 'Group':
+      return self.gGroup
+    elif index == 'ID':
+      return self.gID
+    else: 
+      return ''
+
+
+def refresh_GroupItems(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # ! Linked to XAML control: dg_GroupItems  (Manage Global Answers > Groups tab)
+  # This function refreshes the 'Group Items' data grid
+  getTableSQL = "SELECT DisplayOrder, ID, Name FROM Usr_MRA_QGroups WHERE ForWhat = 'FR' ORDER BY DisplayOrder"
+  
+  tmpItem = []
+
+  _tikitDbAccess.Open(getTableSQL)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        if not dr.IsDBNull(0):
+          tmpDO = 0 if dr.IsDBNull(0) else dr.GetValue(0)
+          tmpID = 0 if dr.IsDBNull(1) else dr.GetValue(1)
+          tmpDesc = '' if dr.IsDBNull(2) else dr.GetString(2)
+          tmpGroup = 'FR' 
+
+          tmpItem.append(SectionGroups(tmpDO, tmpDesc, tmpID, tmpGroup))
+    dr.Close()
+  #close db connection
+  _tikitDbAccess.Close()
+
+  # now we have all our items in a propert Python list, we can add to DataGrid (and add 'Grouping')
+  #tmpC = ListCollectionView(tmpItem)
+  #tmpC.GroupDescriptions.Add(PropertyGroupDescription("gGroup"))
+  dg_GroupItems.ItemsSource = tmpItem   #tmpC #
+  
+  if dg_GroupItems.Items.Count == 0:
+    dg_GroupItems.Visibility = Visibility.Collapsed
+    tb_NoGroupItems.Visibility = Visibility.Visible
+  else:
+    dg_GroupItems.Visibility = Visibility.Visible
+    tb_NoGroupItems.Visibility = Visibility.Collapsed
+
+  # finally update the drop-downs on the 'Edit Questions' tabs
+  populate_FR_QGroups(s, event)
+  return
+
+
+
+def Group_SelectionChanged(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function temp stores selected item
+  if dg_GroupItems.SelectedIndex > -1:
+    lbl_GroupItemText.Content = dg_GroupItems.SelectedItem['Desc']
+    lbl_GroupItemGroup.Content = dg_GroupItems.SelectedItem['Group']
+  else:
+    lbl_GroupItemText.Content = ''
+    lbl_GroupItemGroup.Content = ''
+  return
+
+
+def Group_CellEditEnding(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function commits changes to list item
+  tmpCol = event.Column
+  tmpColName = tmpCol.Header
+  
+  # Get Initial values updated
+  updateSQL = "[SQL: UPDATE Usr_MRA_QGroups SET "
+  countOfUpdates = 0
+  itemID = dg_GroupItems.SelectedItem['ID']
+  newName = str(dg_GroupItems.SelectedItem['Desc'])
+  newName1 = newName.replace("'", "''")
+
+  if itemID != 'x':
+    # Conditionally add parts depending on column updated and whether value has changed
+    if tmpColName == 'Description':
+      if newName != lbl_GroupItemText.Content:
+        updateSQL += "Name = '{0}' ".format(newName1)
+        countOfUpdates += 1
+    # Add WHERE clause
+    updateSQL += "WHERE ID = {0}]".format(itemID)
+  
+    # Only run if something was changed
+    if countOfUpdates > 0:
+      try:
+        _tikitResolver.Resolve(updateSQL)
+      except:
+        MessageBox.Show("There was an error trying to update Section/Group item, with SQL:\n" + updateSQL, "Error: Updating 'Section/Group' item...")
+      refresh_GroupItems(s, event)
+  return
+
+
+def addNewGroupFR(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function will add a new GROUP item for File Reviews
+  insert_SQL = """INSERT INTO Usr_MRA_QGroups (Name, DisplayOrder, ForWhat) 
+                  SELECT '(new)', ISNULL(MAX(DisplayOrder) + 1, 1), 'FR' 
+                  FROM Usr_MRA_QGroups WHERE ForWhat = 'FR'"""
+  runSQL(insert_SQL, True, "There was an error adding a new Group", "Error: Add New Group item...")
+  
+  # auto select last item...
+  refresh_GroupItems(s, event)
+  dg_GroupItems.SelectedIndex = (dg_GroupItems.Items.Count - 1)
+  return  
+  
+def duplicateSelectedGroup(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function will duplicate the currently selected list item
+  if dg_GroupItems.SelectedIndex == -1:
+    MessageBox.Show("Nothing selected to duplicate!", "Error: Duplicating Selected Group...")
+    return
+  
+  selectedID = dg_GroupItems.SelectedItem['ID']
+  insert_SQL = """INSERT INTO Usr_MRA_QGroups (Name, DisplayOrder, ForWhat) 
+                  SELECT TA.Name + ' (copy)', (SELECT MAX(TA1.DisplayOrder) + 1 FROM Usr_MRA_QGroups TA1 WHERE TA1.ForWhat = TA.ForWhat), TA.ForWhat 
+                  FROM Usr_MRA_QGroups TA WHERE TA.ID = {0}""".format(selectedID) 
+  runSQL(insert_SQL, True, "There was an error duplicating the selected Group", "Error: Duplicate Selected Group item...")
+  
+  # auto select last item...
+  refresh_GroupItems(s, event)
+  dg_GroupItems.SelectedIndex = (dg_GroupItems.Items.Count - 1)
+  return
+
+  
+def deleteSelectedGroup(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  #! NOTE: Another 'Delete' function - see notes added to other 'Delete' ('def deleteSelectedList') for new plan
+  # This function will delete the currently selected list item
+  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
+  tmpNewFocusRow = dgItem_DeleteSelected(dgControl=dg_GroupItems, 
+                                         tableToUpdate='Usr_MRA_QGroups', 
+                                         sqlOrderColName='DisplayOrder', 
+                                         dgIDcolName='ID', 
+                                         dgOrderColName='Order', 
+                                         dgNameDescColName='Desc', 
+                                         sqlOtherCheckCol='ForWhat', 
+                                         sqlOtherCheckValue=tmpGroup)
+  if tmpNewFocusRow > -1:
+    refresh_GroupItems(s, event)
+    dg_GroupItems.Focus()
+    dg_GroupItems.SelectedIndex = tmpNewFocusRow  
+  return
+  
+  
+def Group_MoveItemUp(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function will move the selected ANSWER up one row (and all other items down one)
+  #                dgItem_MoveUp(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
+  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
+  tmpNewFocusRow = dgItem_MoveUp(dgControl=dg_GroupItems, 
+                                 tableToUpdate='Usr_MRA_QGroups', 
+                                 sqlOrderColName='DisplayOrder',
+                                 dgIDcolName='ID', 
+                                 dgOrderColName='Order', 
+                                 sqlOtherCheckCol='ForWhat', 
+                                 sqlOtherCheckValue=tmpGroup)
+  if tmpNewFocusRow > -1: 
+    refresh_GroupItems(s, event)
+    dg_GroupItems.Focus()
+    dg_GroupItems.SelectedIndex = tmpNewFocusRow
+  return
+  
+
+def Group_MoveItemDown(s, event):
+  #! [Manage Global Answers] tab > [Groups] tab 
+  # This function will move the selected Answer down one row (and all other items up one)
+  #                dgItem_MoveDown(   dgControl,        tableToUpdate, sqlOrderColName, dgIDcolName, dgOrderColName, sqlOtherCheckCol, sqlOtherCheckValue)
+  tmpGroup = "'{0}'".format(dg_GroupItems.SelectedItem['Group'])
+  tmpNewFocusRow = dgItem_MoveDown(dgControl=dg_GroupItems, 
+                                   tableToUpdate='Usr_MRA_QGroups', 
+                                   sqlOrderColName='DisplayOrder', 
+                                   dgIDcolName='ID', 
+                                   dgOrderColName='Order', 
+                                   sqlOtherCheckCol='ForWhat', 
+                                   sqlOtherCheckValue=tmpGroup)
+  if tmpNewFocusRow > -1: 
+    refresh_GroupItems(s, event)
+    dg_GroupItems.Focus()
+    dg_GroupItems.SelectedIndex = tmpNewFocusRow  
+  return
+
+########################################
+class CaseTypeTemplates(object):
+  def __init__(self, myDept, myCT, myTemplate):
+    self.DeptName = myDept
+    self.CaseType = myCT
+    self.MRATemplateName = myTemplate
+    return
+    
+  def __getitem__(self, index):
+    if index == 'Dept':
+      return self.DeptName
+    elif index == 'CaseType':
+      return self.CaseType
+    elif index == 'Template':
+      return self.MRATemplateName
+    else: 
+      return ''
+
+def btn_Refresh_CaseTypesWithoutTemplate_Click(s, event):
+  # This is the 'Refresh' button for the list of Case Types without a MRA template assigned 
+  #! Linked to XAML control: btn_Refresh_CaseTypesWithoutTemplate  
+  populate_CaseTypesWithoutTemplate()
+  return
+
+def opt_ViewMissingCaseTypes_Checked(s, event):
+  # This is the 'View Missing Case Types' option button
+  #! Linked to XAML control: opt_ViewMissingCaseTypes  
+  populate_CaseTypesWithoutTemplate()
+  return
+
+def opt_ViewAllCaseTypeMappings_Checked(s, event):
+  # This is the 'View All Case Type Mappings' option button
+  #! Linked to XAML control: opt_ViewAllCaseTypeMappings 
+  populate_CaseTypesWithoutTemplate()
+  return
+
+def populate_CaseTypesWithoutTemplate():
+  
+  tmpSQL = """SELECT '01-CaseTypeGroup Name' = CTG.Name, 
+                    '02-CaseType Name' = CT.Description, 
+                    '03-MRA Template Name' = ISNULL(STRING_AGG(TD.Name, '; '), '')
+              FROM CaseTypes CT 
+                  LEFT OUTER JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID 
+                  LEFT OUTER JOIN Usr_MRAv2_CaseTypeDefaults CTD ON CT.Code = CTD.CaseTypesCode 
+                  LEFT OUTER JOIN Usr_MRAv2_TemplateDetails TD ON CTD.TemplateID = TD.TemplateID 
+              GROUP BY CT.Description, CT.Code, CTG.Name, CT.CaseTypeGroupRef """
+
+  if opt_ViewMissingCaseTypes.IsChecked == True:
+    tmpSQL += "HAVING ISNULL(STRING_AGG(TD.Name, '; '), '') = ''"
+
+  tmpSQL += "ORDER BY CT.Description "
+  
+  #! run the above SQL and populate the 'Case Types without Template' data grid (dg_CaseTypesWithoutTemplate)
+  myItems = []
+  _tikitDbAccess.Open(tmpSQL)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        myDept = '' if dr.IsDBNull(0) else dr.GetString(0)
+        myCT = '' if dr.IsDBNull(1) else dr.GetString(1)
+        myTemplate = '' if dr.IsDBNull(2) else dr.GetString(2)
+        myItems.append(CaseTypeTemplates(myDept, myCT, myTemplate))
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  tmpC = ListCollectionView(myItems)
+  tmpC.GroupDescriptions.Add(PropertyGroupDescription("DeptName"))
+  dg_CaseTypesWithoutDefault.ItemsSource = tmpC
+  return
+
+
+class MattersWithoutMRA(object):
+  def __init__(self, myDept, myCT, myOurRef, myMatterDesc, myFeeEarner, myCountOfMRAs, myTemplateIDs, myTemplateNames):
+    self.DeptName = myDept
+    self.CaseTypeName = myCT
+    self.OurRef = myOurRef
+    self.MatterDesc = myMatterDesc
+    self.FeeEarner = myFeeEarner
+    self.CountOfMRAs = myCountOfMRAs
+    self.TemplateIDs = myTemplateIDs
+    self.TemplateNames = myTemplateNames
+    return
+    
+  def __getitem__(self, index):
+    if index == 'Dept':
+      return self.DeptName
+    elif index == 'CaseType':
+      return self.CaseTypeName
+    elif index == 'OurRef':
+      return self.OurRef
+    elif index == 'MatterDesc':
+      return self.MatterDesc
+
+    elif index == 'Fee Earner':
+      return self.FeeEarner
+    elif index == 'Count of MRAs':
+      return self.CountOfMRAs
+    elif index == 'TemplateIDs':
+      return self.TemplateIDs
+    elif index == 'TemplateNames':
+      return self.TemplateNames      
+    else: 
+      return ''
+
+def btn_Refresh_MattersWithoutMRA_Click(s, event):
+  # This is the 'Refresh' button for the list of Matters without a MRA template assigned
+  #! Linked to XAML control: btn_Refresh_MattersWithoutMRA 
+  populate_MattersWithoutMRA()
+  return
+
+def populate_MattersWithoutMRA():
+  #! Problem with this in Dev is that there's 12,000+ matters without MRAs, which is causing significant performance issues.
+  #! Therefore for now, just returning top 100, ordered by department, then case type, then matter ref
+  #! (but can remove 'TOP 100' filter when in Prod as there will be much less matters without MRAs,
+  #  We could also look to add some indexes to help with performance if needed - refer to 'pages' in File Closure code for examples of this)
+
+  tmpSQL = """;WITH allLiveMatters AS (
+                SELECT 'Dept' = CTG.Name, 'CaseType' = CT.Description, 'CaseTypeRef' = M.CaseTypeRef,  
+                  'OurRef' = CONCAT(LEFT(M.EntityRef, 3), RIGHT(M.EntityRef, 4), '/', CONVERT(nvarchar, M.Number)),
+                  'EntityRef' = M.EntityRef, 'MatterNo' = M.Number,
+                  'MatterDesc' = M.Description,
+                  'Fee Earner' = CONCAT('(', U.Code, ') ', U.FullName)
+                FROM Matters M
+                  JOIN CaseTypes CT ON M.CaseTypeRef = CT.Code
+                  JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID
+                  JOIN Users U ON M.FeeEarnerRef = U.Code
+                WHERE M.EntityRef != 'NON000000000001' AND M.Created > '2024-09-04 00:00:00.000'  
+              ), 
+              allNMRAv2_MatterRecords AS (
+                SELECT MH.EntityRef, MH.MatterNo, 'CountOfMRAs' = COUNT(*)
+                FROM Usr_MRAv2_MatterHeader MH
+                GROUP BY MH.EntityRef, MH.MatterNo
+              ), 
+              caseTypeDefaults AS (
+                SELECT 'CaseTypeRef' = CTD.CaseTypesCode,
+                  'TemplateID' = ISNULL(STRING_AGG(CTD.TemplateID, '|'), ''), 
+                  'TemplateName' = ISNULL(STRING_AGG(TD.Name, '; '), '')
+                FROM Usr_MRAv2_CaseTypeDefaults CTD
+                  JOIN Usr_MRAv2_TemplateDetails TD ON CTD.TemplateID = TD.TemplateID
+                GROUP BY CTD.CaseTypesCode
+              )
+            SELECT ALM.Dept, ALM.CaseType, ALM.OurRef, ALM.MatterDesc, ALM.[Fee Earner],
+              'Count of MRAs' = ISNULL(MR.CountOfMRAs, 0),
+              'Templates That Should Apply - ID' = CD.TemplateID,
+              'Templates That Should Apply - Name' = CD.TemplateName
+            FROM allLiveMatters ALM
+              LEFT OUTER JOIN allNMRAv2_MatterRecords MR ON ALM.EntityRef = MR.EntityRef AND ALM.MatterNo = MR.MatterNo
+              JOIN caseTypeDefaults CD ON ALM.CaseTypeRef = CD.CaseTypeRef
+            WHERE ISNULL(MR.CountOfMRAs, 0) = 0
+            ORDER BY ALM.Dept, ALM.CaseType, ALM.OurRef"""
+
+  #! run the above SQL and populate the 'Matters without MRA' data grid (dg_MattersWithoutMRA)
+  myItems = []
+  _tikitDbAccess.Open(tmpSQL)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        myDept = '' if dr.IsDBNull(0) else dr.GetString(0)
+        myCT = '' if dr.IsDBNull(1) else dr.GetString(1)
+        myOurRef = '' if dr.IsDBNull(2) else dr.GetString(2)
+        myMatterDesc = '' if dr.IsDBNull(3) else dr.GetString(3)
+        myFeeEarner = '' if dr.IsDBNull(4) else dr.GetString(4)
+        myCountOfMRAs = 0 if dr.IsDBNull(5) else dr.GetValue(5)
+        myTemplateIDs = '' if dr.IsDBNull(6) else dr.GetString(6)
+        myTemplateNames = '' if dr.IsDBNull(7) else dr.GetString(7)
+        myItems.append(MattersWithoutMRA(myDept, myCT, myOurRef, myMatterDesc, myFeeEarner, myCountOfMRAs, myTemplateIDs, myTemplateNames))
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  # add group by department, and then case type
+  tmpC = ListCollectionView(myItems)
+  tmpC.GroupDescriptions.Add(PropertyGroupDescription("DeptName"))
+  #tmpC.GroupDescriptions.Add(PropertyGroupDescription("CaseTypeName"))
+  dg_MattersWithoutMRA.ItemsSource = tmpC
+  return
+
+def btn_Add_MRATemplate_ToMatter_Click(s, event):
+  # This is the 'Add MRA Template to Matter' button
+  #! Linked to XAML control: btn_Add_MRATemplate_ToMatter 
+
+  #MessageBox.Show("This button will eventually allow you to add a MRA template to the matter directly from this screen, but this functionality is still being built out. In the meantime, you can click on the matter reference to open the matter, and then add a MRA template from there.", "Add MRA Template to Matter - Coming Soon!")
+
+  if dg_MattersWithoutMRA.SelectedIndex == -1:
+    MessageBox.Show("Please select a matter to add a MRA template to!", "Error: Add MRA Template to Matter...")
+    return
+  
+  selItem = dg_MattersWithoutMRA.SelectedItem
+  selOurRef = selItem['OurRef']
+  selEntRef = selItem['EntityRef']
+  selMatNo = selItem['MatterNo']
+  selTemplateIDs = selItem['TemplateIDs']
+  selTemplateNames = selItem['TemplateNames']
+
+  # now we need to iterate over the 'selTemplateIDs' (split by '|') and add each template to the matter (if not already added)
+  templateIDList = selTemplateIDs.split('|')
+  for templateID in templateIDList:
+    MessageBox.Show("This will add template ID {0} to the matter with EntityRef {1} and MatterNo {2}".format(templateID, selEntRef, selMatNo), "Add MRA Template to Matter - Coming Soon!")
+    #insertSQL = "INSERT INTO Usr_MRAv2_MatterDetails (MatterID, TemplateID) SELECT MH.MatterID, {0} FROM Usr_MRAv2_MatterHeader MH WHERE MH.EntityRef = '{1}' AND MH.MatterNo = {2}".format(templateID, selEntRef, selMatNo)
+    #runSQL(insertSQL, True, "There was an error adding MRA template to the matter", "Error: Add MRA Template to Matter...")
+
+
+  return
+
+
+def txt_Search_TextChanged(s, event):
+  # This is the 'TextChanged' event for the search box on the 'HOD Access' tab
+  refresh_UsersWithoutKeys()
+  return
+
+class userList(object):
+  def __init__(self, myCode, myName, myJTitle, myDept, myGroup=''):
+    self.iCode = myCode
+    self.iName = myName
+    self.iJobTitle = myJTitle
+    self.iDept = myDept
+    self.iGroup = myGroup
+    return
+
+  def __getitem__(self, index):
+    if index == 'Code':
+      return self.iCode
+    elif index == 'Name':
+      return self.iName
+    elif index == 'JobTitle':
+      return self.iJobTitle   
+    elif index == 'Dept':
+      return self.iDept
+    elif index == 'Group':
+      return self.iGroup
+
+
+def refresh_UsersWithoutKeys():
+  # This is the DataGrid on the LEFT on the 'Who can edit this lock...' tab
+  # This list should show all users whom do NOT have a key for the current page lock
+  myItems = []
+
+  userList_SQL = """SELECT U.Code, U.FullName, ISNULL(U.JobTitle, ''), ISNULL(D.Description, '')
+                    FROM Users U
+                        LEFT OUTER JOIN Departments D ON U.Department = D.Code
+                    WHERE U.Code NOT IN (SELECT U.Code FROM Keys K 
+                        JOIN Users U ON K.UserRef = U.Code 
+                        JOIN Locks L ON K.LockRef = L.Code
+                    WHERE L.Code = {lockID})
+                      AND U.Locked = 0 AND U.UserStatus = 0 AND U.FullName NOT LIKE 'Legal%' 
+                      AND U.FullName NOT LIKE 'Trainee%' AND U.FullName NOT LIKE 'Left%'""".format(lockID=tb_LockCode.Text)
+
+
+  # allowing for Text search
+  tmpSearchText = txt_Search.Text
+  if tmpSearchText is not None:
+    if len(tmpSearchText) > 0:
+      userList_SQL += " AND U.FullName LIKE '%{0}%'".format(tmpSearchText)
+
+  _tikitDbAccess.Open(userList_SQL)
+
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        if not dr.IsDBNull(0):
+          tmpCode = '' if dr.IsDBNull(0) else dr.GetString(0)
+          tmpName = '' if dr.IsDBNull(1) else dr.GetString(1)
+          tmpTitle = '' if dr.IsDBNull(2) else dr.GetString(2)
+          tmpDept = '' if dr.IsDBNull(3) else dr.GetString(3)
+          #tmpGroup = '' #if dr.IsDBNull(4) else dr.GetString(4)
+
+          myItems.append(userList(myCode=tmpCode, myName=tmpName, myJTitle=tmpTitle, myDept=tmpDept))  #, myGroup=tmpGroup))
+
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  # finally, populate attendee datagrid with our list of users we've created
+  dg_UsersWithoutKey.ItemsSource = myItems
+  return
+
+def refresh_UsersWithKeys():
+  # This function will refresh the 'Users who can access Entity/Matter Lock' DataGrid (on right) on 'Who can edit this lock...' tab
+  tmpItem = []
+
+  # as we're really covering two bases with these 'Matter Locks', and in general just editing a 'lock', there will
+  # be one of two SQLs that we want to run
+
+  # if no entity ref, then we're just editing one specific lock, so use lock ID
+  getTableSQL = """SELECT U.Code, U.FullName, 'JobTitle' = ISNULL(U.JobTitle, ''), 
+                      'Dept' = ISNULL(D.Description, '-NOT SET-'), 'FromGroup' = L.Description 
+                   FROM Keys K 
+                      JOIN Users U ON K.UserRef = U.Code 
+                      LEFT OUTER JOIN Departments D ON U.Department = D.Code
+                      JOIN Locks L ON K.LockRef = L.Code
+                   WHERE L.Code = {lockID} ORDER BY U.FullName""".format(lockID=tb_LockCode.Text)
+
+  _tikitDbAccess.Open(getTableSQL)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        if not dr.IsDBNull(0):
+          tmpUCode = '' if dr.IsDBNull(0) else dr.GetString(0)
+          tmpUName = '' if dr.IsDBNull(1) else dr.GetString(1)
+          tmpUJT = '' if dr.IsDBNull(2) else dr.GetString(2)
+          tmpUDept = '' if dr.IsDBNull(3) else dr.GetString(3)
+          tmpGroup = '' if dr.IsDBNull(4) else dr.GetString(4)
+
+          tmpItem.append(userList(myCode=tmpUCode, myName=tmpUName, myJTitle=tmpUJT, myDept=tmpUDept, myGroup=tmpGroup))
+    dr.Close()
+  #close db connection
+  _tikitDbAccess.Close()
+
+  # now we have all our items in a propert Python list, we can add to DataGrid (and add 'Grouping')
+  tmpC = ListCollectionView(tmpItem)
+  tmpC.GroupDescriptions.Add(PropertyGroupDescription("iGroup"))
+  dg_UsersWithKey.ItemsSource = tmpC
+  return
+
+
+def btn_AddUserKey_Click(s, event):
+  #! Linked to XAML control.event: btn_AddUserKey.Click
+  # This should add the selected user to the lock (gives user the 'key')
+  # Amending (10th March 25) to allow multiple selection
+
+  if dg_UsersWithoutKey.SelectedItems.Count == 0:
+    MessageBox.Show("No one has been selected to 'Add'!\nPlease select a user before clicking the 'Add' button", "User Error...")
+    return
+  
+  xCount = 0
+  tmpSelUsers = []
+  # clear selected items of 'Users WITH a Key' list
+  dg_UsersWithKey.SelectedItems.Clear()
+  # iterate over each person selected...
+  for eachPerson in dg_UsersWithoutKey.SelectedItems:
+    # add user to our temporary list, so we can re-select them later
+    tmpSelUsers.append(userList(myCode=eachPerson.iCode, myName=eachPerson.iName, myJTitle=eachPerson.iJobTitle, myDept=eachPerson.iDept, myGroup=eachPerson.iGroup))
+
+    # get individual details so we can directly add key now
+    tmpUserRef = eachPerson.iCode
+    tmpUserName = eachPerson.iName 
+    insSQL = "INSERT INTO Keys(UserRef, LockRef) VALUES ('{userRef}', {lockID})".format(userRef=tmpUserRef, 
+                                                                                         lockID=tb_LockCode.Text)
+
+    try:
+      _tikitResolver.Resolve("[SQL: {0}]".format(insSQL))
+      # dg_UsersWithKey.SelectedItems.Add(eachPerson)   # Can't do this here as we 'refresh' at end, so will wipe-out this 'selected items'!
+      xCount += 1
+    except:
+      MessageBox.Show("There was an error adding the selected user to the 'Who Can Access' list.\nSQL: {0}".format(insSQL), "Error: Giving Key to user ({0})".format(tmpUserName))
+      return
+
+  if xCount > 0:
+    # if added key ok and we haven't error and quit by now, then update both lists (and select person just added)
+    refresh_UsersWithoutKeys()
+    refresh_UsersWithKeys()
+
+    # finally re-select people added on list on users WITH key
+    dg_UsersWithKey.Focus()
+    for eachPerson in tmpSelUsers:
+      #MessageBox.Show("User: {0}".format(eachPerson.iCode), "Test reselect users")
+      dg_UsersWithKey.SelectedItems.Add(userList(myCode=eachPerson.iCode, myName=eachPerson.iName, myJTitle=eachPerson.iJobTitle, myDept=eachPerson.iDept))
+  return
+
+
+def btn_RemoveUserKey_Click(s, event):
+  #! Linked to XAML control.event: btn_RemoveUserKey.Click
+  # This should remove the key for the selected user
+
+  # firstly, if no one selected, bomb-out now
+  if dg_UsersWithKey.SelectedItems.Count == 0:
+    MessageBox.Show("No one has been selected to 'Remove'!\nPlease select a user before clicking the 'Remove' button", "User Error...")
+    return
+
+  xCount = 0
+  tmpSelUsers = []
+  # clear selected items of 'Users WITHOUT a Key' list
+  dg_UsersWithoutKey.SelectedItems.Clear()
+
+  # iterate over each person selected...
+  for eachPerson in dg_UsersWithKey.SelectedItems:
+    # add user to our temporary list, so we can re-select them later
+    tmpSelUsers.append(userList(myCode=eachPerson.iCode, myName=eachPerson.iName, myJTitle=eachPerson.iJobTitle, myDept=eachPerson.iDept, myGroup=eachPerson.iGroup))
+
+    # get individual details for use in SQL
+    tmpUserRef = eachPerson.iCode
+    tmpUserName = eachPerson.iName
+    tmpLockID = tb_LockCode.Text
+
+    # this is just normal editing of a lock, so can just remove
+    delSQL = "DELETE FROM Keys WHERE UserRef = '{userRef}' AND LockRef = {lockID}".format(userRef=tmpUserRef, lockID=tmpLockID)
+
+    if len(delSQL) > 0:
+      try:
+        _tikitResolver.Resolve("[SQL: {0}]".format(delSQL))
+        xCount += 1
+      except:
+        MessageBox.Show("There was an error removing user access.\nSQL:{0}".format(delSQL), "Error Removing user...")
+        return
+
+  if xCount > 0:
+    # finally refresh both lists
+    refresh_UsersWithoutKeys()
+    refresh_UsersWithKeys()
+
+    # finally re-select people added on list on users WITH key
+    dg_UsersWithoutKey.Focus()
+    for eachPerson in tmpSelUsers:
+      dg_UsersWithoutKey.SelectedItems.Add(userList(myCode=eachPerson.iCode, myName=eachPerson.iName, myJTitle=eachPerson.iJobTitle, myDept=eachPerson.iDept))
+  return
+
+def set_HOD_Screen_LockID():
+  # This function will set the LockID and description for the 'HOD Access' lock, by looking for any lock with a description starting 'XAML_Screen_HOD'
+  #  (there should only be one of these, but just in case there are more, we'll take the first one returned)
+  tmpSQL = "SELECT TOP 1 Code, Description FROM Locks WHERE Description LIKE 'XAML_Screen_HOD%'"
+
+  _tikitDbAccess.Open(tmpSQL)
+  if _tikitDbAccess._dr is not None:
+    dr = _tikitDbAccess._dr
+    if dr.HasRows:
+      while dr.Read():
+        tmpCode = -1               if dr.IsDBNull(0) else dr.GetValue(0)
+        tmpDesc = 'No lock found!' if dr.IsDBNull(1) else dr.GetString(1)
+    dr.Close()
+  _tikitDbAccess.Close()
+
+  tb_LockCode.Text = str(tmpCode)
+  tb_LockDesc.Text = tmpDesc
+  return
+
+
+
 ]]>
     </Init>
     <Loaded>
@@ -2775,6 +2736,28 @@ opt_FR_None = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_FR_None')
 chk_FR_InclNAoption = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FR_InclNAoption')
 chk_FR_InclComments = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FR_InclComments')
 
+tog_EditGroups = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tog_EditGroups')
+tog_EditGroups.Checked += tog_EditGroups_Checked
+popGroups = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'popGroups')
+popGroups.Closed += popGroups_Closed
+## New GROUPS Section (on Edit File Review tab)
+lbl_GroupItemText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_GroupItemText')
+lbl_GroupItemGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_GroupItemGroup')
+tb_NoGroupItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoGroupItems') 
+dg_GroupItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems')
+dg_GroupItems.SelectionChanged += Group_SelectionChanged
+dg_GroupItems.CellEditEnding += Group_CellEditEnding
+btn_AddNewGroupItemFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewGroupItemFR')
+btn_AddNewGroupItemFR.Click += addNewGroupFR
+btn_DeleteSelectedGroupItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedGroupItem')
+btn_DeleteSelectedGroupItem.Click += deleteSelectedGroup
+btn_CopySelectedGroupItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedGroupItem')
+btn_CopySelectedGroupItem.Click += duplicateSelectedGroup
+btn_Group_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveUp')
+btn_Group_MoveUp.Click += Group_MoveItemUp
+btn_Group_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveDown')
+btn_Group_MoveDown.Click += Group_MoveItemDown
+
 
 ## P R E V I E W   F I L E   R E V I E W   - TAB ##
 btn_FRPreview_BackToOverview = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_FRPreview_BackToOverview')
@@ -2790,72 +2773,53 @@ lbl_FRPreview_CurrVal = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_FRP
 chk_FRPreview_AutoSelectNext = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'chk_FRPreview_AutoSelectNext')
 
 
-## M A N A G E   A N S W E R S   - TAB ##
-btn_AddNewList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewList')
-btn_AddNewList.Click += addNewList
-btn_CopySelectedList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedList')
-btn_CopySelectedList.Click += duplicateSelectedList
-btn_DeleteSelectedList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedList')
-#btn_DeleteSelectedList.Click += deleteSelectedList
-lbl_List_SelID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_List_SelID')
-lbl_List_SelDesc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_List_SelDesc')
-lbl_NoGlobalGroups = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_NoGlobalGroups')
-dg_Lists = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_Lists')
-dg_Lists.SelectionChanged += ListGroup_SelectionChanged
-# now added a prompt into function below to confirm updating of Global List name
-dg_Lists.CellEditEnding += ListGroup_CellEditEnding
-btn_RefreshAnswerList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_RefreshAnswerList')
-btn_RefreshAnswerList.Click += refresh_AnswerListGroups
+#############################################
+btn_Refresh_CaseTypesWithoutTemplate = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Refresh_CaseTypesWithoutTemplate')
+btn_Refresh_CaseTypesWithoutTemplate.Click += btn_Refresh_CaseTypesWithoutTemplate_Click
+opt_ViewMissingCaseTypes = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_ViewMissingCaseTypes')
+opt_ViewAllCaseTypeMappings = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'opt_ViewAllCaseTypeMappings')
+opt_ViewMissingCaseTypes.Checked += opt_ViewMissingCaseTypes_Checked
+opt_ViewAllCaseTypeMappings.Checked += opt_ViewAllCaseTypeMappings_Checked
+dg_CaseTypesWithoutDefault = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_CaseTypesWithoutDefault')
 
-lbl_SelectedList = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_SelectedList')
-lbl_SelectedListQID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_SelectedListQID')
-btn_AddNewListItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewListItem')
-btn_AddNewListItem.Click += addNewListItem
-btn_CopySelectedListItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedListItem')
-btn_CopySelectedListItem.Click += duplicateSelectedListItem
-btn_A_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveTop')
-btn_A_MoveTop.Click += Answers_MoveItemToTop
-btn_A_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveUp')
-btn_A_MoveUp.Click += Answers_MoveItemUp
-btn_A_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveDown')
-btn_A_MoveDown.Click += Answers_MoveItemDown
-btn_A_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_A_MoveBottom')
-btn_A_MoveBottom.Click += Answers_MoveItemToBottom
-btn_DeleteSelectedListItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedListItem')
-btn_DeleteSelectedListItem.Click += deleteSelectedListItem
-dg_ListItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_ListItems')
-dg_ListItems.SelectionChanged += ListItems_SelectionChanged
-dg_ListItems.CellEditEnding += ListItems_CellEditEnding
+btn_Refresh_MattersWithoutMRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Refresh_MattersWithoutMRA')
+btn_Refresh_MattersWithoutMRA.Click += btn_Refresh_MattersWithoutMRA_Click
+btn_Add_MRATemplate_ToMatter = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Add_MRATemplate_ToMatter')
+btn_Add_MRATemplate_ToMatter.Click += btn_Add_MRATemplate_ToMatter_Click
+dg_MattersWithoutMRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_MattersWithoutMRA')
 
-tb_NoAnswerItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoAnswerItems')
 
-lbl_ListItemText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ListItemText')
-lbl_ListItemScore = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ListItemScore')
-lbl_ListItemEC = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_ListItemEC')
+tb_LockCode = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_LockCode')
+tb_LockDesc = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_LockDesc')
+txt_Search = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_Search')
+txt_Search.TextChanged += txt_Search_TextChanged
+dg_UsersWithoutKey = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_UsersWithoutKey')
+btn_AddUserKey = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddUserKey')
+btn_AddUserKey.Click += btn_AddUserKey_Click
+btn_RemoveUserKey = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_RemoveUserKey')
+btn_RemoveUserKey.Click += btn_RemoveUserKey_Click
+dg_UsersWithKey = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_UsersWithKey')
 
-## New GROUPS Section (on Manage Answers tab)
-lbl_GroupItemText = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_GroupItemText')
-lbl_GroupItemGroup = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_GroupItemGroup')
-tb_NoGroupItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoGroupItems') 
-dg_GroupItems = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'dg_GroupItems')
-dg_GroupItems.SelectionChanged += Group_SelectionChanged
-dg_GroupItems.CellEditEnding += Group_CellEditEnding
-btn_AddNewGroupItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewGroupItem')
-btn_AddNewGroupItem.Click += addNewGroup
-btn_AddNewGroupItemFR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_AddNewGroupItemFR')
-btn_AddNewGroupItemFR.Click += addNewGroupFR
-btn_DeleteSelectedGroupItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_DeleteSelectedGroupItem')
-btn_DeleteSelectedGroupItem.Click += deleteSelectedGroup
-btn_CopySelectedGroupItem = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_CopySelectedGroupItem')
-btn_CopySelectedGroupItem.Click += duplicateSelectedGroup
-#btn_Group_MoveTop = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveTop')
-#btn_Group_MoveTop.Click += Group_MoveItemToTop
-btn_Group_MoveUp = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveUp')
-btn_Group_MoveUp.Click += Group_MoveItemUp
-btn_Group_MoveDown = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveDown')
-btn_Group_MoveDown.Click += Group_MoveItemDown
-#btn_Group_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Group_MoveBottom')
-#btn_Group_MoveBottom.Click += Group_MoveItemToBottom
+#################################################################################################
+# code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
+# (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
+# Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
+myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
+myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
+myGrid = LogicalTreeHelper.GetParent(myDockPanel)
+myGrid.PreviewKeyDown += mainGrid_PreviewKeyDown
+
+tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
+tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
+tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
+tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
+
+tikitCancel.Content = 'Close'
+tikitOK.Visibility = Visibility.Collapsed
+tikitApply.Visibility = Visibility.Collapsed
+tikitContact.Visibility = Visibility.Collapsed
+#################################################################################################
+
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')

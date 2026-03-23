@@ -336,15 +336,17 @@ def get_FullEntityRef(shortRef):
   return myFinalString
 
 
-def runSQL(codeToRun = "", showError = False, errorMsgText = "", errorMsgTitle = "", apostropheHandle = 0):
-  # Traditionally, we used to use _tikitResolver.Resolve() as-is, but have since found that it's better to wrap this within Python's 'try: except:' construct.
-  # In order to minimise code, I made this reusable function to do so plus allow for a custom message to be displayed upon error.  See below for explanation of inputs/arguments:
+def runSQL(codeToRun, showError = False, errorMsgText = '', errorMsgTitle = '', apostropheHandle = 0, 
+           useAlternativeResolver = False, returnType = 'Int'):
+  # This function is written to handle and check inputted SQL code, and will return the result of the SQL code.
+  # It first checks the length and wrapping of the code, then attempts to execute the SQL, it has an option apostrophe handler.
   # codeToRun     = Full SQL of code to run. No need to wrap in '[SQL: code_Here]' as we can do that here
   # showError     = True / False. Indicates whether or not to display message upon error
   # errorMsgText  = Text to display in the body of the message box upon error (note: actual SQL will automatically be included, so no need to re-supply that)
   # errorMsgTitle = Text to display in the title bar of the message box upon error
   # apostropheHandle = Toggle to escape apostrophes for the returned values
-  
+  # useAlternativeResolver = Toggle to use an alternative resolver for the SQL execution
+
   # Note: calling procedure can use like we do with '_tikitResolver()', that is: 
   # - tmpValue = runSQL("SELECT YEAR()", False, '', '')   # to capture value into a variable, or:
   # - runSQL("INSERT INTO x () VALUES()", False, '', '')  # to just run the SQL without saving to variable
@@ -360,21 +362,60 @@ def runSQL(codeToRun = "", showError = False, errorMsgText = "", errorMsgTitle =
   else:
     fCodeToRun = "[SQL: {0}]".format(codeToRun)
   
-  # try to execute the SQL
-  try:
-    tmpValue = _tikitResolver.Resolve(fCodeToRun)
-    if apostropheHandle == 1:
-      tmpValue = tmpValue.replace("'", "''")
-    return tmpValue
-  except:
-    # there was an error... check to see if opted to show message or not...
-    return errorReturnValue
-    if showError == True:
-      MessageBox.Show(str(errorMsgText) + "\nSQL used:\n" + str(codeToRun), errorMsgTitle)
-    #if len(str(errorReturnValue)) > 0:
-    #  return errorReturnValue
-    #else: 
-    return ''
+  if useAlternativeResolver == False:
+    # try to execute the SQL using standard 'tikitResolver.Resolve'
+    try:
+      tmpValue = _tikitResolver.Resolve(fCodeToRun)
+      if apostropheHandle == 1:
+        tmpValue = tmpValue.replace("'", "''")
+      return tmpValue
+    except:
+      # there was an error... check to see if opted to show message or not...
+      if showError == True:
+        MessageBox.Show(str(errorMsgText) + "\nSQL used:\n" + str(codeToRun), errorMsgTitle)
+      return ''
+  else:
+    # use longer method
+    try:
+      _tikitDbAccess.Open(codeToRun)
+      if _tikitDbAccess._dr is not None:
+        dr = _tikitDbAccess._dr
+        if dr.HasRows:
+          while dr.Read():
+
+            if returnType == 'String':
+              # return the first column as a string
+              tmpValue = dr.GetString(0) if not dr.IsDBNull(0) else ''
+
+            elif returnType == 'Int':
+              # return the first column as an integer
+              tmpValue = dr.GetValue(0) if not dr.IsDBNull(0) else 0
+              
+            #elif returnType == 'DataReader':
+            #  # return the DataReader object itself
+            #  return dr
+        else:
+          if returnType == 'String':
+            # if no rows returned, return an empty string
+            tmpValue = ''
+          elif returnType == 'Int':
+            # if no rows returned, return 0
+            tmpValue = 0
+        dr.Close()
+      _tikitDbAccess.Close()
+
+      return tmpValue
+  
+    except Exception as e:
+      # if there was an error with the CTE supplied, we'll get to here, so update outputs accordingly
+      if showError == True:
+        MessageBox.Show("{0}\nSQL used:\n{1}\nException:{2}".format(errorMsgText, codeToRun, str(e)), errorMsgTitle)
+
+      if returnType == 'Int':
+        return 0
+      else:
+        return "Error"
+
 
 
 def isUserAnApprovalUser(userToCheck):
@@ -463,28 +504,62 @@ def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
   # - set status to 'Draft' and score to 0, and expiry date to 4 weeks from today.
   #! Returns mraID of newly added/duplicated row, or -1 if error creating new MRA header row, or -2 if error copying details across
 
-  # generate new Name (concatenating Template Name with next number in brackets, based on count of existing MRAs with same Template for the same matter +1):
-  newNameSQL = """SELECT CONCAT(TD.Name, ' (', 
-                            CONVERT(nvarchar, (
-                                SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
-                                WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
-                          ')')
-                  FROM Usr_MRAv2_TemplateDetails TD 
-                  WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)  
+  ## generate new Name (concatenating Template Name with next number in brackets, based on count of existing MRAs with same Template for the same matter +1):
+  #newNameSQL = """SELECT CONCAT(TD.Name, ' (', 
+  #                          CONVERT(nvarchar, (
+  #                              SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
+  #                              WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
+  #                        ')')
+  #                FROM Usr_MRAv2_TemplateDetails TD 
+  #                WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)  
+  #
+  #newName = runSQL(newNameSQL)
+  #
+  ## create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
+  #newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
+  #                     OUTPUT INSERTED.mraID 
+  #                     SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
+  #                     GETDATE(), (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE mraID = {idItemToCopy}  
+  #                  """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
+  #
+  #try:
+  #  newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
+  #except:
+  #  MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
+  #  return -1
 
-  newName = runSQL(newNameSQL)
+  # one-shot version of the above, to join 2 SQL's into the one call
+  newHeaderRowSQL = """;WITH mainDetails AS (
+                              SELECT '{entRef}' AS EntRef, {matNo} AS MatNo, 
+                                  TemplateID AS TemplateID, RiskRating AS RiskRating, DATEADD(WEEK, 4, ExpiryDate) AS ExpiryDate,
+                                  (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader) AS NextMRAid 
+                              FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID}
+                            ), 
+                            nameInfo AS (
+                                SELECT CONCAT(TD.Name, ' (', 
+                                    CONVERT(nvarchar, (
+                                      SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
+                                      WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
+                                    ')') AS newName
+                                FROM Usr_MRAv2_TemplateDetails TD 
+                                WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})
+                            )
+                        INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
+                        OUTPUT INSERTED.mraID 
+                        SELECT MD.EntRef, MD.MatNo, MD.TemplateID, (SELECT newName FROM nameInfo), MD.RiskRating, 'N', MD.ExpiryDate, GETDATE(), MD.NextMRAid, 'Draft'
+                        FROM mainDetails MD;""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)
+  
+  #try:
+  #  newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
+  #except:
+  #  MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
+  #  return -1
 
-  # create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
-  newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
-                       OUTPUT INSERTED.mraID 
-                       SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
-                       GETDATE(), (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE mraID = {idItemToCopy}  
-                    """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
-
-  try:
-    newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
-  except:
-    MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
+  # may need to use runSQL here instead to make use of 'alternative resolver' (I don't think 'WITH' statements work with the standard resolver)
+  newMRAID = runSQL(codeToRun=newHeaderRowSQL, useAlternativeResolver=True, showError=True, 
+                    errorMsgText="There was an error creating a new MRA - please check the SQL and the data being passed into it:\n{0}".format(newHeaderRowSQL), 
+                    errorMsgTitle="Error: Creating new MRA...")
+  if int(newMRAID) == 0:
     return -1
 
   # finally, copy across the Questions and Answers from the previous MRA (except for any free text answers, which we will reset to blank) - we can link them to the new MRA using the returned mraID from above, which is why we needed to use 'OUTPUT' in the SQL above to return the new mraID
