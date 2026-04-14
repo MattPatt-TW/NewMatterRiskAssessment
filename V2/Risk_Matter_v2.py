@@ -21,13 +21,13 @@ from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
 from System.ComponentModel import INotifyPropertyChanged, PropertyChangedEventArgs
 from System.Collections.ObjectModel import ObservableCollection
-from System.Windows import Controls, Forms, LogicalTreeHelper, RoutedEventHandler
+from System.Windows import Controls, Forms, LogicalTreeHelper, RoutedEventHandler, FrameworkElement
 from System.Windows import Data, UIElement, Visibility, Window, GridLength, GridUnitType
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, DataGridCellInfo
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, DataGridCellInfo, ScrollViewer
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription, CollectionViewSource
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult, MessageBoxIcon
 from System.Windows.Input import KeyEventHandler
-from System.Windows.Media import Brush, Brushes
+from System.Windows.Media import Brush, Brushes, VisualTreeHelper
 from System.Windows.Threading import DispatcherPriority
 
 # Global Variables
@@ -104,8 +104,28 @@ def myOnLoadEvent(s, event):
   showHide_ApproveMRAbutton(s, event)
   POPULATE_AGENDA_NAMES(_tikitSender, 'onLoad')
   refresh_CaseDocs(_tikitSender, '')
+  form_resize_to_host()
   return
 
+
+def form_resize_to_host():
+  root = RiskMatterV2
+
+  host_sv = find_ancestor_of_type(root, ScrollViewer)
+  if host_sv is not None:
+    host_sv.SizeChanged += resize_to_host
+    host_sv.ScrollChanged += resize_to_host
+
+  parent_fe = get_nearest_parent_framework_element(root)
+  if parent_fe is not None:
+      parent_fe.SizeChanged += resize_to_host  
+
+  #host_window = find_ancestor_of_type(root, Window)
+  #if host_window is not None:
+  #    host_window.SizeChanged += resize_to_host
+  #    host_window.StateChanged += resize_to_host
+
+  resize_to_host()
 
 def populate_XAML_Header_fields():
   # Previously, we we using the 'Tag' property to populate the header fields on the XAML, however, as we added more, it added on time to load.
@@ -2081,7 +2101,24 @@ def cbo_MRA_SelectedComboAnswer_SelectionChanged(s, event):
 
   MRA_RecalcTotalScore()
   ##MessageBox.Show("Combo Selection Changed! Selected Question: " + str(row.QuestionText) + "\nSelected AnswerID: " + str(row.SelectedAnswerID) + "\nSelected Answer Text: " + str(row.SelectedAnswerText) + "\nSelected Answer Score: " + str(row.SelectedAnswerScore) + "\nSelected Answer Email Comment: " + str(row.SelectedAnswerEmailComment))
+  # if 'move to next' checkbox is ticked, then move to next question
+  try:
+    auto = (chk_MRA_AutoSelectNext.IsChecked == True)
+  except:
+    auto = False
+
+  if auto:
+    # Defer slightly so UI settles before we change selection
+    try:
+      dg_MRA.Dispatcher.BeginInvoke(
+        DispatcherPriority.Background,
+        lambda: MRA_AdvanceToNextQuestion()
+      )
+    except:
+      MRA_AdvanceToNextQuestion()
+
   return
+
 
 def btn_MRASaveAnswer_Click(s, event):
   q = _current_MRA_row()
@@ -3072,35 +3109,48 @@ def _set_fr_answer(answerText):
     return
   q.SelectedAnswer = answerText
 
-  # If CA becomes irrelevant after changing answer, optionally clear CA fields
+
+  trig = (getattr(q, "CAtrigger", "") or "").strip().lower()
+  ans = (answerText or "").strip().lower()
   caAdded = False
-  try:
-    trig = (getattr(q, "CAtrigger", "") or "").strip().lower()
-    if trig and (answerText or "").strip().lower() != trig:
-      # clear CA fields when not triggered (optional)
-      q.CorrActionText = ""
-      q.CorrActionTaken = ""
-      q.HasCorrAction = "No"
-      try:
-        q.CorrActionCompleted = False
-      except:
-        pass
-    else:
-      # assign  ID for new CA (only added in UI)
-      q.CorrActionID = _next_temp_ca_id()  # assign a temp negative ID for new CA (we'll replace with real ID from DB when we save)
-      q.HasCorrAction = "Yes"
-      caAdded = True
-      # we also need to pull-down the 'default' Corrective Action text and replace date placeholder with date two weeks from now
-      defaultCAtext = getattr(q, "DefaultCorrActionText", "") or ""
-      if defaultCAtext:
-        two_weeks = (datetime.now() + timedelta(days=14)).strftime("%d/%m/%Y")
-        defaultCAtext = defaultCAtext.replace("dd/mm/yyyy", two_weeks)
-        q.CorrActionText = defaultCAtext
-        q.CorrActionCompleted = False
 
+  if not trig:
+    # No CA trigger configured for this question
+    q.CorrActionText = ""
+    q.CorrActionTaken = ""
+    q.HasCorrAction = "No"
+    try:
+      q.CorrActionCompleted = False
+    except:
+      pass
 
-  except:
-    pass
+  elif ans != trig:
+    # Trigger exists, but selected answer does not trigger CA
+    q.CorrActionText = ""
+    q.CorrActionTaken = ""
+    q.HasCorrAction = "No"
+    try:
+      q.CorrActionCompleted = False
+    except:
+      pass
+
+  else:
+    # Trigger exists and selected answer matches it
+    q.CorrActionID = _next_temp_ca_id()
+    q.HasCorrAction = "Yes"
+    caAdded = True
+
+    defaultCAtext = getattr(q, "DefaultCorrActionText", "") or ""
+    if defaultCAtext:
+      two_weeks = (datetime.now() + timedelta(days=14)).strftime("%d/%m/%Y")
+      defaultCAtext = defaultCAtext.replace("dd/mm/yyyy", two_weeks)
+      q.CorrActionText = defaultCAtext
+
+    try:
+      q.CorrActionCompleted = False
+    except:
+      pass
+
 
   v = _get_fr_view()
   if v is not None:
@@ -3798,7 +3848,7 @@ def getUsersApproversEmail(forUser):
   #                UNION SELECT 'Who' = WAM4 FROM Usr_Approvals WHERE UserCode = '{0}')""".format(forUser)
 
   # New verison running off 'Usr_HODapprovals' table
-  hodEmailSQL = "SELECT ISNULL(STRING_AGG(EMailExternal, '; '), 'Matt.Pattison@thackraywilliams.com')  FROM Users WHERE Code IN (SELECT UserCode FROM Usr_HODapprovals WHERE FeeEarnerCode = '{FeeEarnerRef}')".format(FeeEarnerRef = forUser)
+  hodEmailSQL = "SELECT ISNULL(STRING_AGG(EMailExternal, '; '), 'Amy.Hine@thackraywilliams.com')  FROM Users WHERE Code IN (SELECT UserCode FROM Usr_HODapprovals WHERE FeeEarnerCode = '{FeeEarnerRef}')".format(FeeEarnerRef = forUser)
   hodEmail = runSQL(hodEmailSQL)
   #hodEmail = runSQL(hodEmailSQL, True, 'There was an error getting approval users email address...', 'DEBUGGING - getUsersApproversEmail')
   return hodEmail
@@ -3807,8 +3857,6 @@ def getUsersApproversEmail(forUser):
 def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
   # This is a generic function to 'approve' an item where we pass in the parameters (better for re-use, instead of copying and pasting)
   # This assumes current user is HOD/Approver - addresses email to Matter Fee Earner, and copies in 'current user'
-  errorCount = 0
-  errorMessage = ""
   
   # get / form input variables (at global header level, so accessible anywhere)
   tmpOurRef = tb_OurRef.Text
@@ -3820,38 +3868,52 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
   tmpAddtl1 = myMRADesc.replace("'", "''")
   tmpAddtl2 = "High"
 
-  # generate SQL to approve
-  approveSQL = """UPDATE Usr_MRAv2_MatterHeader SET ApprovedByHOD = 'Y' 
-                  WHERE mraID = {mraID} AND EntityRef = '{entRef}' AND MatterNo = {matNo}""".format(mraID=my_mraID, entRef=myEntRef, matNo=myMatNo)
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(approveSQL))
-  except:
-    errorCount -= 1
-    errorMessage += " - couldn't mark the selected item as approved\n" + str(approveSQL)
-  
-  # get SQL to Unlock matter
-  #unlockCode = "EXEC TW_LockHandler '" + myEntRef + "', " + str(myMatNo) + ", 'LockedByRiskDept', 'UnLock'"
-  unlockCode = "EXEC TW_LockHandler '{entRef}', {matNo}, 'LockedByRiskDept', 'UnLock'".format(entRef=myEntRef, matNo=myMatNo)
-  # run unlock code
-  runSQL(codeToRun=unlockCode, showError=True, 
-         errorMsgText="There was an error unlocking the matter, after approval. Please check the matter is unlocked and if not, unlock manually using the following SQL:\n{0}".format(unlockCode), errorMsgTitle="Error: Unlocking Matter after Approval...")
- 
-  # now insert a record into MRA Events table to trigger email to FE
-  if insert_into_MRAEvents(userRef=_tikitUser, triggerText='HOD_Approved_MRA', ov_ID=my_mraID, 
-                           emailTo=tmpEmailTo, emailCC=tmpEmailCC, toUserName=tmpToUserName, 
-                           ourRef=tmpOurRef, matterDesc=tmpMatDesc, clientName=tmpClName, 
-                           addtl1=tmpAddtl1, addtl2=tmpAddtl2) == False:
-    errorCount -= 1
-    errorMessage += " - couldn't send the 'HOD Approved' Task Centre confirmation email to FE\n"
+  procSQL = """
+    DECLARE @NewMRAID INT;
 
-  if errorCount < 0:
-    MessageBox.Show("The following error(s) were encountered:\n" + errorMessage + "\n\nPlease screenshot this message and send to IT.Support@thackraywilliams.com to investigate", "Error: Approve High-Risk Matter...")
-    return errorCount
-  else:
-    createNewMRA_BasedOnCurrent(idItemToCopy=my_mraID, entRef=myEntRef, matNo=myMatNo)
-    MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nA copy of the MRA has been made, to be completed by the Fee Earner within 4 weeks", "Approve High-Risk Matter...")
-    return 1
-  return 0
+    EXEC dbo.TW_MRA_HODApprovesHighRiskMatter
+        @mraID = {mraID},
+        @EntityRef = '{entRef}',
+        @MatterNo = {matNo},
+        @ApprovedByUserRef = '{userRef}',
+        @EmailTo = '{emailTo}',
+        @EmailCC = '{emailCC}',
+        @ToUserName = '{toUserName}',
+        @OurRef = '{ourRef}',
+        @MatterDesc = '{matDesc}',
+        @ClientName = '{clientName}',
+        @Addtl1 = '{addtl1}',
+        @Addtl2 = '{addtl2}',
+        @NewMRAID = @NewMRAID OUTPUT;
+
+    SELECT @NewMRAID;
+    """.format(
+        mraID=my_mraID,
+        entRef=myEntRef.replace("'", "''"),
+        matNo=myMatNo,
+        userRef=str(_tikitUser).replace("'", "''"),
+        emailTo=tmpEmailTo.replace("'", "''"),
+        emailCC=tmpEmailCC.replace("'", "''"),
+        toUserName=tmpToUserName.replace("'", "''"),
+        ourRef=tmpOurRef.replace("'", "''"),
+        matDesc=tmpMatDesc.replace("'", "''"),
+        clientName=tmpClName.replace("'", "''"),
+        addtl1=tmpAddtl1.replace("'", "''"),
+        addtl2=tmpAddtl2.replace("'", "''")
+    )
+
+  newMRAID = runSQL(codeToRun=procSQL,
+                    useAlternativeResolver=True,
+                    showError=True,
+                    errorMsgText="There was an error approving/unlocking/duplicating the selected matter.",
+                    errorMsgTitle="Error: Approve High-Risk Matter..."
+    )
+
+  if int(newMRAID) <= 0:
+    return 0
+
+  MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nA copy of the MRA has been made, to be completed by the Fee Earner within 4 weeks", "Approve High-Risk Matter...")
+  return 1
 
 
 def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
@@ -3981,7 +4043,49 @@ def dg_MRAFR_ReSaveEmailToCase(s, event):
 
   return
 
+def find_ancestor_of_type(start_obj, target_type):
+  current = start_obj
+  while current is not None:
+    current = VisualTreeHelper.GetParent(current)
+    if current is not None and isinstance(current, target_type):
+      return current
+  return None
 
+def get_nearest_parent_framework_element(start_obj):
+  current = start_obj
+  while current is not None:
+    current = VisualTreeHelper.GetParent(current)
+    if current is not None and isinstance(current, FrameworkElement):
+      return current
+  return None
+
+def resize_to_host(s=None, event=None):
+  root = RiskMatterV2
+  host_sv = find_ancestor_of_type(root, ScrollViewer)
+  target_height = 0
+
+  if host_sv is not None and host_sv.ViewportHeight > 0:
+    target_height = host_sv.ViewportHeight
+  else:
+    parent_fe = get_nearest_parent_framework_element(root)
+    if parent_fe is not None and parent_fe.ActualHeight > 0:
+      target_height = parent_fe.ActualHeight
+
+  if target_height <= 0:
+    return
+
+  # allow for margins / host padding
+  target_height -= 4
+  if target_height < 100:
+    return
+
+  # Clear old constraints first, then apply fresh ones
+  #root.ClearValue(FrameworkElement.HeightProperty)
+  #root.ClearValue(FrameworkElement.MaxHeightProperty)
+
+  root.Height = target_height
+  root.MaxHeight = target_height
+  root.UpdateLayout()
 
 
 
@@ -3994,6 +4098,8 @@ def dg_MRAFR_ReSaveEmailToCase(s, event):
 ti_Main = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_Main')
 ti_MRA = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_MRA')
 ti_FR = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'ti_FR')
+
+RiskMatterV2 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'RiskMatterV2')
 
 # Current User / Matter / Entity Details - for use in code and also displaying on screen (top-right)
 tb_FERef = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_FERef')
@@ -4152,15 +4258,6 @@ txt_FR_QComment = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'txt_FR_QComme
 #txt_FR_QComment.TextChanged += FR_QComment_Save
 txt_FR_QComment.LostFocus += txt_FR_QComment_LostFocus
 
-# testing if we can action cell update based off direct combo box access
-#cbo_FR_DGAnswer = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'cbo_FR_DGAnswer')
-#cbo_FR_DGAnswer.SelectionChanged += FR_DG_AnswerChanged
-#cbo_FR_DGAnswer.SelectedValueChanged += FR_DG_AnswerChanged
-# 'SelectionChanged' is correct for a Combo box, but we still get error that 'none type' doesn't have this event
-# This is a shame, it appears we cannot get handle on item at run time, nor can we explicitly use event triggers on XAML (these crash P4W)
-# Therefore, really need to think about how the 'auto-advance' triggers
-
-
 
 ## C O R R E C T I V E    A C T I O N S   ##
 #grd_Main = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'grd_Main')
@@ -4189,6 +4286,25 @@ cbo_AgendaName.SelectionChanged += refresh_CaseDocs
 tb_NoCaseDocsExist = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_NoCaseDocsExist')
 #tog_TEST_CorrActions = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tog_TEST_CorrActions')
 #tog_TEST_CorrActions.Click += tog_Test_CorrectiveActions
+
+#################################################################################################
+# code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
+# (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
+# Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
+myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
+myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
+myGrid = LogicalTreeHelper.GetParent(myDockPanel)
+
+tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
+tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
+tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
+tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
+
+tikitCancel.Content = 'Close'
+tikitOK.Visibility = Visibility.Collapsed
+tikitApply.Visibility = Visibility.Collapsed
+tikitContact.Visibility = Visibility.Collapsed
+#################################################################################################
 
 # call 'On Load' event
 myOnLoadEvent(_tikitSender, 'onLoad')

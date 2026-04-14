@@ -29,7 +29,7 @@ import re
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 previewFR = []      # To temp store table for previewing File Review
-
+lockID_LockedByRiskDept = 0   # To store the LockID for the 'LockedByRiskDept' lock, which we use to identify locked matters in our SQL queries (set on load)
 
 # # # #   O N   L O A D   E V E N T   # # # #
 def myOnLoadEvent(s, event):
@@ -40,6 +40,7 @@ def myOnLoadEvent(s, event):
   
   #MessageBox.Show("DEBUG - POPULATING LISTS")
   # populate lists (DataGrids)
+  set_lockID_for_LockedByRiskDept()
   refresh_ListOfLockedMatters()               # Locked Matters refresh
   refresh_FR_Templates(s, event)              # File Review (main overview / templates)
   refresh_FR_Department_Defaults(s, event)    # FR Default Template for Department
@@ -229,15 +230,24 @@ class MatterLocks(object):
       return self.matterRiskLevel
     else:
       return ''
-      
+
+def set_lockID_for_LockedByRiskDept():
+  global lockID_LockedByRiskDept
+
+  if lockID_LockedByRiskDept == 0:
+    lockID_SQL = """SELECT CASE WHEN EXISTS(SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') THEN 
+                    (SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') ELSE 0 END """
+    lockID_LockedByRiskDept = runSQL(lockID_SQL, False, '', '')
+  
+  if int(lockID_LockedByRiskDept) == 0:
+    MessageBox.Show("There doesn't appear to be a Lock setup in the name of 'LockedByRiskDept', so cannot identify locked matters!", "Error: Setting LockID for LockedByRiskDept...")
+  return
+
 def refresh_ListOfLockedMatters():
 
-  # first need to get the lock ID for 'LockedByRiskDepartment' lock
-  lockID_SQL = """SELECT CASE WHEN EXISTS(SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') THEN 
-                  (SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') ELSE 0 END """
-  lockID = runSQL(lockID_SQL, False, '', '')
-  
-  if int(lockID) == 0:
+  global lockID_LockedByRiskDept
+
+  if int(lockID_LockedByRiskDept) == 0:
     MessageBox.Show("There doesn't appear to be a Lock setup in the name of 'LockedByRiskDept', so cannot list matters locked with this lock!", "Error: Refresh List of Locked Matters...")
     return
   
@@ -265,7 +275,7 @@ def refresh_ListOfLockedMatters():
               LEFT OUTER JOIN EntityMatterLocks EML ON M.EntityRef = EML.EntityRef AND M.Number = EML.MatterNo 
               LEFT OUTER JOIN Usr_MRA_Overview MRAO ON M.EntityRef = MRAO.EntityRef AND M.Number = MRAO.MatterNo AND TypeID IN (SELECT TypeID FROM Usr_MRA_TemplateTypes WHERE Is_MRA = 'Y') 
               LEFT OUTER JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID 
-            WHERE EML.LockID = {0} AND ISNULL(MRAO.Status, '') <> 'Complete' """.format(lockID)   #AND MRAO.ExpiryDate <= GETDATE() "
+            WHERE EML.LockID = {0} AND ISNULL(MRAO.Status, '') <> 'Complete' """.format(lockID_LockedByRiskDept)   #AND MRAO.ExpiryDate <= GETDATE() "
   
   if cboDept.SelectedIndex > -1:
     mySQL += "AND CTG.Name = '{0}' ".format(cboDept.SelectedItem['Name'])
@@ -331,11 +341,11 @@ def refresh_ListOfLockedMatters():
     dg_LockedMatters.ItemsSource = tmpC 
   
   if dg_LockedMatters.Items.Count == 0:
-    dg_LockedMatters.Visibility = Visibility.Hidden
+    dg_LockedMatters.Visibility = Visibility.Collapsed
     tb_NoLockedMatters.Visibility = Visibility.Visible
   else:
     dg_LockedMatters.Visibility = Visibility.Visible
-    tb_NoLockedMatters.Visibility = Visibility.Hidden
+    tb_NoLockedMatters.Visibility = Visibility.Collapsed
   return
       
       
@@ -743,8 +753,8 @@ def DG_FR_Template_CellEditEnding(s, event):
       try:
         _tikitResolver.Resolve(updateSQL)
         refresh_FR_Templates(s, event)
-      except:
-        MessageBox.Show("There was an error amending the name of the File Review, using SQL:\n" + str(updateSQL), "Error: Amending Name of File Review...")
+      except Exception as e:
+        MessageBox.Show("There was an error amending the name of the File Review, using SQL:\n" + str(updateSQL) + "\nError: " + str(e), "Error: Amending Name of File Review...")
   return
 
 
@@ -2509,9 +2519,9 @@ def refresh_UsersWithKeys():
   _tikitDbAccess.Close()
 
   # now we have all our items in a propert Python list, we can add to DataGrid (and add 'Grouping')
-  tmpC = ListCollectionView(tmpItem)
-  tmpC.GroupDescriptions.Add(PropertyGroupDescription("iGroup"))
-  dg_UsersWithKey.ItemsSource = tmpC
+  #tmpC = ListCollectionView(tmpItem)
+  #tmpC.GroupDescriptions.Add(PropertyGroupDescription("iGroup"))
+  dg_UsersWithKey.ItemsSource = tmpItem
   return
 
 

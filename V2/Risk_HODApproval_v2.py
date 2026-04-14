@@ -10,22 +10,22 @@ clr.AddReference('PresentationCore')
 clr.AddReference('PresentationFramework')
 clr.AddReference('System.Windows.Forms')
 
-from System import DateTime
+from System import DateTime, Double
 from System.Diagnostics import Process
 from System.Globalization import DateTimeStyles
 from System.Collections.Generic import Dictionary
-from System.Windows import Controls, Forms, LogicalTreeHelper
+from System.Windows import Controls, Forms, LogicalTreeHelper, FrameworkElement, Window
 from System.Windows import Data, UIElement, Visibility, Window
-from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation
+from System.Windows.Controls import Button, Canvas, GridView, GridViewColumn, ListView, Orientation, ScrollViewer
 from System.Windows.Data import Binding, CollectionView, ListCollectionView, PropertyGroupDescription
 from System.Windows.Forms import SelectionMode, MessageBox, MessageBoxButtons, DialogResult
 from System.Windows.Input import KeyEventHandler
-from System.Windows.Media import Brush, Brushes
+from System.Windows.Media import Brush, Brushes, VisualTreeHelper
 
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 previewFR = []      # To temp store table for previewing File Review
-
+lockID_LockedByRiskDept = 0   # To store the LockID for the 'LockedByRiskDept' lock, which we use to identify locked matters in our SQL queries (set on load)
 
 # # # #   O N   L O A D   E V E N T   # # # #
 def myOnLoadEvent(s, event):
@@ -42,10 +42,43 @@ def myOnLoadEvent(s, event):
   # populate drop-downs
   populate_FeeEarnersList(s, event)
   refresh_Preview_MRA(s, event)
-  
+  set_lockID_for_LockedByRiskDept()
+  form_resize_to_host()
+
   #MessageBox.Show("Hello world! - OnLoad Finished")
   return
 
+def form_resize_to_host():
+  root = Risk_HODApproval_v2
+
+  host_sv = find_ancestor_of_type(root, ScrollViewer)
+  if host_sv is not None:
+    host_sv.SizeChanged += resize_to_host
+    host_sv.ScrollChanged += resize_to_host
+
+  parent_fe = get_nearest_parent_framework_element(root)
+  if parent_fe is not None:
+      parent_fe.SizeChanged += resize_to_host  
+
+  #host_window = find_ancestor_of_type(root, Window)
+  #if host_window is not None:
+  #    host_window.SizeChanged += resize_to_host
+  #    host_window.StateChanged += resize_to_host
+
+  resize_to_host()
+
+
+def set_lockID_for_LockedByRiskDept():
+  global lockID_LockedByRiskDept
+
+  if lockID_LockedByRiskDept == 0:
+    lockID_SQL = """SELECT CASE WHEN EXISTS(SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') THEN 
+                    (SELECT Code FROM Locks WHERE Description = 'LockedByRiskDept') ELSE 0 END """
+    lockID_LockedByRiskDept = runSQL(lockID_SQL, False, '', '')
+  
+  if int(lockID_LockedByRiskDept) == 0:
+    MessageBox.Show("There doesn't appear to be a Lock setup in the name of 'LockedByRiskDept', so cannot identify locked matters!", "Error: Setting LockID for LockedByRiskDept...")
+  return
 
 
 class UsersList(object):
@@ -95,35 +128,43 @@ def populate_FeeEarnersList(s, event):
 
   # FOLLOWING CODE IS DIRECTLY FROM WIP SCREEN
   currentUser = cbo_User.SelectedItem['Code']
-  #user_Dept = runSQL("SELECT Department FROM Users WHERE Code = '" + currentUser + "'", False, "", "")
-  #userIsHOD = isUserAnApprovalUser(userToCheck = currentUser)    # can't see this is being used for anything
   myFEitems = []
   
-  mySQL = """SELECT '0-FeeEarner' = U.FullName, 
-                    '1-Branch' = B.Description, 
-                    '2-OurRef' = CONCAT(LEFT(MH.EntityRef, 3), RIGHT(MH.EntityRef, 4), '/', CONVERT(nvarchar, MH.MatterNo, 1)), 
-                    '3-MRA Name' = MH.Name, 
-                    '4-Expiry Date' = MH.ExpiryDate, 
-                    '5-mraID' = MH.mraID, 
-                    '6-EntityRef' = MH.EntityRef, 
-                    '7-MatterNo' = MH.MatterNo, 
-                    '8-CaseType' = CT.Description, 
-                    '9-Type' = CASE WHEN '{0}' IN (SELECT HA.UserCode FROM Usr_HODapprovals HA WHERE HA.FeeEarnerCode = U.Code AND HA.Type = 'Main') THEN '01) Main' 
-                                    WHEN '{0}' IN (SELECT HA.UserCode FROM Usr_HODapprovals HA WHERE HA.FeeEarnerCode = U.Code AND HA.Type = 'Holiday Cover') THEN '02) Holiday Cover' ELSE '' END, 
-                    '10-MatterDesc' = M.Description, 
-                    '11-EntName' = E.LegalName, 
-                    '12-FEEmail' = U.EMailExternal  
-        FROM Usr_MRAv2_MatterHeader MH
-          INNER JOIN Matters M ON MH.EntityRef = M.EntityRef AND MH.MatterNo = M.Number 
-          LEFT OUTER JOIN Users U ON M.FeeEarnerRef = U.Code 
-          LEFT OUTER JOIN Branches B ON U.UsualOffice = B.Code
-          INNER JOIN CaseTypes CT ON M.CaseTypeRef = CT.Code
-          INNER JOIN CaseTypeGroups CTG ON CT.CaseTypeGroupRef = CTG.ID
-          LEFT OUTER JOIN Usr_Approvals App ON U.Code = App.UserCode
-          LEFT OUTER JOIN Entities E ON MH.EntityRef = E.Code
-        WHERE MH.ApprovedByHOD = 'N' AND MH.RiskRating = 3 AND MH.Status = 'Complete'
-          AND U.Code IN (SELECT FeeEarnerCode FROM Usr_HODapprovals WHERE UserCode = '{0}')
-        ORDER BY '9-Type', '0-FeeEarner', '4-Expiry Date' """.format(currentUser)
+  mySQL = """;WITH HODAccess AS (
+                  SELECT
+                      HA.FeeEarnerCode,
+                      MAX(CASE WHEN HA.Type = 'Main' THEN 1 ELSE 0 END) AS HasMain,
+                      MAX(CASE WHEN HA.Type = 'Holiday Cover' THEN 1 ELSE 0 END) AS HasHoliday
+                  FROM Usr_HODapprovals HA
+                  WHERE HA.UserCode = '{0}'
+                  GROUP BY HA.FeeEarnerCode
+                )
+              SELECT
+                  U.FullName AS [0-FeeEarner],
+                  B.Description AS [1-Branch],
+                  CONCAT(E.ShortCode, '/', CONVERT(NVARCHAR(20), MH.MatterNo)) AS [2-OurRef],
+                  MH.Name AS [3-MRA Name],
+                  MH.ExpiryDate AS [4-Expiry Date],
+                  MH.mraID AS [5-mraID],
+                  MH.EntityRef AS [6-EntityRef],
+                  MH.MatterNo AS [7-MatterNo],
+                  CT.Description AS [8-CaseType],
+                  CASE WHEN HA.HasMain = 1 THEN '01) Main'
+                      WHEN HA.HasHoliday = 1 THEN '02) Holiday Cover'
+                      ELSE ''
+                  END AS [9-Type],
+                  M.Description AS [10-MatterDesc],
+                  E.LegalName AS [11-EntName],
+                  U.EMailExternal AS [12-FEEmail]
+              FROM Usr_MRAv2_MatterHeader MH
+                INNER JOIN Matters M    ON MH.EntityRef = M.EntityRef    AND MH.MatterNo = M.Number
+                LEFT JOIN Users U       ON M.FeeEarnerRef = U.Code
+                LEFT JOIN Branches B    ON U.UsualOffice = B.Code
+                INNER JOIN CaseTypes CT ON M.CaseTypeRef = CT.Code
+                LEFT JOIN Entities E    ON MH.EntityRef = E.Code
+                INNER JOIN HODAccess HA ON HA.FeeEarnerCode = U.Code
+              WHERE MH.ApprovedByHOD = 'N' AND MH.RiskRating = 3 AND MH.Status = 'Complete'
+              ORDER BY [9-Type], [0-FeeEarner], [4-Expiry Date];""".format(currentUser)
 
   _tikitDbAccess.Open(mySQL)
 
@@ -430,26 +471,21 @@ def isUserAnApprovalUser(userToCheck):
     return False
 
 ###################################################################################################################################################
-
 def Approve_Button_Clicked(s, event):
+  # this is the modified version of the Approve button click function, which now calls a stored procedure to
+  #  handle the approval, unlocking and duplication of the MRA in one go, rather than having multiple separate
+  #  SQL calls from the code - this should make it more efficient, and also less prone to errors/failures part
+  #  way through the process (e.g. if we approve the MRA but then fail to unlock the matter, it would be left
+  #  in an inconsistent state where it's approved but still locked, which would require manual intervention to fix - by having all logic in one stored procedure, we can ensure that either all steps succeed, or if there's an error, none of the steps are applied, leaving data in a consistent state either way)
+
   if dg_FeeEarners.SelectedIndex == -1:
     return
-  
-  # get input variables
-  mraID = tb_MRA_ID.Text
-  entRef = dg_FeeEarners.SelectedItem['EntityRef']
-  matNo = dg_FeeEarners.SelectedItem['MatterNo']
-  errorCount = 0
-  errorMessage = ""
 
-  tmpOurRef = dg_FeeEarners.SelectedItem['OurRef']
-  #! 26/02/2026 - eek... this could do with a re-write, far too many individual SQL calls to get the various pieces of information we want to include 
-  #! in the Task Centre email - would be better to get all info in one go at the start of this function and store in variables, then reference those variables when building the email (rather than having multiple calls to the database throughout this function)
-  # May be worth adding into initial FE list, to get their details as applicable and save in DataGrid/object
-  # Then when selection is changed, and we populate right-hand side, might be worth adding text boxes in the header area so it's
-  # clearly visible to HOD if Email is missing etc.
-  # Then, we just reference those text boxes/variables here
+  mraID = int(tb_MRA_ID.Text)
+  entRef = str(dg_FeeEarners.SelectedItem['EntityRef'])
+  matNo = int(dg_FeeEarners.SelectedItem['MatterNo'])
 
+  tmpOurRef = str(dg_FeeEarners.SelectedItem['OurRef'])
   tmpEmailTo = str(tb_FE_Email.Text)
   tmpEmailCC = str(cbo_User.SelectedItem['Email'])
   tmpToUserName = str(tb_FE_Name.Text)
@@ -457,122 +493,53 @@ def Approve_Button_Clicked(s, event):
   tmpClName = str(tb_ClName.Text)
   tmpAddtl1 = str(tb_MRA_Name.Text)
   tmpAddtl2 = "High"
-  
 
-  # generate SQL to approve
-  approveSQL = """UPDATE Usr_MRAv2_MatterHeader SET ApprovedByHOD = 'Y' 
-                  WHERE mraID = {mraID} AND EntityRef = '{entRef}' AND MatterNo = {matNo}""".format(mraID=mraID, entRef=entRef, matNo=matNo)
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(approveSQL))
-  except:
-    errorCount += 1
-    errorMessage = " - couldn't mark the selected item as approved\n" + str(approveSQL)
-  
-  # get SQL to Unlock matter
-  #unlockCode = "EXEC TW_LockHandler '" + myEntRef + "', " + str(myMatNo) + ", 'LockedByRiskDept', 'UnLock'"
-  unlockCode = "EXEC TW_LockHandler '{entRef}', {matNo}, 'LockedByRiskDept', 'UnLock'".format(entRef=entRef, matNo=matNo)
-  # run unlock code
-  runSQL(codeToRun=unlockCode, showError=True, 
-         errorMsgText="There was an error unlocking the matter, after approval. Please check the matter is unlocked and if not, unlock manually using the following SQL:\n{0}".format(unlockCode), errorMsgTitle="Error: Unlocking Matter after Approval...")
+  procSQL = """
+    DECLARE @NewMRAID INT;
 
-  # WE ALSO NEED TO TRIGGER THE TASK CENTRE TASK TO NOTIFY THE FE THAT MATTER HAS BEEN UNLOCKED
-  tc_Trigger = """INSERT INTO Usr_MRA_Events (Date, UserRef, ActionTrigger, OV_ID, EmailTo, EmailCC, ToUserName, 
-                                              OurRef, MatterDesc, ClientName, Addtl1, Addtl2, FullEntityRef, Matter_No)
-                  VALUES(GETDATE(), '{user}', 'HOD_Approved_MRA', {mraID}, '{emailTo}', '{emailCC}', '{toUserName}', 
-                        '{ourRef}', '{matDesc}', '{clientName}', '{addtl1}', '{addtl2}', '{fullEntRef}', {matNo})
-    """.format(user=_tikitUser, mraID=mraID, emailTo=tmpEmailTo, emailCC=tmpEmailCC, toUserName=tmpToUserName, 
-               ourRef=tmpOurRef, matDesc=tmpMatDesc, clientName=tmpClName, addtl1=tmpAddtl1, addtl2=tmpAddtl2, fullEntRef=entRef, matNo=matNo)
+    EXEC dbo.TW_MRA_HODApprovesHighRiskMatter
+        @mraID = {mraID},
+        @EntityRef = '{entRef}',
+        @MatterNo = {matNo},
+        @ApprovedByUserRef = '{userRef}',
+        @EmailTo = '{emailTo}',
+        @EmailCC = '{emailCC}',
+        @ToUserName = '{toUserName}',
+        @OurRef = '{ourRef}',
+        @MatterDesc = '{matDesc}',
+        @ClientName = '{clientName}',
+        @Addtl1 = '{addtl1}',
+        @Addtl2 = '{addtl2}',
+        @NewMRAID = @NewMRAID OUTPUT;
 
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(tc_Trigger))
-  except:
-    errorCount += 1
-    errorMessage = " - couldn't send the 'HOD Approved' Task Centre confirmation email to FE\n" + str(tc_Trigger)  
-  
-  if errorCount > 0:
-    MessageBox.Show("The following error(s) were encountered:\n" + errorMessage + "\n\nPlease screenshot this message and send to IT.Support@thackraywilliams.com to investigate", "Error: Approve High-Risk Matter...")
-  else:
-    createNewMRA_BasedOnCurrent(idItemToCopy=mraID, entRef=entRef, matNo=matNo)
-    MessageBox.Show("Successfully Approved and Unlocked the selected matter - Fee Earners list will now refresh", "Approve High-Risk Matter...")
-    populate_FeeEarnersList(s, event)
-  return
-  
+    SELECT @NewMRAID;
+    """.format(
+        mraID=mraID,
+        entRef=entRef.replace("'", "''"),
+        matNo=matNo,
+        userRef=str(_tikitUser).replace("'", "''"),
+        emailTo=tmpEmailTo.replace("'", "''"),
+        emailCC=tmpEmailCC.replace("'", "''"),
+        toUserName=tmpToUserName.replace("'", "''"),
+        ourRef=tmpOurRef.replace("'", "''"),
+        matDesc=tmpMatDesc.replace("'", "''"),
+        clientName=tmpClName.replace("'", "''"),
+        addtl1=tmpAddtl1.replace("'", "''"),
+        addtl2=tmpAddtl2.replace("'", "''")
+    )
 
-def createNewMRA_BasedOnCurrent(idItemToCopy, entRef, matNo):
-  # this function will duplicate the MRA specified by 'idItemToCopy' (which is the mraID of the MRA to copy),
-  # and link the new MRA to the same matter (using entRef and matNo) and copy across the selected Answers used in the original MRA
-  # - set status to 'Draft' and score to 0, and expiry date to 4 weeks from today.
-  #! Returns mraID of newly added/duplicated row, or -1 if error creating new MRA header row, or -2 if error copying details across
+  newMRAID = runSQL(codeToRun=procSQL,
+                    useAlternativeResolver=True,
+                    showError=True,
+                    errorMsgText="There was an error approving/unlocking/duplicating the selected matter.",
+                    errorMsgTitle="Error: Approve High-Risk Matter..."
+    )
 
-  ## generate new Name (concatenating Template Name with next number in brackets, based on count of existing MRAs with same Template for the same matter +1):
-  #newNameSQL = """SELECT CONCAT(TD.Name, ' (', 
-  #                          CONVERT(nvarchar, (
-  #                              SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
-  #                              WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
-  #                        ')')
-  #                FROM Usr_MRAv2_TemplateDetails TD 
-  #                WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)  
-  #
-  #newName = runSQL(newNameSQL)
-  #
-  ## create a duplicate row in the 'Matter Header' table (re-setting score and status and expiry date etc, but copying across the TemplateID and linking to the same matter)
-  #newHeaderRowSQL = """INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
-  #                     OUTPUT INSERTED.mraID 
-  #                     SELECT '{entRef}', {matNo}, TemplateID, '{passedName}', RiskRating, 'N', DATEADD(WEEK, 4, ExpiryDate),
-  #                     GETDATE(), (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader), 'Draft' FROM Usr_MRAv2_MatterHeader WHERE mraID = {idItemToCopy}  
-  #                  """.format(entRef=entRef, matNo=matNo, passedName=newName, idItemToCopy=idItemToCopy)
-  #
-  #try:
-  #  newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
-  #except:
-  #  MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
-  #  return -1
+  if int(newMRAID) <= 0:
+    return
 
-  # one-shot version of the above, to join 2 SQL's into the one call
-  newHeaderRowSQL = """;WITH mainDetails AS (
-                              SELECT '{entRef}' AS EntRef, {matNo} AS MatNo, 
-                                  TemplateID AS TemplateID, RiskRating AS RiskRating, DATEADD(WEEK, 4, ExpiryDate) AS ExpiryDate,
-                                  (SELECT MAX(mraID) + 1 FROM Usr_MRAv2_MatterHeader) AS NextMRAid 
-                              FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID}
-                            ), 
-                            nameInfo AS (
-                                SELECT CONCAT(TD.Name, ' (', 
-                                    CONVERT(nvarchar, (
-                                      SELECT ISNULL(COUNT(MH.TemplateID), 0) + 1 FROM Usr_MRAv2_MatterHeader MH 
-                                      WHERE MH.EntityRef = '{entRef}' AND MH.MatterNo = {matNo} AND MH.TemplateID = TD.TemplateID)),
-                                    ')') AS newName
-                                FROM Usr_MRAv2_TemplateDetails TD 
-                                WHERE TD.TemplateID = (SELECT TemplateID FROM Usr_MRAv2_MatterHeader WHERE mraID = {mraID})
-                            )
-                        INSERT INTO Usr_MRAv2_MatterHeader (EntityRef, MatterNo, TemplateID, Name, RiskRating, ApprovedByHOD, ExpiryDate, DateAdded, mraID, Status) 
-                        OUTPUT INSERTED.mraID 
-                        SELECT MD.EntRef, MD.MatNo, MD.TemplateID, (SELECT newName FROM nameInfo), MD.RiskRating, 'N', MD.ExpiryDate, GETDATE(), MD.NextMRAid, 'Draft'
-                        FROM mainDetails MD;""".format(entRef=entRef, matNo=matNo, mraID=idItemToCopy)
-  
-  #try:
-  #  newMRAID = _tikitResolver.Resolve("[SQL: {0}]".format(newHeaderRowSQL))
-  #except:
-  #  MessageBox.Show("There was an error creating a new MRA, using SQL:\n" + str(newHeaderRowSQL), "Error: Duplicate selected item...")
-  #  return -1
-
-  # may need to use runSQL here instead to make use of 'alternative resolver' (I don't think 'WITH' statements work with the standard resolver)
-  newMRAID = runSQL(codeToRun=newHeaderRowSQL, useAlternativeResolver=True, showError=True, 
-                    errorMsgText="There was an error creating a new MRA - please check the SQL and the data being passed into it:\n{0}".format(newHeaderRowSQL), 
-                    errorMsgTitle="Error: Creating new MRA...")
-  if int(newMRAID) == 0:
-    return -1
-
-  # finally, copy across the Questions and Answers from the previous MRA (except for any free text answers, which we will reset to blank) - we can link them to the new MRA using the returned mraID from above, which is why we needed to use 'OUTPUT' in the SQL above to return the new mraID
-  copyDetailSQL = """INSERT INTO Usr_MRAv2_MatterDetails (EntityRef, MatterNo, mraID, QuestionID, AnswerID, Score, Comments, DisplayOrder, QuestionGroup, EmailComment) 
-                     SELECT EntityRef, MatterNo, {NEWmraID}, QuestionID, AnswerID, Score, Comments, DisplayOrder, QuestionGroup, EmailComment
-                     FROM Usr_MRAv2_MatterDetails WHERE mraID = {idToCopy}""".format(NEWmraID=newMRAID, idToCopy=idItemToCopy)
-
-  try:
-    _tikitResolver.Resolve("[SQL: {0}]".format(copyDetailSQL))
-  except:
-    MessageBox.Show("There was an error copying the MRA details, using SQL:\n" + str(copyDetailSQL), "Error: Duplicate selected item...")
-    return -2
-  return newMRAID
+  MessageBox.Show("Successfully Approved and Unlocked the selected matter - Fee Earners list will now refresh", "Approve High-Risk Matter...")
+  populate_FeeEarnersList(s, event)
 
 
 def getSQLDate(varDate):
@@ -668,6 +635,52 @@ def setCurrentUser():
   return
 
 
+
+def find_ancestor_of_type(start_obj, target_type):
+  current = start_obj
+  while current is not None:
+    current = VisualTreeHelper.GetParent(current)
+    if current is not None and isinstance(current, target_type):
+      return current
+  return None
+
+def get_nearest_parent_framework_element(start_obj):
+  current = start_obj
+  while current is not None:
+    current = VisualTreeHelper.GetParent(current)
+    if current is not None and isinstance(current, FrameworkElement):
+      return current
+  return None
+
+def resize_to_host(s=None, event=None):
+  root = Risk_HODApproval_v2
+  host_sv = find_ancestor_of_type(root, ScrollViewer)
+  target_height = 0
+
+  if host_sv is not None and host_sv.ViewportHeight > 0:
+    target_height = host_sv.ViewportHeight
+  else:
+    parent_fe = get_nearest_parent_framework_element(root)
+    if parent_fe is not None and parent_fe.ActualHeight > 0:
+      target_height = parent_fe.ActualHeight
+
+  if target_height <= 0:
+    return
+
+  # allow for margins / host padding
+  target_height -= 4
+  if target_height < 100:
+    return
+
+  # Clear old constraints first, then apply fresh ones
+  #root.ClearValue(FrameworkElement.HeightProperty)
+  #root.ClearValue(FrameworkElement.MaxHeightProperty)
+
+  root.Height = target_height
+  root.MaxHeight = target_height
+  root.UpdateLayout()
+
+
 ]]>
     </Init>
     <Loaded>
@@ -720,6 +733,8 @@ tikitOK.Visibility = Visibility.Collapsed
 tikitApply.Visibility = Visibility.Collapsed
 tikitContact.Visibility = Visibility.Collapsed
 #################################################################################################
+
+Risk_HODApproval_v2 = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'Risk_HODApproval_v2')
 
 # Define Actions and on load events
 myOnLoadEvent(_tikitSender, 'onLoad')
