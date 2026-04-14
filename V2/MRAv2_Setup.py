@@ -334,7 +334,8 @@ def btn_MRATemplate_CopySelected_Click(s, event):
                       CONCAT(Name, ' (copy of ', TemplateID, ')'), 
                       ScoreMediumTrigger, ScoreHighTrigger, DaysUntil_IncompleteLock
                   FROM TemplateToCopy """.format(templateID_toCopy=id_ToCopy)
-  newTemplateID = runSQL(codeToRun=newID_SQL, returnType='Int')
+  
+  newTemplateID = runSQL(codeToRun=newID_SQL, returnType='Int', useAltResolver=True)
 
   # step 2: Need to duplicate the 'Templates' table (all questions and answers linked to the original TemplateID) and duplicate those with the new TemplateID 
   copyQandA_sql = """INSERT INTO Usr_MRAv2_Templates (TemplateID, QuestionID, AnswerID, Score, QuestionGroup, QuestionOrder, AnswerOrder)
@@ -3243,22 +3244,23 @@ btn_EditMRA_SaveToDB = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_Edit
 btn_EditMRA_SaveToDB.Click += btn_EditMRA_SaveToDB_Click
 
 #################################################################################################
-# code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
-# (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
-# Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
-myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
-myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
-myGrid = LogicalTreeHelper.GetParent(myDockPanel)
-
-tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
-tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
-tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
-tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
-
-tikitCancel.Content = 'Close'
-tikitOK.Visibility = Visibility.Collapsed
-tikitApply.Visibility = Visibility.Collapsed
-tikitContact.Visibility = Visibility.Collapsed
+## code for the main forms' OK/Apply/Cancel buttons, meaning we can hide here too
+## (useful for those screens where the XAML is used for multi-matters, and 'Apply' won't do anything, and technically 'OK' and 'Cancel' do same thing - close screen)
+## Note: following 3 are needed to get a handle on main screen elements (which obviously are NOT on our XAML as they sit ABOVE it in the main Tikit form structure)
+#myScrollViewer = LogicalTreeHelper.GetParent(_tikitSender)
+#myDockPanel = LogicalTreeHelper.GetParent(myScrollViewer)
+#myGrid = LogicalTreeHelper.GetParent(myDockPanel)
+#
+#tikitOK = LogicalTreeHelper.FindLogicalNode(myGrid, 'OK')
+#tikitApply = LogicalTreeHelper.FindLogicalNode(myGrid, 'Apply')
+#tikitCancel = LogicalTreeHelper.FindLogicalNode(myGrid, 'Cancel')
+#tikitContact = LogicalTreeHelper.FindLogicalNode(myGrid, 'Contacts')
+#
+#tikitCancel.Content = 'Close'
+#tikitOK.Visibility = Visibility.Collapsed
+#tikitApply.Visibility = Visibility.Collapsed
+#tikitContact.Visibility = Visibility.Collapsed
+# ^ Disabling as this is a nested form and main XAML actually does this hiding of buttons
 #################################################################################################
 
 
