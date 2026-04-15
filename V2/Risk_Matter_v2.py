@@ -395,7 +395,7 @@ def MRA_setStatus(idToUpdate, newStatus):
   if int(idToUpdate) > 0 and len(newStatus) > 0:
     mySQL = "UPDATE Usr_MRAv2_MatterHeader SET Status = '{0}', SubmittedBy = '{1}', SubmittedDate = GETDATE() WHERE mraID = {2}".format(newStatus, _tikitUser, idToUpdate)
     runSQL(mySQL, True, "There was an error updating the Status for this Matter Risk Assessment", "Error: MRA_setStatus")
-    lbl_MRA_Status.Content = newStatus
+    tb_MRA_Status.Text = newStatus
   return
   
 
@@ -1011,7 +1011,7 @@ def LOAD_EDIT_MRA_PAGE(readOnly=False):
   lbl_ScoreTrigger_High.Content = dg_MRAFR.SelectedItem['ScoreTriggerHigh']
   lbl_ScoreTrigger_Medium.Content = dg_MRAFR.SelectedItem['ScoreTriggerMedium']
   lbl_MRA_TemplateID.Content = dg_MRAFR.SelectedItem['TemplateID']
-  lbl_MRA_Status.Content = dg_MRAFR.SelectedItem['Status']
+  tb_MRA_Status.Text = dg_MRAFR.SelectedItem['Status']
 
   # get answerlist in memory for this template
   MRA_load_Answers_toMemory()
@@ -1114,7 +1114,7 @@ def btn_HOD_Approval_MRA_Click(s, event):
     return   
 
   tmpIndex = dg_MRAFR.SelectedIndex
-  returnVal = HOD_Approves_Item(myOV_ID = dg_MRAFR.SelectedItem['mraID'], 
+  returnVal = HOD_Approves_Item(my_mraID = dg_MRAFR.SelectedItem['mraID'], 
                                myEntRef = _tikitEntity, myMatNo = _tikitMatter, 
                               myMRADesc = dg_MRAFR.SelectedItem['Name'])
 
@@ -1131,9 +1131,9 @@ def btn_HOD_Approval_MRA1_Click(s, event):
   # New button added for HOD to approve a High Risk MRA (no checks are made here as to whether user is a HOD because this is handled onload (eg: if user is not HOD, button remains disabled)
   # Note: This button is the one on the actual 'Edit' page (rather than previous function that's for the button on the 'Overview' tab)
 
-  returnVal = HOD_Approves_Item(myOV_ID = lbl_MRA_ID.Content, 
-                               myEntRef = _tikitEntity, myMatNo = _tikitMatter, 
-                              myMRADesc = lbl_MRA_Name.Content)
+  returnVal = HOD_Approves_Item(my_mraID = lbl_MRA_ID.Content, 
+                                myEntRef = _tikitEntity, myMatNo = _tikitMatter, 
+                               myMRADesc = lbl_MRA_Name.Content)
 
   if returnVal == 1:
     btn_HOD_Approval_MRA1.IsEnabled = False
@@ -1380,48 +1380,6 @@ def btn_UpdateReviewerWithActionTaken_SetEnabled():
   else:
     btn_UpdateReviewerWithActionTaken.IsEnabled = False
     btn_UpdateReviewerWithActionTaken.Background = Brushes.AliceBlue
-  # I seem to recall talk of always enabling this button, but just have a message box pop-up if it doesn't make sense in the context of the current matter
-  # but I'd prefer what we're doing here, as it gives a visual indication of whether the button is active or not (and why)
-
-  # OLD LOGIC:
-  # form SQL to get the count of incomplete Corrective Actions for matter, and run (this is: CA's not yet ticked off/marked as complete)
-  #CA_NotComplete_SQL = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD 
-  #                        LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID 
-  #                        WHERE MA.AuditPass = 0 
-  #                        AND MA.EntityRef = '{0}' AND MA.MatterNo = {1}""".format(myEntity, myMatNo)
-  #count_CA_NotComplete = runSQL(CA_NotComplete_SQL)
-  #MessageBox.Show("Entering function\n(ovID={0}, callingFrom={1})\n\nCountIfIncompleteCAs: {2}".format(ovID, callingFrom, countOfIncompleteCAs), "DEBUGGING - FR_checkForOSca_andFinalise")
-
-  #  highlight the Notify Review Actions Complete button when all Actions Taken are completed
-  # formally, this was stating "And CorrActionTaken = ''" But now added a min length of 2
-  #count_CA_withFEnote_sql = """SELECT COUNT(QuestionID) FROM Usr_MRA_Detail MRAD 
-  #                              LEFT OUTER JOIN Matter_Audit MA ON MRAD.CorrActionID = MA.ID 
-  #                              WHERE MA.AuditPass = 0 
-  #                              AND MA.EntityRef = '{0}' AND MA.MatterNo = {1}
-  #                              AND LEN(ISNULL(MA.CorrActionTaken, '')) > 1 """.format(myEntity, myMatNo)
-  # ^ Note: this is 'Incomplete CAs' (same as above) but with additional 'WHERE' corrective action has been taken (ie: not blank)
-  #count_CA_withFEnote = runSQL(count_CA_withFEnote_sql)
-  
-  #count_FRwithFE_SQL = """SELECT COUNT(MRAO.ID) 
-  #                        FROM Usr_MRA_Overview MRAO
-  #                          JOIN Usr_MRA_TemplateTypes TT ON MRAO.TypeID = TT.TypeID
-  #                        WHERE MRAO.EntityRef = '{0}' AND MatterNo = {1}
-  #                        AND MRAO.Status = 'With FE' AND TT.Is_MRA = 'N' """.format(myEntity, myMatNo)
-  #                        
-  #count_FRwithFE = runSQL(count_FRwithFE_SQL)
-
-  # if there's 1 or more incomplete CA's, show the button to 'Notify File Reviewer action taken' (else, disable it)
-  #if int(count_CA_NotComplete) > 0 and int(count_FRwithFE) > 0 and int(count_CA_withFEnote) > 0:
-  # ^ old logic was checking for count of incomplete CAs greater than 0, and had to have status of 'With FE', and also had to have a note in the 'Action Taken' field
-  #   But seems overly complex to me... also our count 'CA with FE note' is counting INCOMPLETE CAs which have a text entered in 'Action Taken' field
-  #     - which means we don't need the first SQL bit (count_CA_NotComplete)
-  #     - and begs the question: do we need to check for 'With FE' status?
-  #       - I think not, as it's only 'complete' once all CA's have been marked as such (AuditPass = 1)
-  #  btn_UpdateReviewerWithActionTaken.IsEnabled = True
-  #  btn_UpdateReviewerWithActionTaken.Background = Brushes.LightGreen
-  #else:
-  #  btn_UpdateReviewerWithActionTaken.IsEnabled = False
-  #  btn_UpdateReviewerWithActionTaken.Background = Brushes.AliceBlue
 
   return
 
@@ -2205,8 +2163,8 @@ def MRA_RecalcTotalScore():
     if getattr(q, "SelectedAnswer", None) is not None:
       answered += 1
 
-  lbl_TotalQs.Content = str(len(MRA_QUESTIONS_LIST))
-  lbl_TotalAnswered.Content = str(answered)
+  tb_TotalQs.Text = str(len(MRA_QUESTIONS_LIST))
+  tb_TotalAnswered.Text = str(answered)
 
   # finally, calculate score and update label
   total = 0
@@ -2220,7 +2178,7 @@ def MRA_RecalcTotalScore():
   except:
     total = 0
 
-  lbl_MRA_Score.Content = str(total)
+  tb_MRA_Score.Text = str(total)
 
   # now work out 'category' based on score and thresholds; we have two thresholds: MediumFrom and HighFrom; if score is below MediumFrom, it's Low Risk; if it's between MediumFrom and HighFrom, it's Medium Risk; if it's above HighFrom, it's High Risk
   if total < to_int(lbl_ScoreTrigger_Medium.Content): 
@@ -2236,8 +2194,8 @@ def MRA_RecalcTotalScore():
     category = "-"
     categoryNum = 0 
   
-  lbl_MRA_RiskCategory.Content = category
-  lbl_MRA_RiskCategoryID.Content = str(categoryNum)
+  tb_MRA_RiskCategory.Text = category
+  tb_MRA_RiskCategoryID.Text = str(categoryNum)
   return total
 
 ################################################################
@@ -2390,7 +2348,7 @@ def validate_all_answered():
 # helper functions to avoid duplication with MRA Submit
 def is_high_risk():
   # returns True/False based on whether the current risk category is 'High' - this is used to determine whether we need to trigger the HOD approval process or not
-  return str(lbl_MRA_RiskCategory.Content) == "High"
+  return str(tb_MRA_RiskCategory.Text) == "High"
 
 def current_user_is_fee_earner():
   # returns True/False based on whether the current user is the same as the Matter Fee Earner (based on tb_FERef.Text) - this is used to determine which approval rules to apply when submitting
@@ -2436,7 +2394,7 @@ def request_hod_email_to_for_fee_earner(fee_earner_code, include_current_user=Fa
 
 def decide_submit_outcome():
   # determines the 'outcome' of submitting the MRA, which will determine which TaskCentre email gets triggered; this is based on:
-  # 1) whether the MRA is high risk or not (based on lbl_MRA_RiskCategory.Content)
+  # 1) whether the MRA is high risk or not (based on tb_MRA_RiskCategory.Text)
   # 2) whether the current user is the Matter Fee Earner or not (based on tb_FERef.Text vs _tikitUser)
   # 3) whether the current user has approval rights (either canApproveSelf if FE, or canUserApproveFeeEarner if not FE)
   # The outcome will be one of:
@@ -2541,8 +2499,8 @@ def btn_MRA_Submit_Click(s, event):
   ourRef = tb_OurRef.Text
   # from the 'Edit MRA' tab
   mraID = lbl_MRA_ID.Content
-  riskRating = lbl_MRA_RiskCategory.Content      # = Low | Medium | High
-  riskRatingID = lbl_MRA_RiskCategoryID.Content  # = 1 | 2 | 3 (based on above mapping in MRA_RecalcTotalScore)
+  riskRating = tb_MRA_RiskCategory.Text      # = Low | Medium | High
+  riskRatingID = tb_MRA_RiskCategoryID.Text  # = 1 | 2 | 3 (based on above mapping in MRA_RecalcTotalScore)
 
   # and execute the applicable path based on the rules (see helper functions above to determine outcome, and then execute that outcome)
   outcome = decide_submit_outcome()
@@ -2593,7 +2551,7 @@ def populate_MRA_DaysUntilLocked(expiryDate=None):
   #MessageBox.Show("populate_MRA_DaysUntilLocked called with expiryDate={0}".format(expiryDate))
 
   # need to lookup current status (if complete, hide label and 'Save' buttons (and make 'back to overview' visible))
-  if lbl_MRA_Status.Content == 'Draft':
+  if tb_MRA_Status.Text == 'Draft':
     if expiryDate is not None:
       newExp = getSQLDate(expiryDate)
       #MessageBox.Show("Calculated newExp as {0}".format(newExp))
@@ -3909,10 +3867,15 @@ def HOD_Approves_Item(my_mraID, myEntRef, myMatNo, myMRADesc):
                     errorMsgTitle="Error: Approve High-Risk Matter..."
     )
 
-  if int(newMRAID) <= 0:
-    return 0
+  # note: we updated the 'HOD Approves High Risk matter' stored procedure to the effect that if Matter Status (in FileClosureHeader)
+  # is 'Complete' or 'Awaiting Registration', then we do NOT add a new MRA (but still mark as complete etc), so looking to change this
+  # 'if int(newMRAID) <= 0: return 0' logic to instead show a different error message and still return '1' to calling proc here
+  # (so that the datagrid refreshes regardless) 
 
-  MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nA copy of the MRA has been made, to be completed by the Fee Earner within 4 weeks", "Approve High-Risk Matter...")
+  if int(newMRAID) <= 0:
+    MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nThe MRA was NOT copied because the matter Status is marked as 'Complete' or 'Awaiting Registration'.", "Approve High-Risk Matter...")
+  else:
+    MessageBox.Show("Successfully Approved the Matter Risk Assessment (MRA) and Unlocked the matter.\n\nA copy of the MRA has been made, to be completed by the Fee Earner within 4 weeks", "Approve High-Risk Matter...")
   return 1
 
 
@@ -4172,14 +4135,14 @@ btn_UpdateReviewerWithActionTaken.Click += FR_UpdateReviewerWithActionTaken_Clic
 
 
 ##   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
-lbl_MRA_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Status')
+tb_MRA_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_Status')
 stk_RiskInfo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_RiskInfo')
-lbl_MRA_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_Score')
-lbl_MRA_RClabel = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RClabel')
-lbl_MRA_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategory')
-lbl_MRA_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_MRA_RiskCategoryID')
-lbl_TotalQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_TotalQs')
-lbl_TotalAnswered = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'lbl_TotalAnswered')
+tb_MRA_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_Score')
+
+tb_MRA_RiskCategory = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_RiskCategory')
+tb_MRA_RiskCategoryID = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_RiskCategoryID')
+tb_TotalQs = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_TotalQs')
+tb_TotalAnswered = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_TotalAnswered')
 
 btn_MRA_SaveAsDraft = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_MRA_SaveAsDraft')
 btn_MRA_SaveAsDraft.Click += btn_MRA_SaveAsDraft_Click
