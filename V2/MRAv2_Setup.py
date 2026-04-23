@@ -33,6 +33,7 @@ import re
 ## GLOBAL VARIABLES ##
 preview_MRA = []    # To temp store table for previewing Matter Risk Assessment
 _temp_id = -1
+_DB_NAME = None
 
 MRA_PREVIEW_ANSWERS_BY_QID = {}   # temp to store list of 'MRA_PREVIEW_ANSWER_ROW' dicts for current TemplateID being previewed
 MRA_PREVIEW_QUESTIONS_LIST = []   # temp to store list of 'MRA_PREVIEW_QUESTION_ROW' dicts for current TemplateID being previewed
@@ -1415,12 +1416,29 @@ def tvTemplate_SelectedItemChanged(sender, e):
 
   vm = _tikitSender.DataContext
   if vm is None:
-      return
+    return
   vm.SelectedItem = e.NewValue
+
+  # now enter in the QuestionOrder and AnswerOrder (as no longer bound in UI)
+  update_Question_and_Answer_Order_fields()
 
   #MessageBox.Show("Template TreeView selected item changed", "DEBUG - Template TreeView Selected Item Changed...")
   return
 
+
+def update_Question_and_Answer_Order_fields():
+  # This function will update the QuestionOrder and AnswerOrder fields in the UI based on the currently selected question and answer
+
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  # update QuestionOrder and AnswerOrder text boxes based on current selection (if any)
+  tb_MRA_QuestionOrder.Text = str(vm.SelectedQuestion.QuestionDisplayOrder) if vm.SelectedQuestion is not None else ''
+  tb_MRA_AnswerOrder.Text = str(vm.SelectedAnswer.AnswerDisplayOrder) if vm.SelectedAnswer is not None else ''
+
+  #MessageBox.Show("Update Question and Answer Order fields", "DEBUG - Update Question and Answer Order fields...")
+  return
 
 def load_template_structure_from_reader(vm, dr):
 # This function will load the template structure from a data reader into the provided ViewModel (vm)
@@ -1659,6 +1677,7 @@ def EditMRA_Question_AddNew(vm):
   # Renumber display orders based on current list position
   _renumber_questions(g)
   _renumber_answers(q)
+  update_Question_and_Answer_Order_fields()
 
   # Select new question (or the answer if you prefer)
   vm.SelectedItem = q
@@ -1690,6 +1709,7 @@ def btn_EditMRA_Answer_Add_Click(sender, e):
   q.Answers.Add(a)
 
   _renumber_answers(q)
+  update_Question_and_Answer_Order_fields()
 
   vm.SelectedItem = a
   vm.Debug("Added new answer '{0}' to question '{1}'".format(a.AnswerText, q.QuestionText))
@@ -1782,6 +1802,8 @@ def btn_EditMRA_Question_MoveTop_Click(sender, e):
   if _move_item_to_index(g.Questions, q, 0):
     _renumber_questions(g)
     vm.SelectedItem = q  # keep selection stable
+    # also update the QuestionAnswerOrder text boxes
+    update_Question_and_Answer_Order_fields()
   
   vm.Debug("Moved question '{0}' to top of group '{1}'".format(q.QuestionText, g.GroupName))
   log_line("Moved question '{0}' to top of group '{1}'".format(q.QuestionText, g.GroupName))  
@@ -1801,6 +1823,8 @@ def btn_EditMRA_Question_MoveUp_Click(sender, e):
   if _move_item_to_index(g.Questions, q, idx - 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+    update_Question_and_Answer_Order_fields()
+
   vm.Debug("Moved question '{0}' up in group '{1}'".format(q.QuestionText, g.GroupName))
   log_line("Moved question '{0}' up in group '{1}'".format(q.QuestionText, g.GroupName))
   return
@@ -1819,6 +1843,8 @@ def btn_EditMRA_Question_MoveDown_Click(sender, e):
   if _move_item_to_index(g.Questions, q, idx + 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+    update_Question_and_Answer_Order_fields()
+
   vm.Debug("Moved question '{0}' down in group '{1}'".format(q.QuestionText, g.GroupName))
   log_line("Moved question '{0}' down in group '{1}'".format(q.QuestionText, g.GroupName))
   return
@@ -1833,6 +1859,8 @@ def btn_EditMRA_Question_MoveBottom_Click(sender, e):
   if _move_item_to_index(g.Questions, q, g.Questions.Count - 1):
     _renumber_questions(g)
     vm.SelectedItem = q
+    update_Question_and_Answer_Order_fields()
+
   vm.Debug("Moved question '{0}' to bottom of group '{1}'".format(q.QuestionText, g.GroupName))
   log_line("Moved question '{0}' to bottom of group '{1}'".format(q.QuestionText, g.GroupName))
   return
@@ -1869,6 +1897,7 @@ def btn_EditMRA_Answer_MoveTop_Click(sender, e):
   if _move_item_to_index(q.Answers, a, 0):
     _renumber_answers(q)
     vm.SelectedItem = a
+    update_Question_and_Answer_Order_fields()
 
   vm.Debug("Moved answer '{0}' to top of question '{1}'".format(a.AnswerText, q.QuestionText))
   log_line("Moved answer '{0}' to top of question '{1}'".format(a.AnswerText, q.QuestionText))
@@ -1888,6 +1917,7 @@ def btn_EditMRA_Answer_MoveUp_Click(sender, e):
   if _move_item_to_index(q.Answers, a, idx - 1):
     _renumber_answers(q)
     vm.SelectedItem = a
+    update_Question_and_Answer_Order_fields()
 
   vm.Debug("Moved answer '{0}' up in question '{1}'".format(a.AnswerText, q.QuestionText))
   log_line("Moved answer '{0}' up in question '{1}'".format(a.AnswerText, q.QuestionText))
@@ -1908,6 +1938,7 @@ def btn_EditMRA_Answer_MoveDown_Click(sender, e):
   if _move_item_to_index(q.Answers, a, idx + 1):
     _renumber_answers(q)
     vm.SelectedItem = a
+    update_Question_and_Answer_Order_fields()
 
   vm.Debug("Moved answer '{0}' down in question '{1}'".format(a.AnswerText, q.QuestionText))
   log_line("Moved answer '{0}' down in question '{1}'".format(a.AnswerText, q.QuestionText))
@@ -1923,6 +1954,7 @@ def btn_EditMRA_Answer_MoveBottom_Click(sender, e):
   if _move_item_to_index(q.Answers, a, q.Answers.Count - 1):
     _renumber_answers(q)
     vm.SelectedItem = a
+    update_Question_and_Answer_Order_fields()
 
   vm.Debug("Moved answer '{0}' to bottom of question '{1}'".format(a.AnswerText, q.QuestionText))
   log_line("Moved answer '{0}' to bottom of question '{1}'".format(a.AnswerText, q.QuestionText))
@@ -1968,8 +2000,13 @@ def _safe_machine():
 
 def get_Database_Name():
   # returns current database name (Live = 'Partner', Dev = 'PartnerDev' and Training = 'PartnerTraining')
-  activeDB = runSQL(codeToRun="SELECT DB_NAME()", returnType="String")
-  return activeDB
+  global _DB_NAME
+
+  if _DB_NAME is not None:
+    return _DB_NAME
+  else:
+    _DB_NAME = runSQL(codeToRun="SELECT DB_NAME()", returnType="String")
+  return _DB_NAME
 
 def _get_Snapshot_dir():
   # structure: \\ParnerUNC\MRA_Snapshots\YYYY-MM-DD\
@@ -3063,8 +3100,104 @@ def MRAPreview_RecalcTotalScore():
 # FROM Usr_MRAv2_Answer Ans 
 #   LEFT OUTER JOIN Usr_MRAv2_Templates T ON Ans.AnswerID = T.AnswerID
 # WHERE T.TemplateID = 1
+##########################################################################
+# New code for if user types in a number into QuestionOrder or AnswerOrder fields.
+def tb_MRA_QuestionOrder_Changed(s, event):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  q = vm.SelectedQuestion
+  g = vm.SelectedGroup
+  if q is None or g is None:
+    return
+
+  try:
+    entered = int(tb_MRA_QuestionOrder.Text)
+  except:
+    # reset textbox back to current value
+    tb_MRA_QuestionOrder.Text = str(q.QuestionDisplayOrder)
+    return
+
+  if g.Questions.Count <= 0:
+    return
+
+  # clamp to valid 1-based range
+  if entered < 1:
+    entered = 1
+  elif entered > g.Questions.Count:
+    entered = g.Questions.Count
+
+  # convert 1-based display order to 0-based index
+  new_index = entered - 1
+
+  # back-out now if number is same as current
+  if new_index == (q.QuestionDisplayOrder - 1):
+    return
+
+  moved = _move_item_to_index(g.Questions, q, new_index)
+  _renumber_questions(g)
+
+  # keep selection stable
+  vm.SelectedItem = q
+
+  # make sure textbox shows final actual order
+  tb_MRA_QuestionOrder.Text = str(q.QuestionDisplayOrder)
+
+  if moved:
+    vm.Debug("Moved question '{0}' to position {1} in group '{2}'".format(
+      q.QuestionText, entered, g.GroupName
+    ))
+    log_line("Moved question '{0}' to position {1} in group '{2}'".format(
+      q.QuestionText, entered, g.GroupName
+    ))
+  return
 
 
+def tb_MRA_AnswerOrder_Changed(s, event):
+  vm = _tikitSender.DataContext
+  if vm is None:
+    return
+
+  a = vm.SelectedAnswer
+  q = vm.SelectedQuestion
+  if a is None or q is None:
+    return
+
+  try:
+    entered = int(tb_MRA_AnswerOrder.Text)
+  except:
+    tb_MRA_AnswerOrder.Text = str(a.AnswerDisplayOrder)
+    return
+
+  if q.Answers.Count <= 0:
+    return
+
+  if entered < 1:
+    entered = 1
+  elif entered > q.Answers.Count:
+    entered = q.Answers.Count
+
+  new_index = entered - 1
+
+  # back-out now if number is same as current
+  if new_index == (a.AnswerDisplayOrder - 1):
+    return
+
+  moved = _move_item_to_index(q.Answers, a, new_index)
+  _renumber_answers(q)
+
+  vm.SelectedItem = a
+  tb_MRA_AnswerOrder.Text = str(a.AnswerDisplayOrder)
+
+  if moved:
+    vm.Debug("Moved answer '{0}' to position {1} in question '{2}'".format(
+      a.AnswerText, entered, q.QuestionText
+    ))
+    log_line("Moved answer '{0}' to position {1} in question '{2}'".format(
+      a.AnswerText, entered, q.QuestionText
+    ))
+  return
 
 ##########################################################################
 
@@ -3235,6 +3368,11 @@ btn_EditMRA_Answer_MoveBottom = LogicalTreeHelper.FindLogicalNode(_tikitSender, 
 btn_EditMRA_Answer_MoveBottom.Click += btn_EditMRA_Answer_MoveBottom_Click
 btn_EditMRA_Answer_DeleteSelected = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_Answer_DeleteSelected')
 btn_EditMRA_Answer_DeleteSelected.Click += btn_EditMRA_Answer_DeleteSelected_Click
+
+tb_MRA_QuestionOrder = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_QuestionOrder')
+tb_MRA_QuestionOrder.LostFocus += tb_MRA_QuestionOrder_Changed
+tb_MRA_AnswerOrder = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_AnswerOrder')
+tb_MRA_AnswerOrder.LostFocus += tb_MRA_AnswerOrder_Changed
 
 btn_EditMRA_CopyDebugLog = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'btn_EditMRA_CopyDebugLog')
 btn_EditMRA_CopyDebugLog.Click += btn_EditMRA_CopyDebugLog_Click

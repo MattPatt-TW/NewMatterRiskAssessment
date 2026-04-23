@@ -640,10 +640,10 @@ def dg_MRAFR_Refresh(s, event):
     dg_MRAFR.Visibility = Visibility.Visible
     tb_NoMRAFR.Text = ""
     tb_NoMRAFR.Visibility = Visibility.Collapsed
-    btn_CopySelected_MRAFR.IsEnabled = True
     btn_View_MRAFR.IsEnabled = True
-    btn_Edit_MRAFR.IsEnabled = True
     btn_DeleteSelected_MRAFR.IsEnabled = True
+    dg_MRAFR.SelectedIndex = -1
+    dg_MRAFR.SelectedIndex = 0
   else:
     tb_NoMRAFR.Text = "No {0}'s currently exist on this matter - please click the '+ New' button to create new".format(tmpText)
     tb_NoMRAFR.Visibility = Visibility.Visible
@@ -1013,10 +1013,18 @@ def LOAD_EDIT_MRA_PAGE(readOnly=False):
   lbl_MRA_TemplateID.Content = dg_MRAFR.SelectedItem['TemplateID']
   tb_MRA_Status.Text = dg_MRAFR.SelectedItem['Status']
 
+  #! 17/04/2026: See notes in 'MRA_load_Questions_DataGrid()' function... we need to preserve 'completed' MRA's and NOT align to current 'structure' of the template (eg: if template has changed since MRA was created, we still want to show all original questions and answers so we can preserve integrity of completed MRA's and not have questions disappearing etc).
+  #! Actually think this is the more apt place to put this logic/distinction
+  #! EG: if 'Edit' button clicked, always do normal (as below) process of loading Questions/Answers; else (if 'View' clicked, and 'Status' = 'Complete'), then just load from 'MatterDetails' (ignoring current 'structure' template)
+  # Need to check other functions like selection_changed / move to next, to see if they need updating / we need to alter logic here for 'loading'
+  # > also, I do note that even when 'viewing', we appear to load all possible answers to memory, despite not being able to change any!
+  #   - for better memory efficiency, would make more sense just getting the answers for the question being viewed.
+  #     Not exactly a major concern as doubt it'll save any time/load but better for resources.   
+
   # get answerlist in memory for this template
-  MRA_load_Answers_toMemory()
+  MRA_load_Answers_toMemory(readOnly=readOnly)
   # load questions and answers for this MRA into datagrid
-  MRA_load_Questions_DataGrid()
+  MRA_load_Questions_DataGrid(readOnly=readOnly)
 
   # do we need to update score as well (did on old version but may want to check)
   #MRA_RecalcTotalScore()
@@ -1051,7 +1059,7 @@ def LOAD_EDIT_MRA_PAGE(readOnly=False):
 
   populate_MRA_DaysUntilLocked(expiryDate=dg_MRAFR.SelectedItem['Expiry'])
   ti_MRA.Visibility = Visibility.Visible
-  ti_MRA.IsSelected = True
+  #ti_MRA.IsSelected = True
 
 
 def LOAD_EDIT_FR_PAGE(readOnly=False):
@@ -1084,7 +1092,7 @@ def LOAD_EDIT_FR_PAGE(readOnly=False):
   # show the 'auto go to next Question' and go to FR tab
   chk_FR_AutoSelectNext.Visibility = Visibility.Visible
   ti_FR.Visibility = Visibility.Visible
-  ti_FR.IsSelected = True
+  #ti_FR.IsSelected = True
 
 def FileReviewTab_SetEnabled(isReadOnly=False):
 
@@ -1138,7 +1146,7 @@ def btn_HOD_Approval_MRA1_Click(s, event):
   if returnVal == 1:
     btn_HOD_Approval_MRA1.IsEnabled = False
     ti_Main.Visibility = Visibility.Visible
-    ti_Main.IsSelected = True
+    #ti_Main.IsSelected = True
     ti_MRA.Visibility = Visibility.Collapsed
     # refresh main overview datagrid (as we've updated 'Approved' status)
     dg_MRAFR_Refresh(s, event)
@@ -1527,7 +1535,7 @@ def dg_CA_Overview_ViewOnFileReview(s, event):
 
   dg_FR.IsEnabled = True
   ti_FR.Visibility = Visibility.Visible
-  ti_FR.IsSelected = True  
+  #ti_FR.IsSelected = True  
   return
 
 
@@ -1752,18 +1760,31 @@ def is_dbnull(x):
   except:
     return x is None
   
-def MRA_load_Answers_toMemory():
+def MRA_load_Answers_toMemory(readOnly=False):
   global MRA_ANSWERS_BY_QID
   MRA_ANSWERS_BY_QID = {}
 
   # This differs from the 'Practice' version as we're working with 'live' data that user may have entered already
   # Therefore, need to get TemplateID from 'Usr_MRAv2_MatterHeader' table, and then all answers to Q's get stored in 'Usr_MRAv2_MatterDetails'
 
-  mySQL = """SELECT T.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.Score
-             FROM Usr_MRAv2_Templates T
-                JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
-             WHERE T.TemplateID = {0}
-             ORDER BY T.QuestionID, T.AnswerOrder;""".format(lbl_MRA_TemplateID.Content)
+  #! 20/04/2026: Updated to add 'readOnly' argument:
+  # readOnly = True  -> pull from MatterDetails table (just want the answers that user has selected for this matter)
+  # readOnly = False -> pull from 'master' Templates table (getting all possible answers user can select)
+
+  if readOnly:
+    # get only user selected answer data for this MRA
+    mySQL = """SELECT MD.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, MD.Score
+               FROM Usr_MRAv2_MatterDetails MD
+                   JOIN Usr_MRAv2_Answer Ans ON MD.AnswerID = Ans.AnswerID
+               WHERE MD.mraID = {mraID}
+               ORDER BY MD.QuestionID, MD.DisplayOrder;""".format(mraID=lbl_MRA_ID.Content)
+  else:
+    # get all possible answers for this MRA template (to populate dropdown)
+    mySQL = """SELECT T.QuestionID, Ans.AnswerID, Ans.AnswerText, Ans.EmailComment, T.Score
+               FROM Usr_MRAv2_Templates T
+                  JOIN Usr_MRAv2_Answer Ans ON T.AnswerID = Ans.AnswerID
+               WHERE T.TemplateID = {templateID}
+               ORDER BY T.QuestionID, T.AnswerOrder;""".format(templateID=lbl_MRA_TemplateID.Content)
 
   _tikitDbAccess.Open(mySQL)
   dr = _tikitDbAccess._dr
@@ -1782,22 +1803,38 @@ def MRA_load_Answers_toMemory():
   _tikitDbAccess.Close()
   return
 
-def MRA_load_Questions_DataGrid():
-  # This function will populate the Matter Risk Assessment Preview datagrid
+def MRA_load_Questions_DataGrid(readOnly=False):
+  # This function will populate the Matter Risk Assessment datagrid
+  # Note: change here in V2 - we no longer have 'versions' of a template so we don't end-up re-copying old templates on High-Risk matters.
+  # This time round, we always pull the structure from the 'Templates' table, and then overlay any existing answers/comments for the matter (if they exist) - this is a much cleaner approach, and means we don't have to worry about 'versions' of templates and copying templates etc.
+  #! Slight modification needed: if an MRA has status of 'Complete', then we DON'T want to pull current template structure in case any amendments have 
+  #!  since been made, as there may be new Questions (and therefore, blank answers) etc, so we ought to just load whatever is in MatterDetails only.
   #MessageBox.Show("Start - getting group ID", "Refreshing list (datagrid of questions)")
 
   global MRA_QUESTIONS_LIST
   # wipe list in case we're reloading (this function should only be called once for initial load of MRA template)
   MRA_QUESTIONS_LIST = []
 
-  #MessageBox.Show("Genating SQL...", "Refreshing list (datagrid of questions)")
-  # firstly, we'll get main Question structure from source table (MRAv2_Templates)
-  mySQL = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
-             FROM Usr_MRAv2_Templates MRAT
-                LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
-             WHERE MRAT.TemplateID = {0}
-             GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
-             ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(lbl_MRA_TemplateID.Content)
+  #! 20/04/2026 - Updating to add 'ReadOnly' arguement as we did in 'MRA_load_Answers_toMemory' function
+  #  NOTE: was thinking of just getting all data here, and NOT calling '...load_MatterSelections', '...apply_existing_selections' functions,
+  #  but I think it's cleaner to keep existing logic, and just change this initial 'structure' load (eg: if readOnly, get MatterDetails, else get Tempalte structure)
+  
+  if readOnly:
+    mySQL = """SELECT MD.QuestionGroup, MD.DisplayOrder, MD.QuestionID, MRAQ.QuestionText
+               FROM Usr_MRAv2_MatterDetails MD
+                   LEFT JOIN Usr_MRAv2_Question MRAQ ON MD.QuestionID = MRAQ.QuestionID
+               WHERE MD.mraID = {mraID}
+               ORDER BY MD.QuestionGroup, MD.DisplayOrder;""".format(mraID=lbl_MRA_ID.Content)
+
+  else:
+    #MessageBox.Show("Genating SQL...", "Refreshing list (datagrid of questions)")
+    # firstly, we'll get main Question structure from source table (MRAv2_Templates)
+    mySQL = """SELECT MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+               FROM Usr_MRAv2_Templates MRAT
+                  LEFT JOIN Usr_MRAv2_Question MRAQ ON MRAT.QuestionID = MRAQ.QuestionID
+               WHERE MRAT.TemplateID = {templateID}
+               GROUP BY MRAT.QuestionGroup, MRAT.QuestionOrder, MRAT.QuestionID, MRAQ.QuestionText
+               ORDER BY MRAT.QuestionGroup, MRAT.QuestionOrder;""".format(templateID=lbl_MRA_TemplateID.Content)
   
   #MessageBox.Show("SQL: " + str(mySQL) + "\n\nRefreshing list (datagrid of questions)", "Debug: Populating List of Questions (Preview MRA)")
 
@@ -2213,7 +2250,7 @@ def MRA_BackToOverview():
   # I initially thought storing 'minutes' would be easier for reporting, however, due to accuracy issue, I think it's better to store 'seconds'
   #  and then just convert to minutes (rounding as needed) in any reports/dashboard etc. that we build on top.
   ti_Main.Visibility = Visibility.Visible
-  ti_Main.IsSelected = True
+  #ti_Main.IsSelected = True
   ti_MRA.Visibility = Visibility.Collapsed
   return
 
@@ -3483,7 +3520,7 @@ def FR_BackToOverview(s, event):
   
   # hide FR Questions tab and select overview
   ti_Main.Visibility = Visibility.Visible
-  ti_Main.IsSelected = True
+  #ti_Main.IsSelected = True
   ti_FR.Visibility = Visibility.Collapsed
   return
 
@@ -3530,7 +3567,7 @@ def btn_FR_Submit_Click(s, event):
 
   # we've already refreshed the 'dg_MRAFR' datagrid (in above function), so now go back to main overview tab
   ti_Main.Visibility = Visibility.Visible
-  ti_Main.IsSelected = True
+  #ti_Main.IsSelected = True
   ti_FR.Visibility = Visibility.Collapsed
   return
 
@@ -4135,6 +4172,9 @@ btn_UpdateReviewerWithActionTaken.Click += FR_UpdateReviewerWithActionTaken_Clic
 
 
 ##   M A T T E R   R I S K   A S S E S S M E N T   - TAB ##
+bdr_MRA_UpdateMessage = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'bdr_MRA_UpdateMessage')
+# ^ NEW (17/04/2026) - this is a border containing a 'template updated since last edit' message - this should be visible only when the template differs from when the user last saved the MRA, to alert them that they may want to review the changes and update their MRA answers accordingly - see btn_MRA_SaveAsDraft_Click for when we set this visible
+
 tb_MRA_Status = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_Status')
 stk_RiskInfo = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'stk_RiskInfo')
 tb_MRA_Score = LogicalTreeHelper.FindLogicalNode(_tikitSender, 'tb_MRA_Score')

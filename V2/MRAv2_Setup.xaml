@@ -51,7 +51,7 @@
                 </StackPanel>
               </Button>
 
-              <Button x:Name="btn_MRATemplate_DeleteSelected" Background="#FFFFA7A7" IsEnabled="False" Margin="12,0,0,0">
+              <Button x:Name="btn_MRATemplate_DeleteSelected" Background="#FFFFA7A7" BorderBrush="DarkRed" IsEnabled="False" Margin="12,0,0,0">
                 <StackPanel Orientation="Horizontal">
                   <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
                   <TextBlock Margin="3,4,0,4" Text="Delete Selected" TextWrapping="Wrap" Width="50" TextAlignment="Center"/>
@@ -66,7 +66,7 @@
                       CanUserResizeRows="False" HeadersVisibility="Column" 
                       RowDetailsVisibilityMode="Collapsed" 
                       HorizontalAlignment="Center" VerticalAlignment="Top"
-                      BorderBrush="Gray" BorderThickness="1">
+                      BorderBrush="Gray" BorderThickness="1" Background="#FFF0F0F0">
 
               <DataGrid.Resources>
 
@@ -239,7 +239,7 @@
                                   AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" 
                                   AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0" 
                                   CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
-                                  BorderThickness="1" BorderBrush="Gray">
+                                  BorderThickness="1" BorderBrush="Gray" Background="#FFF0F0F0">
 
                           <DataGrid.Resources>
                             <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
@@ -498,21 +498,21 @@
           </GroupBox>
 
           <Button x:Name="btn_EditMRA_SaveToDB" Content="Commit Changes" 
-                  Background="LightGreen" Padding="4" VerticalAlignment="Center" Margin="74,0,0,0"/>
+                  Background="LightGreen" BorderBrush="DarkGreen" Padding="4" VerticalAlignment="Center" Margin="74,0,0,0"/>
         </StackPanel>
 
 
 
         <!-- LEFT: Tree -->
         <Border Grid.Column="0" Grid.Row="1"
-                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,0,4,0"
+                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="0,4,4,0"
                 CornerRadius="10">
 
 
           <TreeView x:Name="tvTemplate"
                     ItemsSource="{Binding Groups}" 
                     ScrollViewer.HorizontalScrollBarVisibility="Auto" 
-                    ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"  >
 
             <TreeView.ItemTemplate>
               <HierarchicalDataTemplate ItemsSource="{Binding Questions}">
@@ -544,7 +544,7 @@
 
         <!-- RIGHT: Editor -->
         <Border Grid.Column="1" Grid.Row="1"
-                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0,0,0"
+                Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,4,0,0"
                 CornerRadius="10">
           <DockPanel>
 
@@ -689,8 +689,11 @@
 
                   <StackPanel Orientation="Horizontal" Margin="0,4" HorizontalAlignment="Right">
                     <TextBlock Text="Question Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right"/>
-                    <TextBox Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                    <!--<TextBlock Text="{Binding SelectedQuestion.QuestionDisplayOrder}"  Padding="2" />-->
+                    <TextBox  x:Name="tb_MRA_QuestionOrder" VerticalContentAlignment="Center"
                              Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
+
+                    <TextBlock Text="(press Tab to move Question to desired order)" VerticalAlignment="Center" Margin="4,0,0,0"/>
 
                   </StackPanel>
 
@@ -751,7 +754,7 @@
                     <Button x:Name="btn_EditMRA_Answer_Add" Content="Add New Answer"  Width="114" Padding="6,2"/>
                     <Border Width="30" Height="1" BorderBrush="Gray" BorderThickness="1" Margin="4"/>
 
-                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Background="#FFFFA7A7"  
+                    <Button x:Name="btn_EditMRA_Answer_DeleteSelected" Background="#FFFFA7A7"  BorderBrush="DarkRed"
                             ToolTip="Delete the selected answer item (requires confirmation)...">
                       <StackPanel Orientation="Vertical">
                         <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
@@ -795,9 +798,11 @@
                     <!-- Put your dependent controls here -->
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0" HorizontalAlignment="Right">
                       <TextBlock Text="Answer Order"  VerticalAlignment="Center" Width="90" TextAlignment="Right" />
-                      <TextBox Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" IsReadOnly="True" IsTabStop="False"
+                      <!--<TextBlock Text="{Binding SelectedAnswer.AnswerDisplayOrder}"  Padding="2" />-->
+                      <TextBox x:Name="tb_MRA_AnswerOrder" VerticalContentAlignment="Center"
                                Width="40" Height="23" Margin="4,0,0,0" TextAlignment="Center"/>
-
+                      
+                      <TextBlock Text="(press Tab to move Answer to desired order)" VerticalAlignment="Center" Margin="4,0,0,0"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -823,7 +828,7 @@
                     <StackPanel Orientation="Horizontal" Margin="0,4">
                       <TextBlock Text="Email Comment"  VerticalAlignment="Top" Width="90" TextAlignment="Right"/>
                       <TextBox Text="{Binding SelectedAnswer.EmailComment, UpdateSourceTrigger=LostFocus}" 
-                                Width="400" Height="46" Margin="4,0,0,0" />
+                               TextWrapping="Wrap" Width="400" Height="46" Margin="4,0,0,0" />
                     </StackPanel>
 
                   </StackPanel>
@@ -1010,7 +1015,7 @@
                     VirtualizingPanel.IsVirtualizing="False"
                     EnableRowVirtualization="False"
                     EnableColumnVirtualization="False"
-                    BorderBrush="Gray" BorderThickness="1">
+                    BorderBrush="Gray" BorderThickness="1" Background="#FFF0F0F0">
 
             <DataGrid.Resources>
               <!--This nifty little 'fix' ensures that rows appear won't 'de-activated' 
