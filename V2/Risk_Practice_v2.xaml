@@ -33,127 +33,137 @@
     </TabControl.Resources>
 
     <TabItem Header="Unlock Matters" x:Name="ti_ManageLocks" Height="26" Width="200" >
-      <Canvas>
-        <TextBlock Text="Use this page to unlock matters which were automatically locked, to allow the Fee Earner to complete one now (this resets the timer to allow another 2 weeks)." Foreground="Gray" TextWrapping="Wrap" Height="18" Width="909" Canvas.Left="10" Canvas.Top="10" />
-        <TextBlock Text="NB: Matters are automatically locked after 14 days if there isn't a completed 'Matter Risk Assessment' on file. This prevents any activity on the matter from taking place (eg: Fee Earner cannot Time Record to the matter; secretaries unable to create documents etc)." Foreground="Gray" TextWrapping="Wrap" Height="38" Width="856" Canvas.Left="10" Canvas.Top="28" HorizontalAlignment="Left" VerticalAlignment="Center" />
-        <TextBlock x:Name="tb_NoLockedMatters" Text="There are no Locked matters matching the 'Filter Criteria'" Foreground="Red" TextWrapping="Wrap" Canvas.Left="285" Canvas.Top="157" FontSize="22" FontWeight="Bold" />
+      <StackPanel Orientation="Vertical">
 
-        <ToggleButton x:Name="btn_UnlockMatters2" Canvas.Top="73" Height="79" Width="100" Canvas.Left="1012" HorizontalAlignment="Center" VerticalAlignment="Top">
-          <StackPanel Orientation="Vertical">
-            <Image MaxHeight="30" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Unlock.png"/>
-            <TextBlock Text="Unlock selected matter(s) ⇩" TextWrapping="Wrap" TextAlignment="Center" Width="90"/>
-          </StackPanel>
-        </ToggleButton>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+          <TextBlock Text="Use this page to unlock matters which were automatically locked, to allow the Fee Earner to complete one now (this resets the timer to allow another 2 weeks)." 
+                     Foreground="Gray" TextWrapping="Wrap" Width="500"   />
+          <TextBlock Text="NB: Matters are automatically locked after 14 days if there isn't a completed 'Matter Risk Assessment' on file. This prevents any activity on the matter from taking place (eg: Fee Earner cannot Time Record to the matter; secretaries unable to create documents etc)." 
+                     Foreground="Gray" TextWrapping="Wrap" Width="590" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="40,0,0,0"/>
+          
+        </StackPanel>
 
-        <!-- Popup anchored to the New button -->
-        <Popup x:Name="popTemplates"
-               PlacementTarget="{Binding ElementName=btn_UnlockMatters2}"
-               Placement="Bottom"
-               StaysOpen="False"
-               AllowsTransparency="True"
-               PopupAnimation="Fade">
-
-          <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
-                  Background="#FFF4F4BF" Padding="10">
-            <StackPanel MinWidth="260">
-
-              <TextBlock Text="Please select reason for unlocking:"
-                         FontWeight="SemiBold"
-                         Margin="0,0,0,8"/>
-
-              <!-- Scroll if lots of templates -->
-              <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="icTemplates">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <!-- Show Name, keep TemplateID in Tag -->
-                      <Button Tag="{Binding}"
-                              Margin="0,0,0,6"
-                              HorizontalAlignment="Stretch">
-                        <StackPanel Orientation="Vertical">
-                          <TextBlock Text="{Binding Reason}" 
-                                     FontWeight="SemiBold" TextAlignment="Center"
-                                     TextWrapping="Wrap" MaxWidth="320"/>
-                        </StackPanel>
-
-                      </Button>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-
-              <Separator Margin="0,8,0,8"/>
-
-              <Button x:Name="btnCancel"
-                      Content="Cancel"
-                      HorizontalAlignment="Right"
-                      Width="80"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <ToggleButton x:Name="btn_UnlockMatters2" Height="79" Width="100"  HorizontalAlignment="Center" VerticalAlignment="Bottom" >
+            <StackPanel Orientation="Vertical">
+              <Image MaxHeight="30" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Unlock.png"/>
+              <TextBlock Text="Unlock selected matter(s) ⇩" TextWrapping="Wrap" TextAlignment="Center" Width="90"/>
             </StackPanel>
-          </Border>
-        </Popup>
+          </ToggleButton>
 
+          <!-- Popup anchored to the New button -->
+          <Popup x:Name="popTemplates"
+                 PlacementTarget="{Binding ElementName=btn_UnlockMatters2}"
+                 Placement="Bottom"
+                 StaysOpen="False"
+                 AllowsTransparency="True"
+                 PopupAnimation="Fade">
 
+            <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
+                    Background="#FFF4F4BF" Padding="10">
+              <StackPanel MinWidth="260">
 
-        <GroupBox Header="Filter Criteria..." Foreground="#FF6150BE" BorderBrush="Gray" Height="86" Width="990" Canvas.Left="10" Canvas.Top="66">
-          <Canvas>
-            <Label Content="Fee Earner" Foreground="#FF6150BE" Canvas.Left="10" HorizontalContentAlignment="Right" Canvas.Top="34" />
-            <ComboBox x:Name="cboFeeEarner" Canvas.Left="80" Width="195" Height="26" Canvas.Top="34" >
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="38" />
-                    <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="180" />
-                  </StackPanel>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <Label Content="Department" Foreground="#FF6150BE" Canvas.Left="2" HorizontalContentAlignment="Right" Canvas.Top="3" />
-            <ComboBox x:Name="cboDept" Canvas.Left="80" Width="195" Height="26" Canvas.Top="3">
-              <!--<ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="180" />
-                                        <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="0" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>-->
+                <TextBlock Text="Please select reason for unlocking:"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
 
-            </ComboBox>
-            <Label Content="Text Search" Foreground="#FF6150BE" Canvas.Left="280" Width="75" HorizontalContentAlignment="Right"  />
-            <Label Foreground="Gray" Content="(searches: Client Name, Matter Description)" Canvas.Left="563" Width="235" HorizontalContentAlignment="Left" FontStyle="Italic"  />
-            <TextBox x:Name="txtSearch" Width="199" Canvas.Left="360" Height="26" VerticalContentAlignment="Center" />
+                <!-- Scroll if lots of templates -->
+                <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl x:Name="icTemplates">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <!-- Show Name, keep TemplateID in Tag -->
+                        <Button Tag="{Binding}"
+                                Margin="0,0,0,6"
+                                HorizontalAlignment="Stretch">
+                          <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding Reason}" 
+                                       FontWeight="SemiBold" TextAlignment="Center"
+                                       TextWrapping="Wrap" MaxWidth="320"/>
+                          </StackPanel>
 
-            <Label Content="Entity Ref / Matter No" Foreground="#FF6150BE" Canvas.Top="31" Width="134" HorizontalContentAlignment="Right"  Canvas.Left="299"  />
-            <TextBox x:Name="txtEntityRef" Width="65" Canvas.Left="438" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" />
-            <Label Content="/" Foreground="#FF6150BE" Canvas.Top="31" Width="15" HorizontalContentAlignment="Left"  Canvas.Left="504"  />
-            <TextBox x:Name="txtMatterNo" Width="40" Canvas.Left="519" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
 
-            <Button x:Name="btn_RefreshLockedMatters" Content="Search" Background="#FF91E888" BorderBrush="DarkGreen"  Canvas.Left="718" Height="26" Width="70" Canvas.Top="31" />
-            <Button x:Name="btn_ClearLockedMattersFilters" Content="Clear Filters - View All" Background="#FFF0B8B8" BorderBrush="DarkRed"
-                    ToolTip="Click here to clear all filter criteria and view all locked matters" Canvas.Left="572" Height="26" Width="128" Canvas.Top="31" />
+                <Separator Margin="0,8,0,8"/>
 
-            <StackPanel Orientation="Vertical" Canvas.Left="816" Canvas.Top="6" Visibility="Visible">
-              <Label Content="Group By" Foreground="#FF6150BE" />
-              <ComboBox x:Name="cbo_GroupBy" Width="155" >
+                <Button x:Name="btnCancel"
+                        Content="Cancel"
+                        HorizontalAlignment="Right"
+                        Width="80"/>
+              </StackPanel>
+            </Border>
+          </Popup>
+
+          <GroupBox Header="Filter Criteria..." Foreground="#FF6150BE" BorderBrush="Gray" Height="86" Width="990" Margin="30,0,0,0">
+            <Canvas>
+              <Label Content="Fee Earner" Foreground="#FF6150BE" Canvas.Left="10" HorizontalContentAlignment="Right" Canvas.Top="34" />
+              <ComboBox x:Name="cboFeeEarner" Canvas.Left="80" Width="195" Height="26" Canvas.Top="34" >
                 <ComboBox.ItemTemplate>
                   <DataTemplate>
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="{Binding FriendlyName, Mode=TwoWay}" Width="150" />
-                      <TextBlock Text="{Binding CodeName, Mode=TwoWay}" Width="0" Visibility="Hidden"/>
+                      <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="38" />
+                      <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="180" />
                     </StackPanel>
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
+              <Label Content="Department" Foreground="#FF6150BE" Canvas.Left="2" HorizontalContentAlignment="Right" Canvas.Top="3" />
+              <ComboBox x:Name="cboDept" Canvas.Left="80" Width="195" Height="26" Canvas.Top="3">
+                <!--<ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Code, Mode=TwoWay}" Width="180" />
+                                <TextBlock Text="{Binding Name, Mode=TwoWay}" Width="0" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>-->
 
-            </StackPanel>
-          </Canvas>
-        </GroupBox>
+              </ComboBox>
+              <Label Content="Text Search" Foreground="#FF6150BE" Canvas.Left="280" Width="75" HorizontalContentAlignment="Right"  />
+              <Label Foreground="Gray" Content="(searches: Client Name, Matter Description)" Canvas.Left="563" Width="235" HorizontalContentAlignment="Left" FontStyle="Italic"  />
+              <TextBox x:Name="txtSearch" Width="199" Canvas.Left="360" Height="26" VerticalContentAlignment="Center" />
 
+              <Label Content="Entity Ref / Matter No" Foreground="#FF6150BE" Canvas.Top="31" Width="134" HorizontalContentAlignment="Right"  Canvas.Left="299"  />
+              <TextBox x:Name="txtEntityRef" Width="65" Canvas.Left="438" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" />
+              <Label Content="/" Foreground="#FF6150BE" Canvas.Top="31" Width="15" HorizontalContentAlignment="Left"  Canvas.Left="504"  />
+              <TextBox x:Name="txtMatterNo" Width="40" Canvas.Left="519" Canvas.Top="31" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
 
-        <DataGrid x:Name="dg_LockedMatters" Height="553" Width="1174" Canvas.Top="157" AlternatingRowBackground="#FFAEDEB9" 
+              <Button x:Name="btn_RefreshLockedMatters" Content="Search" Background="#FF91E888" BorderBrush="DarkGreen"  Canvas.Left="718" Height="26" Width="70" Canvas.Top="31" />
+              <Button x:Name="btn_ClearLockedMattersFilters" Content="Clear Filters - View All" Background="#FFF0B8B8" BorderBrush="DarkRed"
+                      ToolTip="Click here to clear all filter criteria and view all locked matters" Canvas.Left="572" Height="26" Width="128" Canvas.Top="31" />
+
+              <StackPanel Orientation="Vertical" Canvas.Left="816" Canvas.Top="6" Visibility="Visible">
+                <Label Content="Group By" Foreground="#FF6150BE" />
+                <ComboBox x:Name="cbo_GroupBy" Width="155" >
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding FriendlyName, Mode=TwoWay}" Width="150" />
+                        <TextBlock Text="{Binding CodeName, Mode=TwoWay}" Width="0" Visibility="Hidden"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+
+              </StackPanel>
+            </Canvas>
+          </GroupBox>
+        </StackPanel>
+        
+        
+
+        <TextBlock x:Name="tb_NoLockedMatters" Text="There are no Locked matters matching the 'Filter Criteria'" 
+                   Foreground="Red" TextWrapping="Wrap" FontSize="22" FontWeight="Bold" TextAlignment="Center" Visibility="Collapsed"/>
+
+        <DataGrid x:Name="dg_LockedMatters" Height="564" Width="1174" Margin="0,6,0,0"
+                  AlternatingRowBackground="#FFAEDEB9" 
                   AutoGenerateColumns="False" IsTextSearchEnabled="True" SelectionMode="Single" FrozenColumnCount="1"
                   CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"
-                  BorderBrush="Gray" BorderThickness="1">
+                  BorderBrush="Gray" BorderThickness="1" Background="#FFF0F0F0">
           <DataGrid.Resources>
             <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
               <Setter Property="Margin" Value="0,2,0,4"/>
@@ -214,10 +224,34 @@
 
           <DataGrid.Columns>
             <DataGridTextColumn Header="Our Ref" Binding="{Binding EntityRefMN}" IsReadOnly="True" />
-            <DataGridTextColumn Header="Client Name" Binding="{Binding ClName}" IsReadOnly="True" Width="150"/>
-            <DataGridTextColumn Header="Matter Description" Binding="{Binding MatDesc}" IsReadOnly="True" Width="150"/>
-            <DataGridTextColumn Header="Fee Earner" Binding="{Binding FeeEarner}" IsReadOnly="True" />
-            <DataGridTextColumn Header="Department" Binding="{Binding Department}" IsReadOnly="True" />
+            <DataGridTextColumn Header="Client Name" Binding="{Binding ClName}" IsReadOnly="True" Width="150">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="Matter Description" Binding="{Binding MatDesc}" IsReadOnly="True" Width="150">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="Fee Earner" Binding="{Binding FeeEarner}" IsReadOnly="True" >
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="Department" Binding="{Binding Department}" IsReadOnly="True" >
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
             <DataGridTextColumn Header="Matter Opened" Binding="{Binding MatterOpened, StringFormat='dd/MM/yyyy'}" CellStyle="{StaticResource RightAligned}" IsReadOnly="True" />
             <DataGridTextColumn Header="Days Since Matter Open" 
                                 CellStyle="{StaticResource Center}"   
@@ -229,7 +263,13 @@
             <!--<DataGridTextColumn Header="Expiry Date" Binding="{Binding MRA_ExpiryDate}" IsReadOnly="True" />-->
             <DataGridTextColumn Header="MRA ID" Binding="{Binding MRA_ID}" 
                                 CellStyle="{StaticResource Center}" IsReadOnly="True" />
-            <DataGridTextColumn Header="MRA Name" Binding="{Binding MRA_Name}" IsReadOnly="True" />
+            <DataGridTextColumn Header="MRA Name" Binding="{Binding MRA_Name}" IsReadOnly="True" >
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
             <DataGridTextColumn Header="MRA Current Expiry Date" 
                                 Binding="{Binding MRA_ExpiryCurrent, StringFormat='dd/MM/yyyy'}" 
                                 HeaderStyle="{StaticResource DubHeightColumn}" Width="90" IsReadOnly="True" />
@@ -240,7 +280,7 @@
         </DataGrid>
 
 
-      </Canvas>
+      </StackPanel>
     </TabItem>
 
     <TabItem Header="Configure Matter Risk Assessments" x:Name="ti_Defaults" Width="200">
@@ -303,7 +343,7 @@
 
                   <DataGrid x:Name="dg_FR_Templates" Height="528" Margin="4" BorderBrush="Gray" BorderThickness="1"
                             AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" 
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
                     <DataGrid.Resources>
                       <Style x:Key="RightAligned" TargetType="DataGridCell">
                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -379,7 +419,7 @@
 
                   <DataGrid x:Name="dg_DepartmentsFR" Grid.Row="1" Grid.Column="0" BorderBrush="Gray" BorderThickness="1"
                             AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="0,0,6,0"
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
 
                     <DataGrid.Columns>
                       <DataGridTextColumn Header="Department Name" IsReadOnly="True" Width="Auto" Binding="{Binding mraTD_DeptN}"/>
@@ -393,7 +433,7 @@
 
                   <DataGrid x:Name="dg_FR_CaseTypes_FRTemplate" Grid.Row="1" Grid.Column="2" BorderBrush="Gray" BorderThickness="1"
                             AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True" Margin="6,0,0,0" Grid.RowSpan="2" 
-                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                            CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
 
                     <DataGrid.Columns>
                       <DataGridTextColumn Header="Case Type Name" IsReadOnly="True" Width="120" Binding="{Binding mraT_CTName}"/>
@@ -614,7 +654,7 @@
 
               <DataGrid x:Name="dg_FR_Questions" Grid.Row="1" Grid.Column="0" Grid.RowSpan="6" Margin="0,0,4,2" BorderBrush="Gray" BorderThickness="1"
                         AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"  Canvas.Left="10"
-                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
                 <DataGrid.Resources>
                   <!--This one is just to ensure that the selected row stays 'visible' (highlighted) - as when going to another control/losing focus unhighlights-->
                   <Style TargetType="{x:Type DataGridRow}">
@@ -1020,7 +1060,7 @@
                         AutoGenerateColumns="False" 
                         IsTextSearchEnabled="True" 
                         BorderBrush="Gray" BorderThickness="1"
-                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                        CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
 
                 <DataGrid.Resources>
                   <Style x:Key="RightAligned" TargetType="DataGridCell">
@@ -1151,7 +1191,7 @@
                         IsTextSearchEnabled="True" 
                         SelectionMode="Extended" 
                         CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" 
-                        Margin="0,4,0,0" Height="544" Width="440">
+                        Margin="0,4,0,0" Height="544" Width="440" Background="#FFF0F0F0">
 
                 <!-- Keep selected row highlighted -->
                 <DataGrid.Resources>
@@ -1167,9 +1207,27 @@
 
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="Code" Binding="{Binding iCode}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
 
                 </DataGrid.Columns>
               </DataGrid>
@@ -1195,7 +1253,7 @@
                         IsTextSearchEnabled="True" 
                         SelectionMode="Extended" 
                         CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible"  
-                        Margin="0,4,0,0" Height="548" Width="458">
+                        Margin="0,4,0,0" Height="548" Width="458" Background="#FFF0F0F0">
 
                 <!--Need to add DataGrid Grouping here to go off our 'IT, Risk, Accounts...' group vs individually added users-->
                 <DataGrid.Resources>
@@ -1209,79 +1267,31 @@
                     </Style.Resources>
                   </Style>
 
-                  <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >
-                    <Setter Property="Margin" Value="0,2,0,4"/>
-                    <!--<Setter Property="Padding" Value="4,0,0,0" />-->
-                    <Setter Property="Template">
-                      <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type GroupItem}" >
-                          <Expander x:Name="exp" IsExpanded="True"
-                                    Background="LightGray" BorderBrush="#FF4E4E4E" BorderThickness="1,1,1,1"
-                                    Foreground="Black" Padding="0,2,0,0" Margin="2,0">
-                            <Expander.Header>
-                              <DockPanel>
-                                <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                                <TextBlock Text=" (" FontWeight="Bold" />
-                                <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                <TextBlock Text=")" FontWeight="Bold" />
-                              </DockPanel>
-                            </Expander.Header>
-                            <ItemsPresenter />
-                          </Expander>
-
-                        </ControlTemplate>
-                      </Setter.Value>
-                    </Setter>
-
-                    <!-- Trigger to set background colour to GREEN for 'Accounts, Archiving, Risk, Management, IT' -->
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding Path=Name}" Value="Accounts, Archiving, Risk, Management, IT">
-                        <Setter Property="Template">
-                          <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type GroupItem}">
-                              <Expander x:Name="expander"
-                                        IsExpanded="True"
-                                        Background="#FF58B940"
-                                        BorderBrush="#FF306323"
-                                        BorderThickness="1,1,1,1"
-                                        Foreground="Black"
-                                        Padding="0,2,0,0"
-                                        Margin="2,0">
-                                <Expander.Header>
-                                  <DockPanel>
-                                    <TextBlock FontWeight="Bold" Text="Accounts, Archiving, Risk, Management, IT" Margin="5,0,0,0" />
-                                    <TextBlock Text=" (" FontWeight="Bold" />
-                                    <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                                    <TextBlock Text=")" FontWeight="Bold" />
-                                  </DockPanel>
-                                </Expander.Header>
-                                <ItemsPresenter />
-                              </Expander>
-                            </ControlTemplate>
-                          </Setter.Value>
-                        </Setter>
-                      </DataTrigger>
-                    </Style.Triggers>
-
-                  </Style>
-
                 </DataGrid.Resources>
-
-                <DataGrid.GroupStyle>
-                  <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}" >
-                    <GroupStyle.Panel>
-                      <ItemsPanelTemplate >
-                        <DataGridRowsPresenter />
-                      </ItemsPanelTemplate>
-                    </GroupStyle.Panel>
-                  </GroupStyle>
-                </DataGrid.GroupStyle>
 
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="Code" Binding="{Binding iCode}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" />
+                  <DataGridTextColumn Header="Name" Binding="{Binding iName}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Header="Job Title" Binding="{Binding iJobTitle}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTextColumn Header="Department" Binding="{Binding iDept}" Width="auto" IsReadOnly="True" >
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
                   <DataGridTextColumn Header="Group" Binding="{Binding iGroup}" Width="auto" IsReadOnly="True" Visibility="Collapsed"/>
                 </DataGrid.Columns>
               </DataGrid>
@@ -1354,7 +1364,7 @@
             <DataGrid x:Name="dg_CaseTypesWithoutDefault" Width="470" Height="610" BorderBrush="Gray" BorderThickness="1" Margin="0,4"
                       AlternatingRowBackground="#FFAEDEB9" HorizontalAlignment="Left"
                       SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
 
               <DataGrid.Resources>
                 <!-- Status cell highlight -->
@@ -1439,7 +1449,7 @@
           
         </Border>
 
-        <Border CornerRadius="16" Padding="8" BorderBrush="DarkGoldenrod" Margin="4" BorderThickness="1">
+        <Border CornerRadius="16" Padding="8" BorderBrush="DarkGoldenrod" Margin="40,4,4,4" BorderThickness="1">
           <StackPanel Orientation="Vertical" >
             <TextBlock Text="Top 100 Active Matters without a Matter Risk Assessment:" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
             
@@ -1451,7 +1461,7 @@
             <DataGrid x:Name="dg_MattersWithoutMRA" Width="600" Height="630" BorderBrush="Gray" BorderThickness="1" 
                       AlternatingRowBackground="#FFAEDEB9" HorizontalAlignment="Left"
                       SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible">
+                      CanUserResizeRows="False" HeadersVisibility="Column" RowDetailsVisibilityMode="Visible" Background="#FFF0F0F0">
 
               <DataGrid.Resources>
                 <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}" >

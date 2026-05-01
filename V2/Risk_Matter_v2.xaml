@@ -293,13 +293,13 @@
                      Foreground="Red" FontSize="16" FontWeight="Bold" Margin="8,4,8,2"
                      TextWrapping="Wrap" Visibility="Collapsed"/>
 
-          <Label Content="Select document and click 'Open Selected' to view" Foreground="#FF6150BE" Margin="4,0,0,0"  />
+          <Label Content="Select document and click 'Open Selected' to view" Foreground="#FF6150BE"   />
           <Button x:Name="btn_OpenCaseDoc" Content="Open Selected" Height="24" Width="106" IsEnabled="False" HorizontalAlignment="Left"/>
         </StackPanel>
 
         <DataGrid Grid.Row="3"
                   x:Name="dg_CaseManagerDocs"
-                  Margin="4,4,2,2"
+                  Margin="0,4,2,2"
                   MinHeight="0"
                   AlternatingRowBackground="#FFAEDEB9" AutoGenerateColumns="False"
                   SelectionMode="Single"
@@ -322,924 +322,546 @@
     </Border>
 
     <!-- =========================
-         LEFT: TAB AREA
+         LEFT: PAGES AREA
          ========================= -->
-    <TabControl x:Name="TC_Main" Grid.Column="0" Background="#FFEFF1F1" Margin="0,0,4,0" MinHeight="0" BorderThickness="0">
-      <TabControl.Resources>
-        <Style TargetType="{x:Type TabItem}">
-          <Setter Property="Background" Value="#8B82B6" />
-          <Setter Property="BorderBrush" Value="#FF5E577C" />
-          <Setter Property="Foreground" Value="White" />
-          <Style.Triggers>
-            <Trigger Property="IsSelected" Value="True">
-              <Setter Property="Foreground" Value="Black" />
-            </Trigger>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter Property="Foreground" Value="Black"/>
-            </Trigger>
-          </Style.Triggers>
-        </Style>
 
-        <Style TargetType="TabPanel">
-          <Setter Property="Visibility" Value="Collapsed"/>
-        </Style>
-        
-      </TabControl.Resources>
 
-      <!-- =========================
-           TAB: OVERVIEW
-           ========================= -->
-      <TabItem Header="Overview" x:Name="ti_Main" Height="26">
-        <Grid Margin="2" MinHeight="0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
+    <!-- =========================
+     PAGE: OVERVIEW
+     ========================= -->
+    <Border Grid.Column="0" x:Name="ti_Main" Visibility="Visible"
+            CornerRadius="8" Padding="4" BorderBrush="DarkGray" BorderThickness="1" Margin="0,0,4,0" MinHeight="0">
+      <Grid Margin="2" MinHeight="0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="18"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-          <!-- Top section -->
-          <GroupBox Grid.Row="0"
+
+        <TextBlock Grid.Row="0" Text="- Overview -" TextAlignment="Center"/>
+
+        <!-- Top section -->
+        <GroupBox Grid.Row="1"
                     Header="List of 'Matter Risk Assessment(s)' and 'File Review(s)'"
                     BorderBrush="DarkGray" Foreground="#FF6150BE" Margin="0,0,0,4" MinHeight="0">
-            <Grid MinHeight="0">
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-              </Grid.RowDefinitions>
-
-              <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
-                <ToggleButton x:Name="btnNew" Margin="0,4">
-                  <StackPanel Orientation="Horizontal">
-                    <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
-                    <TextBlock Margin="3,4" Text="New..." TextWrapping="Wrap" TextAlignment="Center"/>
-                  </StackPanel>
-                </ToggleButton>
-
-                <Popup x:Name="popTemplates"
-                       PlacementTarget="{Binding ElementName=btnNew}"
-                       Placement="Bottom"
-                       StaysOpen="False"
-                       AllowsTransparency="True"
-                       PopupAnimation="Fade">
-                  <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
-                          Background="#FFF4F4BF" Padding="10">
-                    <StackPanel MinWidth="260">
-                      <TextBlock Text="Add from template" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                      <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="icTemplates">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                              <Button Tag="{Binding}" Margin="0,0,0,6" HorizontalAlignment="Stretch">
-                                <StackPanel Orientation="Vertical">
-                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextAlignment="Center"/>
-                                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock FontSize="11" Foreground="#666" Text="{Binding Type}" />
-                                    <TextBlock FontSize="11" Foreground="#666" Text=" • Validity: "/>
-                                    <TextBlock FontSize="11" Foreground="#666" Text="{Binding ValidityDays}"/>
-                                    <TextBlock FontSize="11" Foreground="#666" Text=" days"/>
-                                  </StackPanel>
-                                </StackPanel>
-                              </Button>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                      </ScrollViewer>
-                      <Separator Margin="0,8,0,8"/>
-                      <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Right" Width="80"/>
-                    </StackPanel>
-                  </Border>
-                </Popup>
-
-                <Border CornerRadius="8" BorderThickness="1" BorderBrush="DarkGray" Margin="20,0,0,0" Padding="4">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="With selected:" TextWrapping="Wrap" Width="48" VerticalAlignment="Center" Margin="4,0,0,0"/>
-
-                    <Button x:Name="btn_Edit_MRAFR" Margin="6,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
-                        <TextBlock Margin="4" Text="Edit" Width="26" TextWrapping="Wrap" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_View_MRAFR" Margin="6,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\View.png"/>
-                        <TextBlock Margin="4" Text="View" Width="26" TextWrapping="Wrap" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_CopySelected_MRAFR" Margin="6,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
-                        <TextBlock Margin="4" Text="Duplicate" TextWrapping="Wrap" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_HOD_Approval_MRA" Margin="12,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
-                        <TextBlock Margin="4" Text="Approve MRA (HOD)"
-                                   ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter"
-                                   TextWrapping="Wrap" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_DeleteSelected_MRAFR" Background="#FFFFA7A7" Margin="24,0,0,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
-                        <TextBlock Margin="4" Text="Delete" TextWrapping="Wrap" TextAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-
-                    <Button x:Name="btn_RegenerateEmailForFile" IsEnabled="False" Margin="24,0,2,0">
-                      <StackPanel Orientation="Horizontal">
-                        <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Save(floppy).png" />
-                        <TextBlock Text="Re-save email into case" TextWrapping="Wrap" TextAlignment="Center" Margin="4"
-                                   ToolTip="Copies of the emails should be saved into the matter case automatically, however, you can click this to re-generate the email (note: no email is actually sent here, just a copy of it saved to the case)"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                </Border>
-
-                <StackPanel Orientation="Vertical" Margin="50,0,0,0" Visibility="Collapsed">
-                  <TextBlock Text="Group By:" />
-                  <ComboBox x:Name="cbo_GroupMRAFR" />
-                </StackPanel>
-              </StackPanel>
-
-              <StackPanel Grid.Row="1" Orientation="Vertical" Visibility="Collapsed">
-                <Label x:Name="lbl_MRAFR_ID" Content="-ID-" Foreground="Gray" HorizontalContentAlignment="Right"/>
-                <Label x:Name="lbl_MRAFR_Name" Content="-Name-" Foreground="Gray" HorizontalContentAlignment="Right"/>
-              </StackPanel>
-
-              <Grid Grid.Row="2" MinHeight="0">
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0" x:Name="tb_NoMRAFR"
-                           Text="No xxx exist on this matter - please click the '+ New...' button to create new"
-                           TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20"
-                           Visibility="Collapsed"/>
-
-                <DataGrid Grid.Row="1"
-                          x:Name="dg_MRAFR"
-                          Margin="4,0"
-                          MinHeight="0"
-                          SelectedValuePath="mraID" IsSynchronizedWithCurrentItem="True"
-                          AlternatingRowBackground="#FFAEDEB9"
-                          SelectionMode="Single"
-                          AutoGenerateColumns="False"
-                          IsTextSearchEnabled="True"
-                          CanUserResizeRows="False" HeadersVisibility="Column"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                          ScrollViewer.CanContentScroll="True"
-                          BorderBrush="Gray" Background="#FFF0F0F0">
-
-                  <DataGrid.Resources>
-                    <Style x:Key="CenteredTextStyle" TargetType="TextBlock">
-                      <Setter Property="TextAlignment" Value="Center" />
-                      <Setter Property="VerticalAlignment" Value="Center" />
-                    </Style>
-
-                    <Style x:Key="StatusCellStyle" TargetType="DataGridCell">
-                      <Setter Property="Background" Value="{x:Null}" />
-                      <Setter Property="Foreground" Value="Black" />
-                      <Setter Property="FontWeight" Value="Normal" />
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding Status}" Value="Draft">
-                          <Setter Property="Background" Value="Yellow" />
-                          <Setter Property="Foreground" Value="Red" />
-                          <Setter Property="FontWeight" Value="Bold" />
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </DataGrid.Resources>
-
-                  <DataGrid.Columns>
-                    <DataGridTextColumn Header="ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraID}"/>
-                    <DataGridTextColumn Header="Name" IsReadOnly="True" Width="Auto" Binding="{Binding Name}"/>
-                    <DataGridTextColumn Header="Status" IsReadOnly="True" Width="Auto"
-                                        Binding="{Binding Status}" CellStyle="{StaticResource StatusCellStyle}" />
-                    <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="90"
-                                        Binding="{Binding ExpiryDate, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-Not_Set-'}"/>
-                    <DataGridTextColumn Header="Risk Rating" IsReadOnly="True" Width="70"
-                                        Binding="{Binding RiskRating}" ElementStyle="{StaticResource CenteredTextStyle}" />
-                    <DataGridTextColumn Header="HOD Approved?" IsReadOnly="True" Width="100"
-                                        Binding="{Binding AppByHOD}" ElementStyle="{StaticResource CenteredTextStyle}" />
-                    <DataGridTextColumn Header="Q Count" IsReadOnly="True" Width="Auto"
-                                        Binding="{Binding QCount}" ElementStyle="{StaticResource CenteredTextStyle}" />
-                    <DataGridTextColumn Header="Qs O/S" IsReadOnly="True" Width="Auto"
-                                        Binding="{Binding QOutstanding}" ElementStyle="{StaticResource CenteredTextStyle}" />
-                    <DataGridTextColumn Header="FR Reviewer" IsReadOnly="True" Width="Auto" Binding="{Binding FRReviewer}" />
-                    <DataGridTextColumn Header="Submitted By" IsReadOnly="True" Width="Auto" Binding="{Binding SubbedBy}" />
-                    <DataGridTextColumn Header="Submitted On" IsReadOnly="True" Width="Auto"
-                                        Binding="{Binding SubbedOn, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-'}" />
-                    <DataGridTextColumn Header="Score Trig Med" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerMed}" Visibility="Collapsed"/>
-                    <DataGridTextColumn Header="Score Trig High" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerHigh}" Visibility="Collapsed"/>
-                    <DataGridTextColumn Header="TemplateID" IsReadOnly="True" Width="Auto" Binding="{Binding TemplateID}" Visibility="Collapsed"/>
-                    <DataGridTextColumn Header="Score" IsReadOnly="True" Width="Auto" Binding="{Binding Score}" Visibility="Collapsed"/>
-                    <DataGridTextColumn Header="Type" IsReadOnly="True" Width="Auto" Binding="{Binding Type}" Visibility="Collapsed"/>
-                  </DataGrid.Columns>
-                </DataGrid>
-              </Grid>
-            </Grid>
-          </GroupBox>
-
-          <!-- Bottom section -->
-          <GroupBox Grid.Row="1"
-                    Header="Corrective Actions raised from File Review(s)"
-                    Foreground="#FF6150BE" BorderBrush="DarkGray" Margin="0,4,0,0" MinHeight="0">
-            <Grid MinHeight="0">
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-              </Grid.RowDefinitions>
-
-              <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
-                <TextBlock Text="Current Selection:" Width="60" Foreground="Gray" TextAlignment="Right" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                <TextBlock x:Name="tb_Current_CA" Foreground="Gray" VerticalAlignment="Center" Text="x" Margin="4,0,0,0"/>
-                <TextBlock x:Name="tb_Current_CA_Complete" Foreground="Black" VerticalAlignment="Center" Text="0" Visibility="Collapsed"/>
-
-                <Button x:Name="btn_Mark_CA_Complete" Margin="30,0,0,0">
-                  <TextBlock Text="Toggle 'Complete'" TextWrapping="Wrap" Width="60" TextAlignment="Center"
-                             ToolTip="If item is currently incomplete, clicking this will mark it as 'complete'. If item is currently 'complete', clicking this will mark it as 'incomplete' "/>
-                </Button>
-
-                <Button x:Name="btn_View_CA_onFR" Margin="30,0,0,0">
-                  <TextBlock Text="View on File Review" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
-                </Button>
-
-                <Border CornerRadius="20" Padding="2,4" BorderThickness="1" BorderBrush="DarkGray" Margin="60,0,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <Label Content="View:" Foreground="Gray" VerticalAlignment="Center" />
-                    <StackPanel Orientation="Horizontal">
-                      <RadioButton x:Name="opt_CA_ViewNotComplete" Content="Not Completed Only" Style="{StaticResource SegmentedChip}"
-                                   IsChecked="True" Margin="2,0,2,0" VerticalAlignment="Center"/>
-                      <RadioButton x:Name="opt_CA_ViewComplete" Content="Completed Only" Style="{StaticResource SegmentedChip}"
-                                   Margin="2,0,2,0" VerticalAlignment="Center"/>
-                      <RadioButton x:Name="opt_CA_ViewAll" Content="All" Style="{StaticResource SegmentedChip}"
-                                   Margin="2,0,2,0" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-
-                <Button x:Name="btn_UpdateReviewerWithActionTaken" Width="110" Margin="86,0,0,0"
-                        ToolTip="Clicking this button will email the File Reviewer with a list of all Corrective Actions Taken on this matter, and requests them to click the 'Complete' checkbox">
-                  <TextBlock Text="Notify Reviewer Actions Complete" TextWrapping="Wrap" TextAlignment="Center"/>
-                </Button>
-              </StackPanel>
-
-              <TextBlock Grid.Row="1" x:Name="tb_NoCAs" Text="No Corrective Actions exist on this matter"
-                         TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Visibility="Collapsed"/>
-
-              <Grid Grid.Row="2" MinHeight="0">
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0" x:Name="tb_CATaken" Text="TEST" TextWrapping="Wrap"
-                           Foreground="Gray" Visibility="Collapsed"/>
-
-                <DataGrid Grid.Row="1"
-                          x:Name="dgCA_Overview"
-                          Margin="4,0"
-                          MinHeight="0"
-                          AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
-                          CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                          ScrollViewer.CanContentScroll="True"
-                          BorderBrush="Gray" Background="#FFF0F0F0">
-
-                  <DataGrid.Resources>
-                    <Style x:Key="RightAligned" TargetType="DataGridCell">
-                      <Setter Property="HorizontalAlignment" Value="Right"/>
-                    </Style>
-                    <Style x:Key="Center" TargetType="DataGridCell">
-                      <Setter Property="HorizontalAlignment" Value="Center"/>
-                    </Style>
-                    <Style x:Key="HiddenCol" TargetType="DataGridColumnHeader">
-                      <Setter Property="FontStyle" Value="Italic" />
-                    </Style>
-                    <Style x:Key="EditableColumn" TargetType="{x:Type DataGridColumnHeader}">
-                      <Setter Property="Background" Value="#FFD3C9FD"/>
-                      <Setter Property="Foreground" Value="Black"/>
-                      <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                      <Setter Property="BorderBrush" Value="#2E1A47"/>
-                      <Setter Property="BorderThickness" Value="1"/>
-                      <Setter Property="Width" Value="Auto"/>
-                      <Setter Property="Padding" Value="2,0,2,0" />
-                      <Setter Property="ToolTip" Value="this should be a note from the Matter Fee Earner stating the Action they have Taken for each item listed" />
-                    </Style>
-                    <Style x:Key="EditableColumn2" TargetType="{x:Type DataGridColumnHeader}">
-                      <Setter Property="Background" Value="#FFD3C9FD"/>
-                      <Setter Property="Foreground" Value="Black"/>
-                      <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                      <Setter Property="BorderBrush" Value="#2E1A47"/>
-                      <Setter Property="BorderThickness" Value="1"/>
-                      <Setter Property="Width" Value="Auto"/>
-                      <Setter Property="Padding" Value="4,0,4,0" />
-                      <Setter Property="ToolTip" Value="this can only be ticked-off by the File Reviewer" />
-                    </Style>
-                  </DataGrid.Resources>
-
-                  <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="ID" IsReadOnly="True" Width="Auto" Visibility="Collapsed">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding ID}" VerticalAlignment="Center" TextAlignment="Right" Padding="0,0,4,0" />
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="250">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding CA_FRQText}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0" />
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <DataGridTemplateColumn Header="By (Reviewer)" IsReadOnly="True" Width="Auto" Visibility="Collapsed">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding CA_Reviewer}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0" />
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <DataGridTemplateColumn Header="Action Needed" IsReadOnly="True" Width="260">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding CA_Needed}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0"/>
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <DataGridTextColumn Header="Action Taken" Width="280" IsReadOnly="False"
-                                        Binding="{Binding CA_Taken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                        HeaderStyle="{StaticResource EditableColumn}">
-                      <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                          <Setter Property="TextWrapping" Value="Wrap"/>
-                        </Style>
-                      </DataGridTextColumn.ElementStyle>
-                      <DataGridTextColumn.EditingElementStyle>
-                        <Style TargetType="TextBox">
-                          <Setter Property="TextWrapping" Value="Wrap"/>
-                          <Setter Property="AcceptsReturn" Value="True"/>
-                          <Setter Property="MaxLength" Value="300" />
-                        </Style>
-                      </DataGridTextColumn.EditingElementStyle>
-                    </DataGridTextColumn>
-
-                    <DataGridCheckBoxColumn Header="Complete" Width="Auto"
-                                            Binding="{Binding CA_Complete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            HeaderStyle="{StaticResource EditableColumn2}">
-                      <DataGridCheckBoxColumn.ElementStyle>
-                        <Style TargetType="CheckBox">
-                          <Setter Property="VerticalAlignment" Value="Center" />
-                          <Setter Property="HorizontalAlignment" Value="Center" />
-                        </Style>
-                      </DataGridCheckBoxColumn.ElementStyle>
-                    </DataGridCheckBoxColumn>
-
-                    <DataGridTemplateColumn Header="Due By" IsReadOnly="True" Width="90">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding CA_DueBy, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center" Padding="2,0,2,0"/>
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <DataGridTextColumn Header="FR ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_ID}" HeaderStyle="{StaticResource HiddenCol}" />
-                    <DataGridTextColumn Header="FR Reviewer ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_U_ID}" HeaderStyle="{StaticResource HiddenCol}" />
-                    <DataGridTextColumn Header="Q Num ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_QNum}" HeaderStyle="{StaticResource HiddenCol}" />
-                    <DataGridTextColumn Header="FR Name" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_Name}" HeaderStyle="{StaticResource HiddenCol}" />
-                  </DataGrid.Columns>
-                </DataGrid>
-              </Grid>
-            </Grid>
-          </GroupBox>
-        </Grid>
-      </TabItem>
-
-      <!-- =========================
-           TAB: MRA
-           ========================= -->
-      <TabItem Header="Matter Risk Assessment" x:Name="ti_MRA">
-        <Grid Margin="2" MinHeight="0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
-
-          <!-- top toolbar / status -->
-          <ScrollViewer Grid.Row="0" Margin="0,0,0,8" VerticalScrollBarVisibility="Auto" >
-            <WrapPanel >
-              <Border CornerRadius="10" Padding="4" BorderBrush="#FFFF0202" BorderThickness="1">
-                <StackPanel Orientation="Vertical">
-                  <TextBlock Text="Status:" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_MRA_Status" Text="Draft" Foreground="#FF6150BE" TextAlignment="Center"/>
-                </StackPanel>
-              </Border>
-
-              <Border x:Name="stk_RiskInfo" BorderBrush="Black" BorderThickness="1" CornerRadius="10" Padding="4" Margin="10,0,0,0" >
-                <StackPanel Orientation="Vertical" Visibility="Visible">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Current Score: " Foreground="#FF6150BE" />
-                    <TextBlock x:Name="tb_MRA_Score" Text="-1" Foreground="#FF6150BE"  />
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Risk Category: " Foreground="#FF6150BE" VerticalAlignment="Center" />
-                    <TextBlock x:Name="tb_MRA_RiskCategory" Text="L/M/H" Foreground="#FF6150BE" VerticalAlignment="Center" />
-                    <TextBlock x:Name="tb_MRA_RiskCategoryID" Text="1/2/3" Foreground="#FF6150BE" VerticalAlignment="Center" Visibility="Collapsed"/>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-
-              <Border BorderBrush="Black" BorderThickness="1" CornerRadius="10" Padding="4" Margin="10,0,0,0" >
-                <StackPanel Orientation="Vertical">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Total Questions:" Width="90" Foreground="#FF6150BE" />
-                    <TextBlock x:Name="tb_TotalQs" Foreground="#FF6150BE" Text="0"/>
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Total Answered:" Width="90" Foreground="#FF6150BE" />
-                    <TextBlock x:Name="tb_TotalAnswered" Foreground="#FF6150BE" Text="0"/>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-
-              <Button x:Name="btn_MRA_SaveAsDraft" Content="Save as Draft" ToolTip="Click here to save current progress in 'draft' state, and return to the 'Overview' page" Height="36" Width="90" Margin="20,0,0,0" />
-              <Button x:Name="btn_MRA_Submit" ToolTip="Click here to mark this Matter Risk Assessment as 'Complete' and return to the 'Overview' page" Height="36" Width="90" Margin="10,0,0,0">
-                <TextBlock Text="Save as Final (Submit)" TextWrapping="Wrap" TextAlignment="Center"/>
-              </Button>
-              <Button x:Name="btn_MRA_BackToOverview" Width="62" Height="36" ToolTip="Click here to return to the 'Overview' page" Margin="10,0,0,0">
-                <TextBlock Text="Back to Overview" TextWrapping="Wrap" TextAlignment="Center" />
-              </Button>
-
-              <Button x:Name="btn_HOD_Approval_MRA1" Visibility="Visible" Height="36" Margin="10,0,0,0">
-                <StackPanel Orientation="Horizontal">
-                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
-                  <TextBlock Margin="2,0,0,0" Text="Approve MRA (HOD)" ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter" TextWrapping="Wrap" Width="66" TextAlignment="Center"/>
-                </StackPanel>
-              </Button>
-
-              <TextBlock x:Name="tb_MatterWillBeLockedMsg" Text="Matter will be locked if not Submitted within:" Width="135" TextWrapping="Wrap" Foreground="Red" VerticalAlignment="Center" FontWeight="Bold" Margin="10,0,0,0"/>
-              <TextBlock x:Name="tb_DaysUntilLocked" Text="x days" Foreground="Red" VerticalAlignment="Center" FontWeight="Bold" FontSize="24" Margin="4,0,0,0"/>
-            </WrapPanel>
-          </ScrollViewer>
-
-          <TextBlock Grid.Row="1" x:Name="tb_NoMRA_Qs" Visibility="Collapsed"
-                     Text="There aren't any questions for this Matter Risk Assessment!"
-                     Foreground="Red" FontWeight="Bold" FontSize="20" HorizontalAlignment="Center" Margin="0,8"/>
-
-          <Grid Grid.Row="2" x:Name="grid_MRA" MinHeight="0">
+          <Grid MinHeight="0">
             <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition MinWidth="240" MaxWidth="800" Width="540" />
-              <ColumnDefinition Width="6" />
-              <ColumnDefinition Width="*" MinWidth="260" />
-            </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center">
-              <Label Content="All Questions for:" Foreground="Gray" FontWeight="Bold"/>
-              <Label x:Name="lbl_MRA_Name" Content="Name of MRA" />
-              <Label x:Name="lbl_MRA_ID" Content="mraID" VerticalAlignment="Center" Visibility="Collapsed"/>
-              <Label x:Name="lbl_MRA_TemplateID" Content="TemplateID" VerticalAlignment="Center" Visibility="Collapsed"/>
-              <Label x:Name="lbl_ScoreTrigger_Medium" Visibility="Collapsed" />
-              <Label x:Name="lbl_ScoreTrigger_High" Visibility="Collapsed" />
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+              <ToggleButton x:Name="btnNew" Margin="0,4">
+                <StackPanel Orientation="Horizontal">
+                  <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\plus.png"/>
+                  <TextBlock Margin="3,4" Text="New..." TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+              </ToggleButton>
+
+              <Popup x:Name="popTemplates"
+                     PlacementTarget="{Binding ElementName=btnNew}"
+                     Placement="Bottom"
+                     StaysOpen="False"
+                     AllowsTransparency="True"
+                     PopupAnimation="Fade">
+                <Border BorderBrush="#FF616110" BorderThickness="1" CornerRadius="6"
+                        Background="#FFF4F4BF" Padding="10">
+                  <StackPanel MinWidth="260">
+                    <TextBlock Text="Add from template" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                      <ItemsControl x:Name="icTemplates">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Button Tag="{Binding}" Margin="0,0,0,6" HorizontalAlignment="Stretch">
+                              <StackPanel Orientation="Vertical">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                  <TextBlock FontSize="11" Foreground="#666" Text="{Binding Type}" />
+                                  <TextBlock FontSize="11" Foreground="#666" Text=" • Validity: "/>
+                                  <TextBlock FontSize="11" Foreground="#666" Text="{Binding ValidityDays}"/>
+                                  <TextBlock FontSize="11" Foreground="#666" Text=" days"/>
+                                </StackPanel>
+                              </StackPanel>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <Separator Margin="0,8,0,8"/>
+                    <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Right" Width="80"/>
+                  </StackPanel>
+                </Border>
+              </Popup>
+
+              <Border CornerRadius="8" BorderThickness="1" BorderBrush="DarkGray" Margin="20,0,0,0" Padding="4">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="With selected:" TextWrapping="Wrap" Width="48" VerticalAlignment="Center" Margin="4,0,0,0"/>
+
+                  <Button x:Name="btn_Edit_MRAFR" Margin="6,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Edit1.png"/>
+                      <TextBlock Margin="4" Text="Edit" Width="26" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button x:Name="btn_View_MRAFR" Margin="6,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\View.png"/>
+                      <TextBlock Margin="4" Text="View" Width="26" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button x:Name="btn_CopySelected_MRAFR" Margin="6,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Copy(small).png"/>
+                      <TextBlock Margin="4" Text="Duplicate" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button x:Name="btn_HOD_Approval_MRA" Margin="12,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
+                      <TextBlock Margin="4" Text="Approve MRA (HOD)"
+                                 ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter"
+                                 TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button x:Name="btn_DeleteSelected_MRAFR" Background="#FFFFA7A7" Margin="24,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\trash.png"/>
+                      <TextBlock Margin="4" Text="Delete" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button x:Name="btn_RegenerateEmailForFile" IsEnabled="False" Margin="24,0,2,0">
+                    <StackPanel Orientation="Horizontal">
+                      <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Other Resources\Save(floppy).png" />
+                      <TextBlock Text="Re-save email into case" TextWrapping="Wrap" TextAlignment="Center" Margin="4"
+                                 ToolTip="Copies of the emails should be saved into the matter case automatically, however, you can click this to re-generate the email (note: no email is actually sent here, just a copy of it saved to the case)"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Border>
+
+              <StackPanel Orientation="Vertical" Margin="50,0,0,0" Visibility="Collapsed">
+                <TextBlock Text="Group By:" />
+                <ComboBox x:Name="cbo_GroupMRAFR" />
+              </StackPanel>
             </StackPanel>
 
-            <DataGrid x:Name="dg_MRA" Grid.Row="1" Grid.Column="0"
-                      AlternatingRowBackground="#FFAEDEB9"
-                      SelectionMode="Single"
-                      SelectionUnit="FullRow"
-                      AutoGenerateColumns="False"
-                      IsTextSearchEnabled="True"
-                      Margin="0,0,6,2"
-                      IsSynchronizedWithCurrentItem="True"
-                      CanUserResizeRows="False"
-                      HeadersVisibility="Column"
-                      RowDetailsVisibilityMode="Collapsed"
-                      VirtualizingPanel.IsVirtualizing="False"
-                      EnableRowVirtualization="False"
-                      EnableColumnVirtualization="False"
-                      MinHeight="0"
-                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                      ScrollViewer.CanContentScroll="True"
-                      BorderBrush="Gray" Background="#FFF0F0F0">
+            <StackPanel Grid.Row="1" Orientation="Vertical" Visibility="Collapsed">
+              <Label x:Name="lbl_MRAFR_ID" Content="-ID-" Foreground="Gray" HorizontalContentAlignment="Right"/>
+              <Label x:Name="lbl_MRAFR_Name" Content="-Name-" Foreground="Gray" HorizontalContentAlignment="Right"/>
+            </StackPanel>
 
-              <DataGrid.Resources>
-                <Style TargetType="{x:Type DataGridRow}">
-                  <Style.Resources>
-                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
-                  </Style.Resources>
-                </Style>
-
-                <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}">
-                  <Setter Property="Margin" Value="0,2,0,4"/>
-                  <Setter Property="Template">
-                    <Setter.Value>
-                      <ControlTemplate TargetType="{x:Type GroupItem}">
-                        <Expander x:Name="exp" IsExpanded="True"
-                                  Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
-                                  Foreground="Black" Padding="0,2,0,0">
-                          <Expander.Header>
-                            <DockPanel>
-                              <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
-                              <TextBlock Text=" (" FontWeight="Bold" />
-                              <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
-                              <TextBlock Text=")" FontWeight="Bold" />
-                            </DockPanel>
-                          </Expander.Header>
-                          <ItemsPresenter />
-                        </Expander>
-                      </ControlTemplate>
-                    </Setter.Value>
-                  </Setter>
-                </Style>
-
-                <Style x:Key="DGTextBlockPadded" TargetType="TextBlock">
-                  <Setter Property="Margin" Value="6,0,6,0"/>
-                  <Setter Property="VerticalAlignment" Value="Center"/>
-                </Style>
-
-                <Style x:Key="DGTextBoxPadded" TargetType="TextBox">
-                  <Setter Property="Padding" Value="4,2,4,2"/>
-                  <Setter Property="VerticalContentAlignment" Value="Center"/>
-                </Style>
-
-                <Style x:Key="DGCellPadded" TargetType="DataGridCell">
-                  <Setter Property="Padding" Value="2,0"/>
-                </Style>
-
-                <Style x:Key="DGRightCell" TargetType="DataGridCell" BasedOn="{StaticResource DGCellPadded}">
-                  <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                </Style>
-
-                <Style x:Key="DGRightTextBlock" TargetType="TextBlock" BasedOn="{StaticResource DGTextBlockPadded}">
-                  <Setter Property="TextAlignment" Value="Right"/>
-                </Style>
-
-                <Style x:Key="RightAlignedCell" TargetType="DataGridCell">
-                  <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                  <Setter Property="VerticalContentAlignment" Value="Center"/>
-                  <Setter Property="FontWeight" Value="SemiBold" />
-                  <Setter Property="Padding" Value="6,2,6,2"/>
-                </Style>
-
-                <Style x:Key="Center" TargetType="DataGridCell">
-                  <Setter Property="HorizontalAlignment" Value="Center"/>
-                </Style>
-                <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
-                  <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                  <Setter Property="BorderBrush" Value="Black"/>
-                  <Setter Property="BorderThickness" Value="1"/>
-                  <Setter Property="Width" Value="Auto"/>
-                  <Setter Property="FontWeight" Value="Bold"/>
-                </Style>
-                <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
-                  <Setter Property="HorizontalContentAlignment" Value="Center" />
-                </Style>
-              </DataGrid.Resources>
-
-              <DataGrid.GroupStyle>
-                <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}">
-                  <GroupStyle.Panel>
-                    <ItemsPanelTemplate>
-                      <DataGridRowsPresenter />
-                    </ItemsPanelTemplate>
-                  </GroupStyle.Panel>
-                </GroupStyle>
-              </DataGrid.GroupStyle>
-
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100" Binding="{Binding QuestionGroup}" Visibility="Collapsed"/>
-                <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40"
-                                    Binding="{Binding QuestionOrder}"
-                                    CellStyle="{StaticResource DGRightCell}"
-                                    ElementStyle="{StaticResource DGRightTextBlock}"/>
-                <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="400"
-                                        HeaderStyle="{StaticResource CenterCol}"
-                                        CellStyle="{StaticResource DGCellPadded}">
-                  <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding QuestionText}"
-                                 TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center"
-                                 Padding="2,0"/>
-                    </DataTemplate>
-                  </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100" Binding="{Binding QuestionID}" Visibility="Collapsed"/>
-                <DataGridTemplateColumn Header="Your Answer" IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200"
-                                        CellStyle="{StaticResource DGCellPadded}">
-                  <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding SelectedAnswerText}" TextAlignment="Left"
-                                 VerticalAlignment="Center" TextWrapping="Wrap" Padding="2,0"/>
-                    </DataTemplate>
-                  </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50"
-                                    Binding="{Binding SelectedAnswerScore}"
-                                    HeaderStyle="{StaticResource TotalColumn}"
-                                    CellStyle="{StaticResource DGRightCell}"
-                                    ElementStyle="{StaticResource DGRightTextBlock}"
-                                    Visibility="Collapsed"/>
-                <DataGridTextColumn Header="SelectedAnswerID" IsReadOnly="True" Width="100"
-                                    Binding="{Binding SelectedAnswerID}"
-                                    CellStyle="{StaticResource DGCellPadded}"
-                                    ElementStyle="{StaticResource DGRightTextBlock}"
-                                    Visibility="Collapsed"/>
-                <DataGridTemplateColumn Header="Email Comment" IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600"
-                                        CellStyle="{StaticResource DGCellPadded}"
-                                        Visibility="Collapsed">
-                  <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextAlignment="Left"
-                                 VerticalAlignment="Center" TextWrapping="Wrap" Padding="2,0"/>
-                    </DataTemplate>
-                  </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Notes" IsReadOnly="True" Width="300" Visibility="Visible">
-                  <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding UserComment}" TextAlignment="Left"
-                                 TextWrapping="Wrap" Padding="2,0"/>
-                    </DataTemplate>
-                  </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-              </DataGrid.Columns>
-            </DataGrid>
-
-            <GridSplitter HorizontalAlignment="Center"
-                          VerticalAlignment="Stretch"
-                          Grid.Column="1"
-                          Grid.RowSpan="2"
-                          Width="6" Background="Silver"
-                          ShowsPreview="True">
-              <GridSplitter.Template>
-                <ControlTemplate TargetType="{x:Type GridSplitter}">
-                  <Grid>
-                    <Button Content="⁞" FontWeight="Bold"/>
-                    <Rectangle Fill="#00FFFFFF" />
-                  </Grid>
-                </ControlTemplate>
-              </GridSplitter.Template>
-            </GridSplitter>
-
-            <Grid Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" Margin="4,0,0,0" MinHeight="0">
+            <Grid Grid.Row="2" MinHeight="0">
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
               </Grid.RowDefinitions>
 
-              <Label Content="Selected Question" Foreground="Gray" Grid.Row="0" HorizontalContentAlignment="Center" FontWeight="Bold"/>
+              <TextBlock Grid.Row="0" x:Name="tb_NoMRAFR"
+                         Text="No xxx exist on this matter - please click the '+ New...' button to create new"
+                         TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20"
+                         Visibility="Collapsed"/>
 
-              <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MinHeight="0">
-                <StackPanel x:Name="grp_MRA_SelectedQuestionArea" Orientation="Vertical"
-                            Margin="4,0"
-                            DataContext="{Binding ElementName=dg_MRA, Path=Items.CurrentItem}">
+              <DataGrid Grid.Row="1"
+                        x:Name="dg_MRAFR"
+                        Margin="4,0"
+                        MinHeight="0"
+                        SelectedValuePath="mraID" IsSynchronizedWithCurrentItem="True"
+                        AlternatingRowBackground="#FFAEDEB9"
+                        SelectionMode="Single"
+                        AutoGenerateColumns="False"
+                        IsTextSearchEnabled="True"
+                        CanUserResizeRows="False" HeadersVisibility="Column"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.CanContentScroll="True"
+                        BorderBrush="Gray" Background="#FFF0F0F0">
 
-                  <Border CornerRadius="16" Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="4,0">
-                    <StackPanel Orientation="Vertical">
-                      <TextBlock Text="{Binding QuestionText}"
-                                 VerticalAlignment="Center" TextWrapping="Wrap"
-                                 FontSize="22" />
-                    </StackPanel>
-                  </Border>
+                <DataGrid.Resources>
+                  <Style x:Key="CenteredTextStyle" TargetType="TextBlock">
+                    <Setter Property="TextAlignment" Value="Center" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                  </Style>
 
-                  <Border CornerRadius="16" Margin="4,6,4,0" Padding="8"
-                          Background="#FFF4F4BF" BorderBrush="#FF616110" BorderThickness="1">
-                    <StackPanel>
-                      <TextBlock Text="Your Answer:" Foreground="#FF6150BE" FontWeight="Bold" VerticalAlignment="Center" TextAlignment="Left" Margin="0,4"/>
-                      <ComboBox x:Name="cbo_MRA_SelectedComboAnswer"
-                                Height="23" VerticalAlignment="Center" Visibility="Visible"
-                                ItemsSource="{Binding AvailableAnswers}"
-                                DisplayMemberPath="AnswerText"/>
+                  <Style x:Key="StatusCellStyle" TargetType="DataGridCell">
+                    <Setter Property="Background" Value="{x:Null}" />
+                    <Setter Property="Foreground" Value="Black" />
+                    <Setter Property="FontWeight" Value="Normal" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Status}" Value="Draft">
+                        <Setter Property="Background" Value="Yellow" />
+                        <Setter Property="Foreground" Value="Red" />
+                        <Setter Property="FontWeight" Value="Bold" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.Resources>
 
-                      <StackPanel Orientation="Horizontal" Visibility="Collapsed">
-                        <TextBlock Text="AnswerID:" />
-                        <TextBlock Text="{Binding SelectedAnswerID}" Margin="2,0,0,0"/>
-                        <TextBlock Text="Score:" Margin="40,0,0,0"/>
-                        <TextBlock Text="{Binding SelectedAnswerScore}" Margin="2,0,0,0"/>
-                        <Label Content="Email Comment:" />
-                        <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextWrapping="Wrap"/>
-                      </StackPanel>
-
-                      <Grid Margin="0,6,0,0">
-                        <TextBox x:Name="tb_MRA_QNotes" Text="{Binding UserComment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 VerticalContentAlignment="Center"
-                                 TextWrapping="Wrap" MinHeight="26" MaxHeight="104"
-                                 VerticalScrollBarVisibility="Auto" />
-                        <TextBlock IsHitTestVisible="False" Text="Enter optional notes here..."
-                                   VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,6,0,0" Foreground="DarkGray">
-                          <TextBlock.Style>
-                            <Style TargetType="{x:Type TextBlock}">
-                              <Setter Property="Visibility" Value="Collapsed"/>
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding Text, ElementName=tb_MRA_QNotes}" Value="">
-                                  <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </TextBlock.Style>
-                        </TextBlock>
-                      </Grid>
-
-                      <Button x:Name="btn_MRA_SaveAnswer"
-                              HorizontalAlignment="Center"
-                              Height="30" Padding="6" Margin="4,4,0,0">
-                        <TextBlock>
-                          <TextBlock.Style>
-                            <Style TargetType="{x:Type TextBlock}">
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=chk_MRA_AutoSelectNext}" Value="False">
-                                  <Setter Property="Text" Value="Save" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=chk_MRA_AutoSelectNext}" Value="True">
-                                  <Setter Property="Text" Value="Save and next..." />
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </TextBlock.Style>
-                        </TextBlock>
-                      </Button>
-
-                      <CheckBox x:Name="chk_MRA_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center"
-                                IsChecked="True" FlowDirection="RightToLeft"
-                                HorizontalAlignment="Center" Margin="0,4,0,0">
-                        <CheckBox.Resources>
-                          <Style TargetType="{x:Type Path}">
-                            <Setter Property="FlowDirection" Value="LeftToRight" />
-                          </Style>
-                        </CheckBox.Resources>
-                      </CheckBox>
-                    </StackPanel>
-                  </Border>
-
-                  <StackPanel Orientation="Horizontal" Margin="0,20,0,0" Visibility="Collapsed">
-                    <Label Content="Time Entered:" Foreground="Gray" />
-                    <Label x:Name="lbl_TimeEntered" Foreground="Gray" Content="01/01/2024 12:20:350"/>
-                  </StackPanel>
-                </StackPanel>
-              </ScrollViewer>
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="ID" IsReadOnly="True" Width="Auto" Binding="{Binding mraID}"/>
+                  <DataGridTextColumn Header="Name" IsReadOnly="True" Width="Auto" Binding="{Binding Name}"/>
+                  <DataGridTextColumn Header="Status" IsReadOnly="True" Width="Auto"
+                                      Binding="{Binding Status}" CellStyle="{StaticResource StatusCellStyle}" />
+                  <DataGridTextColumn Header="Expiry Date" IsReadOnly="True" Width="90"
+                                      Binding="{Binding ExpiryDate, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-Not_Set-'}"/>
+                  <DataGridTextColumn Header="Risk Rating" IsReadOnly="True" Width="70"
+                                      Binding="{Binding RiskRating}" ElementStyle="{StaticResource CenteredTextStyle}" />
+                  <DataGridTextColumn Header="HOD Approved?" IsReadOnly="True" Width="100"
+                                      Binding="{Binding AppByHOD}" ElementStyle="{StaticResource CenteredTextStyle}" />
+                  <DataGridTextColumn Header="Q Count" IsReadOnly="True" Width="Auto"
+                                      Binding="{Binding QCount}" ElementStyle="{StaticResource CenteredTextStyle}" />
+                  <DataGridTextColumn Header="Qs O/S" IsReadOnly="True" Width="Auto"
+                                      Binding="{Binding QOutstanding}" ElementStyle="{StaticResource CenteredTextStyle}" />
+                  <DataGridTextColumn Header="FR Reviewer" IsReadOnly="True" Width="Auto" Binding="{Binding FRReviewer}" />
+                  <DataGridTextColumn Header="Submitted By" IsReadOnly="True" Width="Auto" Binding="{Binding SubbedBy}" />
+                  <DataGridTextColumn Header="Submitted On" IsReadOnly="True" Width="Auto"
+                                      Binding="{Binding SubbedOn, StringFormat={}{0:dd/MM/yyyy}, TargetNullValue='-'}" />
+                  <DataGridTextColumn Header="Score Trig Med" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerMed}" Visibility="Collapsed"/>
+                  <DataGridTextColumn Header="Score Trig High" IsReadOnly="True" Width="Auto" Binding="{Binding ScoreTriggerHigh}" Visibility="Collapsed"/>
+                  <DataGridTextColumn Header="TemplateID" IsReadOnly="True" Width="Auto" Binding="{Binding TemplateID}" Visibility="Collapsed"/>
+                  <DataGridTextColumn Header="Score" IsReadOnly="True" Width="Auto" Binding="{Binding Score}" Visibility="Collapsed"/>
+                  <DataGridTextColumn Header="Type" IsReadOnly="True" Width="Auto" Binding="{Binding Type}" Visibility="Collapsed"/>
+                </DataGrid.Columns>
+              </DataGrid>
             </Grid>
           </Grid>
-        </Grid>
-      </TabItem>
+        </GroupBox>
 
-      <!-- =========================
-           TAB: FILE REVIEW
-           ========================= -->
-      <TabItem Header="File Review" x:Name="ti_FR">
-        <Grid Margin="4" MinHeight="0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-          </Grid.RowDefinitions>
 
-          <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
-            <StackPanel Orientation="Vertical">
-              <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
-                <TextBlock Text="Name (ID):" Foreground="#FF6150BE" VerticalAlignment="Center" />
-                <TextBlock x:Name="tb_FR_Name" Text="NAME" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
-                           MaxWidth="270" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                <TextBlock Text="(" Margin="4,0,0,0" />
-                <TextBlock x:Name="tb_FR_ID" Text="ID" VerticalAlignment="Center"/>
-                <TextBlock Text=")" />
-              </StackPanel>
+        <!-- Bottom section -->
+        <GroupBox Grid.Row="2"
+                  Header="Corrective Actions raised from File Review(s)"
+                  Foreground="#FF6150BE" BorderBrush="DarkGray" Margin="0,4,0,0" MinHeight="0">
+          <Grid MinHeight="0">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-              <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                <TextBlock Text="Submitted By (on):" TextAlignment="Center" Foreground="#FF6150BE" />
-                <TextBlock x:Name="tb_FR_SubmittedBy" Text="" TextAlignment="Center" Margin="4,0"/>
-                <TextBlock Text="(" Margin="4,0,0,0" />
-                <TextBlock x:Name="tb_FR_SubmittedOn" Text="dd/mm/yyyy" TextAlignment="Center" />
-                <TextBlock Text=")" />
-              </StackPanel>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+              <TextBlock Text="Current Selection:" Width="60" Foreground="Gray" TextAlignment="Right" VerticalAlignment="Center" TextWrapping="Wrap"/>
+              <TextBlock x:Name="tb_Current_CA" Foreground="Gray" VerticalAlignment="Center" Text="x" Margin="4,0,0,0"/>
+              <TextBlock x:Name="tb_Current_CA_Complete" Foreground="Black" VerticalAlignment="Center" Text="0" Visibility="Collapsed"/>
+
+              <Button x:Name="btn_Mark_CA_Complete" Margin="30,0,0,0">
+                <TextBlock Text="Toggle 'Complete'" TextWrapping="Wrap" Width="60" TextAlignment="Center"
+                            ToolTip="If item is currently incomplete, clicking this will mark it as 'complete'. If item is currently 'complete', clicking this will mark it as 'incomplete' "/>
+              </Button>
+
+              <Button x:Name="btn_View_CA_onFR" Margin="30,0,0,0">
+                <TextBlock Text="View on File Review" TextWrapping="Wrap" Width="60" TextAlignment="Center"/>
+              </Button>
+
+              <Border CornerRadius="20" Padding="2,4" BorderThickness="1" BorderBrush="DarkGray" Margin="60,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <Label Content="View:" Foreground="Gray" VerticalAlignment="Center" />
+                  <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="opt_CA_ViewNotComplete" Content="Not Completed Only" Style="{StaticResource SegmentedChip}"
+                                  IsChecked="True" Margin="2,0,2,0" VerticalAlignment="Center"/>
+                    <RadioButton x:Name="opt_CA_ViewComplete" Content="Completed Only" Style="{StaticResource SegmentedChip}"
+                                  Margin="2,0,2,0" VerticalAlignment="Center"/>
+                    <RadioButton x:Name="opt_CA_ViewAll" Content="All" Style="{StaticResource SegmentedChip}"
+                                  Margin="2,0,2,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Button x:Name="btn_UpdateReviewerWithActionTaken" Width="110" Margin="86,0,0,0"
+                      ToolTip="Clicking this button will email the File Reviewer with a list of all Corrective Actions Taken on this matter, and requests them to click the 'Complete' checkbox">
+                <TextBlock Text="Notify Reviewer Actions Complete" TextWrapping="Wrap" TextAlignment="Center"/>
+              </Button>
             </StackPanel>
 
-            <Label BorderThickness="1" Padding="4,0" Margin="20,0,0,0">
-              <Label.Resources>
-                <Style TargetType="Label">
-                  <Setter Property="BorderBrush" Value="#FF8F0707" />
+            <TextBlock Grid.Row="1" x:Name="tb_NoCAs" Text="No Corrective Actions exist on this matter"
+                        TextWrapping="Wrap" Foreground="Red" FontWeight="Bold" FontSize="20" Visibility="Collapsed"/>
+
+            <Grid Grid.Row="2" MinHeight="0">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+
+              <TextBlock Grid.Row="0" x:Name="tb_CATaken" Text="TEST" TextWrapping="Wrap"
+                          Foreground="Gray" Visibility="Collapsed"/>
+
+              <DataGrid Grid.Row="1"
+                        x:Name="dgCA_Overview"
+                        Margin="4,0"
+                        MinHeight="0"
+                        AlternatingRowBackground="#FFAEDEB9" SelectionMode="Single" AutoGenerateColumns="False" IsTextSearchEnabled="True"
+                        CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.CanContentScroll="True"
+                        BorderBrush="Gray" Background="#FFF0F0F0">  
+
+                <DataGrid.Resources>
+                  <Style x:Key="RightAligned" TargetType="DataGridCell">
+                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                  </Style>
+                  <Style x:Key="Center" TargetType="DataGridCell">
+                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                  </Style>
+                  <Style x:Key="HiddenCol" TargetType="DataGridColumnHeader">
+                    <Setter Property="FontStyle" Value="Italic" />
+                  </Style>
+                  <Style x:Key="EditableColumn" TargetType="{x:Type DataGridColumnHeader}">
+                    <Setter Property="Background" Value="#FFD3C9FD"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="BorderBrush" Value="#2E1A47"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="Padding" Value="2,0,2,0" />
+                    <Setter Property="ToolTip" Value="this should be a note from the Matter Fee Earner stating the Action they have Taken for each item listed" />
+                  </Style>
+                  <Style x:Key="EditableColumn2" TargetType="{x:Type DataGridColumnHeader}">
+                    <Setter Property="Background" Value="#FFD3C9FD"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="BorderBrush" Value="#2E1A47"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="Padding" Value="4,0,4,0" />
+                    <Setter Property="ToolTip" Value="this can only be ticked-off by the File Reviewer" />
+                  </Style>
+                </DataGrid.Resources>
+
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Header="ID" IsReadOnly="True" Width="Auto" Visibility="Collapsed">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding ID}" VerticalAlignment="Center" TextAlignment="Right" Padding="0,0,4,0" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="250">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding CA_FRQText}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn Header="By (Reviewer)" IsReadOnly="True" Width="Auto" Visibility="Collapsed">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding CA_Reviewer}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTemplateColumn Header="Action Needed" IsReadOnly="True" Width="260">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding CA_Needed}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTextColumn Header="Action Taken" Width="280" IsReadOnly="False"
+                                      Binding="{Binding CA_Taken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      HeaderStyle="{StaticResource EditableColumn}">
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="TextWrapping" Value="Wrap"/>
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn.EditingElementStyle>
+                      <Style TargetType="TextBox">
+                        <Setter Property="TextWrapping" Value="Wrap"/>
+                        <Setter Property="AcceptsReturn" Value="True"/>
+                        <Setter Property="MaxLength" Value="300" />
+                      </Style>
+                    </DataGridTextColumn.EditingElementStyle>
+                  </DataGridTextColumn>
+
+                  <DataGridCheckBoxColumn Header="Complete" Width="Auto"
+                                          Binding="{Binding CA_Complete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          HeaderStyle="{StaticResource EditableColumn2}">
+                    <DataGridCheckBoxColumn.ElementStyle>
+                      <Style TargetType="CheckBox">
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="HorizontalAlignment" Value="Center" />
+                      </Style>
+                    </DataGridCheckBoxColumn.ElementStyle>
+                  </DataGridCheckBoxColumn>
+
+                  <DataGridTemplateColumn Header="Due By" IsReadOnly="True" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding CA_DueBy, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center" Padding="2,0,2,0"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+
+                  <DataGridTextColumn Header="FR ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_ID}" HeaderStyle="{StaticResource HiddenCol}" />
+                  <DataGridTextColumn Header="FR Reviewer ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_U_ID}" HeaderStyle="{StaticResource HiddenCol}" />
+                  <DataGridTextColumn Header="Q Num ID" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_QNum}" HeaderStyle="{StaticResource HiddenCol}" />
+                  <DataGridTextColumn Header="FR Name" IsReadOnly="True" Visibility="Hidden" Binding="{Binding FR_Name}" HeaderStyle="{StaticResource HiddenCol}" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </Grid>
+          </Grid>
+        </GroupBox>
+
+      </Grid>
+    </Border>
+    
+
+    <!-- =========================
+     PAGE: MRA
+     ========================= -->
+    <Border Grid.Column="0" x:Name="ti_MRA" Visibility="Collapsed"
+            CornerRadius="8" Padding="4" BorderBrush="DarkGray" BorderThickness="1" Margin="0,0,4,0" MinHeight="0">
+
+      <Grid Margin="2" MinHeight="0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="23"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="- Matter Risk Assessment -" TextAlignment="Center" />
+        <Border Grid.Row="1" x:Name="bdr_MRA_UpdateMessage" Visibility="Collapsed"
+                CornerRadius="8" Padding="4" Background="#FFF4F4BF" BorderBrush="DarkGoldenrod" BorderThickness="1" >
+          <TextBlock Text="Note: This MRA template has been updated since you last edited it - so questions and/or answers may have been amended.  Please re-check all answers." />
+        </Border>
+
+        <!-- top toolbar / status -->
+        <ScrollViewer Grid.Row="2" Margin="0,4,0,4" VerticalScrollBarVisibility="Auto" >
+          <WrapPanel >
+            <Border CornerRadius="8" Padding="4" BorderThickness="1">
+              <Border.Resources>
+                <Style TargetType="Border">
+                  <Setter Property="BorderBrush" Value="DarkRed" />
                   <Setter Property="Background" Value="Red" />
-                  <Setter Property="Foreground" Value="White" />
+
                   <Style.Triggers>
-                    <DataTrigger Binding="{Binding Text, ElementName=tb_FR_Status}" Value="Complete">
-                      <Setter Property="BorderBrush" Value="#FF2CC000"/>
-                      <Setter Property="Background" Value="#FF8BF08B" />
+                    <DataTrigger Binding="{Binding Text, ElementName=tb_MRA_Status}" Value="Complete" >
+                      <Setter Property="BorderBrush" Value="DarkGreen"/>
+                      <Setter Property="Background" Value="LightGreen" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+
+                <Style x:Key="tb_TextColour" TargetType="TextBlock">
+                  <Setter Property="Foreground" Value="White"/>
+
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Text, ElementName=tb_MRA_Status}" Value="Complete">
                       <Setter Property="Foreground" Value="Black" />
                     </DataTrigger>
                   </Style.Triggers>
+
                 </Style>
-              </Label.Resources>
-
+              </Border.Resources>
+              
               <StackPanel Orientation="Vertical">
-                <TextBlock Text="Status:" TextAlignment="Center" />
-                <TextBlock x:Name="tb_FR_Status" Text="???" TextAlignment="Center" Margin="4,0"/>
+                <TextBlock Text="Status:" Style="{StaticResource tb_TextColour}" TextAlignment="Center"/>
+                <TextBlock x:Name="tb_MRA_Status" Text="Draft" TextAlignment="Center" Style="{StaticResource tb_TextColour}"/>
               </StackPanel>
-            </Label>
+            </Border>
 
-            <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="20,0,4,0" VerticalContentAlignment="Center" Visibility="Visible">
-              <StackPanel Orientation="Vertical">
+            <Border x:Name="stk_RiskInfo" BorderBrush="Black" BorderThickness="1" CornerRadius="8" Padding="4" Margin="10,0,0,0" >
+              <StackPanel Orientation="Vertical" Visibility="Visible">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Total Questions:" TextAlignment="Right" Width="86" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalQs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+                  <TextBlock Text="Current Score: " Foreground="#FF6150BE" />
+                  <TextBlock x:Name="tb_MRA_Score" Text="-1" Foreground="#FF6150BE"  />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Total Answered:" TextAlignment="Right" Width="86" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalAnswered_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
-                </StackPanel>
-              </StackPanel>
-            </Label>
-
-            <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="4,0,0,0" VerticalContentAlignment="Center" Visibility="Visible">
-              <StackPanel Orientation="Vertical">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Total Corrective Actions:" TextAlignment="Right" Width="130" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Total Outstanding:" TextAlignment="Right" Width="130" Foreground="#FF6150BE" />
-                  <TextBlock x:Name="tb_TotalOSCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+                  <TextBlock Text="Risk Category: " Foreground="#FF6150BE" VerticalAlignment="Center" />
+                  <TextBlock x:Name="tb_MRA_RiskCategory" Text="L/M/H" Foreground="#FF6150BE" VerticalAlignment="Center" />
+                  <TextBlock x:Name="tb_MRA_RiskCategoryID" Text="1/2/3" Foreground="#FF6150BE" VerticalAlignment="Center" Visibility="Collapsed"/>
                 </StackPanel>
               </StackPanel>
-            </Label>
+            </Border>
 
-            <Label x:Name="lbl_TimeEnteredFR" Foreground="Gray" Visibility="Collapsed"/>
-            <ToggleButton x:Name="tog_TEST_CorrActions" Content="Show/Hide Corrective Actions Area" MaxWidth="204" Visibility="Collapsed"/>
+            <Border BorderBrush="Black" BorderThickness="1" CornerRadius="8" Padding="4" Margin="10,0,0,0" >
+              <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="Total Questions:" Width="90" Foreground="#FF6150BE" />
+                  <TextBlock x:Name="tb_TotalQs" Foreground="#FF6150BE" Text="0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="Total Answered:" Width="90" Foreground="#FF6150BE" />
+                  <TextBlock x:Name="tb_TotalAnswered" Foreground="#FF6150BE" Text="0"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
 
-            <Button x:Name="btn_FR_BackToOverview" Width="70" Margin="20,0,0,0">
+            <Button x:Name="btn_MRA_SaveAsDraft" Content="Save as Draft" ToolTip="Click here to save current progress in 'draft' state, and return to the 'Overview' page" Height="36" Width="90" Margin="20,0,0,0" />
+            <Button x:Name="btn_MRA_Submit" ToolTip="Click here to mark this Matter Risk Assessment as 'Complete' and return to the 'Overview' page" Height="36" Width="90" Margin="10,0,0,0">
+              <TextBlock Text="Save as Final (Submit)" TextWrapping="Wrap" TextAlignment="Center"/>
+            </Button>
+            <Button x:Name="btn_MRA_BackToOverview" Width="62" Height="36" ToolTip="Click here to return to the 'Overview' page" Margin="10,0,0,0">
               <TextBlock Text="Back to Overview" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
 
-            <Button x:Name="btn_FR_Submit" Margin="20,0,0,0" Width="100">
-              <Button.Content>
-                <TextBlock Text="Save and Send to Fee Earner" TextWrapping="Wrap" TextAlignment="Center" />
-              </Button.Content>
-              <Button.Style>
-                <Style TargetType="Button">
-                  <Setter Property="Visibility" Value="Hidden"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsChecked, ElementName=opt_EditModeFR}" Value="True">
-                      <Setter Property="Visibility" Value="Visible" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </Button.Style>
+            <Button x:Name="btn_HOD_Approval_MRA1" Visibility="Visible" Height="36" Margin="10,0,0,0">
+              <StackPanel Orientation="Horizontal">
+                <Image MaxHeight="20" Source="\\tw-p4wapp01\Partner\Managing Partner\Icons\Approve2.png"/>
+                <TextBlock Margin="2,0,0,0" Text="Approve MRA (HOD)" ToolTip="This button only appears for Heads of Department, and should click here if you approve the continuation of High Risk matter" TextWrapping="Wrap" Width="66" TextAlignment="Center"/>
+              </StackPanel>
             </Button>
 
-            <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="10,0,0,0">
-              <RadioButton x:Name="opt_EditModeFR" Content="Editing" GroupName="FR_MODE" IsEnabled="False" />
-              <RadioButton x:Name="opt_ViewModeFR" Content="Viewing" GroupName="FR_MODE" IsEnabled="False" />
-            </StackPanel>
+            <TextBlock x:Name="tb_MatterWillBeLockedMsg" Text="Matter will be locked if not Submitted within:" Width="135" TextWrapping="Wrap" Foreground="Red" VerticalAlignment="Center" FontWeight="Bold" Margin="10,0,0,0"/>
+            <TextBlock x:Name="tb_DaysUntilLocked" Text="x days" Foreground="Red" VerticalAlignment="Center" FontWeight="Bold" FontSize="24" Margin="4,0,0,0"/>
+          </WrapPanel>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="2" x:Name="tb_NoMRA_Qs" Visibility="Collapsed"
+                    Text="There aren't any questions for this Matter Risk Assessment!"
+                    Foreground="Red" FontWeight="Bold" FontSize="20" HorizontalAlignment="Center" Margin="0,8"/>
+
+        <Grid Grid.Row="3" x:Name="grid_MRA" MinHeight="0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition MinWidth="240" MaxWidth="800" Width="540" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition Width="*" MinWidth="260" />
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center">
+            <Label Content="All Questions for:" Foreground="Gray" FontWeight="Bold"/>
+            <Label x:Name="lbl_MRA_Name" Content="Name of MRA" />
+            <Label x:Name="lbl_MRA_ID" Content="mraID" VerticalAlignment="Center" Visibility="Collapsed"/>
+            <Label x:Name="lbl_MRA_TemplateID" Content="TemplateID" VerticalAlignment="Center" Visibility="Collapsed"/>
+            <Label x:Name="lbl_ScoreTrigger_Medium" Visibility="Collapsed" />
+            <Label x:Name="lbl_ScoreTrigger_High" Visibility="Collapsed" />
           </StackPanel>
 
-          <TextBlock Grid.Row="1" x:Name="tb_NoFR_Qs"
-                     Text="There aren't any questions for this File Review!"
-                     Foreground="Red" FontWeight="Bold" FontSize="20"
-                     TextAlignment="Center" Visibility="Collapsed" Margin="0,6"/>
-
-          <DataGrid Grid.Row="2"
-                    x:Name="dg_FR"
+          <DataGrid x:Name="dg_MRA" Grid.Row="1" Grid.Column="0"
+                    AlternatingRowBackground="#FFAEDEB9"
                     SelectionMode="Single"
+                    SelectionUnit="FullRow"
                     AutoGenerateColumns="False"
-                    CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column"
                     IsTextSearchEnabled="True"
+                    Margin="0,0,6,2"
+                    IsSynchronizedWithCurrentItem="True"
+                    CanUserResizeRows="False"
+                    HeadersVisibility="Column"
+                    RowDetailsVisibilityMode="Collapsed"
+                    VirtualizingPanel.IsVirtualizing="False"
+                    EnableRowVirtualization="False"
+                    EnableColumnVirtualization="False"
                     MinHeight="0"
                     ScrollViewer.VerticalScrollBarVisibility="Auto"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.CanContentScroll="True"
-                    Margin="2,0"
                     BorderBrush="Gray" Background="#FFF0F0F0">
-
-            <DataGrid.CellStyle>
-              <Style TargetType="{x:Type DataGridCell}">
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding fr_HasOSCA}" Value="Yes">
-                    <Setter Property="Background" Value="Coral" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </DataGrid.CellStyle>
 
             <DataGrid.Resources>
               <Style TargetType="{x:Type DataGridRow}">
@@ -1249,28 +871,6 @@
                   <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
                   <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
                 </Style.Resources>
-
-                <Style.Triggers>
-                  <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="FontWeight" Value="Bold" />
-                  </Trigger>
-                  <Trigger Property="IsSelected" Value="False">
-                    <Setter Property="FontWeight" Value="Normal" />
-                  </Trigger>
-                </Style.Triggers>
-              </Style>
-
-              <Style x:Key="RightAligned" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-              </Style>
-              <Style x:Key="Center" TargetType="DataGridCell">
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-              </Style>
-              <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
-                <Setter Property="HorizontalContentAlignment" Value="Center" />
-              </Style>
-              <Style x:Key="HiddenCol" TargetType="DataGridColumnHeader">
-                <Setter Property="FontStyle" Value="Italic" />
               </Style>
 
               <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}">
@@ -1279,7 +879,7 @@
                   <Setter.Value>
                     <ControlTemplate TargetType="{x:Type GroupItem}">
                       <Expander x:Name="exp" IsExpanded="True"
-                                Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,2"
+                                Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,4"
                                 Foreground="Black" Padding="0,2,0,0">
                         <Expander.Header>
                           <DockPanel>
@@ -1295,6 +895,49 @@
                   </Setter.Value>
                 </Setter>
               </Style>
+
+              <Style x:Key="DGTextBlockPadded" TargetType="TextBlock">
+                <Setter Property="Margin" Value="6,0,6,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+              </Style>
+
+              <Style x:Key="DGTextBoxPadded" TargetType="TextBox">
+                <Setter Property="Padding" Value="4,2,4,2"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+              </Style>
+
+              <Style x:Key="DGCellPadded" TargetType="DataGridCell">
+                <Setter Property="Padding" Value="2,0"/>
+              </Style>
+
+              <Style x:Key="DGRightCell" TargetType="DataGridCell" BasedOn="{StaticResource DGCellPadded}">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+              </Style>
+
+              <Style x:Key="DGRightTextBlock" TargetType="TextBlock" BasedOn="{StaticResource DGTextBlockPadded}">
+                <Setter Property="TextAlignment" Value="Right"/>
+              </Style>
+
+              <Style x:Key="RightAlignedCell" TargetType="DataGridCell">
+                <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Padding" Value="6,2,6,2"/>
+              </Style>
+
+              <Style x:Key="Center" TargetType="DataGridCell">
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+              </Style>
+              <Style x:Key="TotalColumn" TargetType="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                <Setter Property="BorderBrush" Value="Black"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+              </Style>
+              <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+              </Style>
             </DataGrid.Resources>
 
             <DataGrid.GroupStyle>
@@ -1308,237 +951,684 @@
             </DataGrid.GroupStyle>
 
             <DataGrid.Columns>
-              <DataGridTemplateColumn Header="Order" IsReadOnly="True" Width="40">
+              <DataGridTextColumn Header="QGroupName" IsReadOnly="True" Width="100" Binding="{Binding QuestionGroup}" Visibility="Collapsed"/>
+              <DataGridTextColumn Header="Order" IsReadOnly="True" Width="40"
+                                  Binding="{Binding QuestionOrder}"
+                                  CellStyle="{StaticResource DGRightCell}"
+                                  ElementStyle="{StaticResource DGRightTextBlock}"/>
+              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="400"
+                                      HeaderStyle="{StaticResource CenterCol}"
+                                      CellStyle="{StaticResource DGCellPadded}">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding DisplayOrder, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="2,0,2,0"/>
+                    <TextBlock Text="{Binding QuestionText}"
+                                TextAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Center"
+                                Padding="2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-
-              <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="630" HeaderStyle="{StaticResource CenterCol}">
+              <DataGridTextColumn Header="QuestionID" IsReadOnly="True" Width="100" Binding="{Binding QuestionID}" Visibility="Collapsed"/>
+              <DataGridTemplateColumn Header="Your Answer" IsReadOnly="True" Width="Auto" MinWidth="90" MaxWidth="200"
+                                      CellStyle="{StaticResource DGCellPadded}">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0"/>
+                    <TextBlock Text="{Binding SelectedAnswerText}" TextAlignment="Left"
+                                VerticalAlignment="Center" TextWrapping="Wrap" Padding="2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-
-              <DataGridTemplateColumn Header="Your Answer" IsReadOnly="True">
+              <DataGridTextColumn Header="Score " IsReadOnly="True" Width="50"
+                                  Binding="{Binding SelectedAnswerScore}"
+                                  HeaderStyle="{StaticResource TotalColumn}"
+                                  CellStyle="{StaticResource DGRightCell}"
+                                  ElementStyle="{StaticResource DGRightTextBlock}"
+                                  Visibility="Collapsed"/>
+              <DataGridTextColumn Header="SelectedAnswerID" IsReadOnly="True" Width="100"
+                                  Binding="{Binding SelectedAnswerID}"
+                                  CellStyle="{StaticResource DGCellPadded}"
+                                  ElementStyle="{StaticResource DGRightTextBlock}"
+                                  Visibility="Collapsed"/>
+              <DataGridTemplateColumn Header="Email Comment" IsReadOnly="True" Width="Auto" MinWidth="200" MaxWidth="600"
+                                      CellStyle="{StaticResource DGCellPadded}"
+                                      Visibility="Collapsed">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding SelectedAnswer}" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextAlignment="Left"
+                                VerticalAlignment="Center" TextWrapping="Wrap" Padding="2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-
-              <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
-                                  Binding="{Binding UserComment}" />
-
-              <DataGridTextColumn Header="CorrActionID" IsReadOnly="True" Width="100" Visibility="Collapsed"
-                                  Binding="{Binding CorrActionID}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="Corrective Action Needed" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
-                                  Binding="{Binding CorrActionText}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="Corrective Action Taken" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
-                                  Binding="{Binding CorrActionTaken}" HeaderStyle="{StaticResource HiddenCol}" />
-              <DataGridTextColumn Header="HasCA" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
-                                  Binding="{Binding fr_HasCorrAction}" HeaderStyle="{StaticResource HiddenCol}" />
-
-              <DataGridTemplateColumn Header="CA Complete?">
-                <DataGridTemplateColumn.HeaderStyle>
-                  <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="ToolTip">
-                      <Setter.Value>
-                        <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray" Padding="8" Background="Cornsilk">
-                          <StackPanel>
-                            <TextBlock Text="A checkbox will appear if there's a Corrective Action for a particular Question.  If ticked, it means that the Corrective Action has been completed"
-                                       Width="300" TextWrapping="Wrap" />
-                          </StackPanel>
-                        </Border>
-                      </Setter.Value>
-                    </Setter>
-                  </Style>
-                </DataGridTemplateColumn.HeaderStyle>
-
+              <DataGridTemplateColumn Header="Notes" IsReadOnly="True" Width="300" Visibility="Visible">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <CheckBox IsChecked="{Binding CorrActionCompleted}"
-                              IsHitTestVisible="False"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center">
-                      <CheckBox.Style>
-                        <Style TargetType="CheckBox">
-                          <Setter Property="Visibility" Value="Collapsed" />
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding fr_HasCorrAction}" Value="Yes">
-                              <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </CheckBox.Style>
-                    </CheckBox>
+                    <TextBlock Text="{Binding UserComment}" TextAlignment="Left"
+                                TextWrapping="Wrap" Padding="2,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-
-              <DataGridCheckBoxColumn Header="AllowsNA" IsReadOnly="True" Visibility="Collapsed"
-                                      Binding="{Binding AllowsNA}" />
-              <DataGridTextColumn Header="CA Trigger" IsReadOnly="True" Visibility="Collapsed"
-                                  Binding="{Binding CAtrigger}" />
-              <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Collapsed"
-                                  Binding="{Binding AllowsComment}" />
-              <DataGridTextColumn Header="Has OS CA" IsReadOnly="True" Visibility="Collapsed"
-                                  Binding="{Binding fr_HasOSCA}" />
             </DataGrid.Columns>
           </DataGrid>
 
-          <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="2,4,2,0" MinHeight="120" MaxHeight="320">
-            <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray" Margin="8"
-                    Padding="8" HorizontalAlignment="Stretch">
-              <StackPanel Orientation="Vertical">
-                <StackPanel.Resources>
-                  <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
-                </StackPanel.Resources>
+          <GridSplitter HorizontalAlignment="Center"
+                        VerticalAlignment="Stretch"
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        Width="6" Background="Silver"
+                        ShowsPreview="True">
+            <GridSplitter.Template>
+              <ControlTemplate TargetType="{x:Type GridSplitter}">
+                <Grid>
+                  <Button Content="⁞" FontWeight="Bold"/>
+                  <Rectangle Fill="#00FFFFFF" />
+                </Grid>
+              </ControlTemplate>
+            </GridSplitter.Template>
+          </GridSplitter>
 
-                <StackPanel Orientation="Vertical">
-                  <TextBlock Foreground="#FF6150BE" Text="----- Selected Question -----" FontWeight="Bold" VerticalAlignment="Top" TextAlignment="Center"/>
-                  <TextBlock x:Name="tb_CorrAct_QText" Text="-Q Text-" Foreground="#FF6150BE" FontWeight="Bold" FontSize="14"
-                             TextWrapping="Wrap" VerticalAlignment="Center" Margin="10,4"/>
-                </StackPanel>
+          <Grid Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" Margin="4,0,0,0" MinHeight="0">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                <Border CornerRadius="16" BorderBrush="#FF616110" BorderThickness="1" Padding="8"
-                        Background="#FFF4F4BF" HorizontalAlignment="Stretch">
-                  <Grid >
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="84" />
-                      <ColumnDefinition Width="Auto"/>
-                      <ColumnDefinition Width="Auto"/>
-                      <ColumnDefinition Width="*"/>
-                      <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+            <Label Content="Selected Question" Foreground="Gray" Grid.Row="0" HorizontalContentAlignment="Center" FontWeight="Bold"/>
 
-                    <Label Content="Your Answer:" Grid.Row="0" Grid.Column="0"
-                           Foreground="#FF6150BE" FontWeight="Bold"
-                           HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MinHeight="0">
+              <StackPanel x:Name="grp_MRA_SelectedQuestionArea" Orientation="Vertical"
+                          Margin="4,0"
+                          DataContext="{Binding ElementName=dg_MRA, Path=Items.CurrentItem}">
 
-                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
-                      <RadioButton x:Name="opt_Yes" Content="Yes" VerticalContentAlignment="Center"
-                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
-                      <RadioButton x:Name="opt_No" Content="No" VerticalContentAlignment="Center" Margin="2,0"
-                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
-                      <RadioButton x:Name="opt_NA" Content="N/A" VerticalContentAlignment="Center"
-                                    GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
+                <Border CornerRadius="8" Padding="4" BorderBrush="Gray" BorderThickness="1" Margin="4,0">
+                  <StackPanel Orientation="Vertical">
+                    <TextBlock Text="{Binding QuestionText}"
+                                VerticalAlignment="Center" TextWrapping="Wrap"
+                                FontSize="22" />
+                  </StackPanel>
+                </Border>
+
+                <Border CornerRadius="8" Margin="4,6,4,0" Padding="8"
+                        Background="#FFF4F4BF" BorderBrush="DarkGoldenrod" BorderThickness="1">
+                  <StackPanel>
+                    <TextBlock Text="Your Answer:" Foreground="#FF6150BE" FontWeight="Bold" VerticalAlignment="Center" TextAlignment="Left" Margin="0,4"/>
+                    <ComboBox x:Name="cbo_MRA_SelectedComboAnswer"
+                              Height="23" VerticalAlignment="Center" Visibility="Visible"
+                              ItemsSource="{Binding AvailableAnswers}"
+                              DisplayMemberPath="AnswerText"/>
+
+                    <StackPanel Orientation="Horizontal" Visibility="Collapsed">
+                      <TextBlock Text="AnswerID:" />
+                      <TextBlock Text="{Binding SelectedAnswerID}" Margin="2,0,0,0"/>
+                      <TextBlock Text="Score:" Margin="40,0,0,0"/>
+                      <TextBlock Text="{Binding SelectedAnswerScore}" Margin="2,0,0,0"/>
+                      <Label Content="Email Comment:" />
+                      <TextBlock Text="{Binding SelectedAnswerEmailComment}" TextWrapping="Wrap"/>
                     </StackPanel>
 
+                    <Grid Margin="0,6,0,0">
+                      <TextBox x:Name="tb_MRA_QNotes" Text="{Binding UserComment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                VerticalContentAlignment="Center"
+                                TextWrapping="Wrap" MinHeight="26" MaxHeight="104"
+                                VerticalScrollBarVisibility="Auto" />
+                      <TextBlock IsHitTestVisible="False" Text="Enter optional notes here..."
+                                  VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,6,0,0" Foreground="DarkGray">
+                        <TextBlock.Style>
+                          <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding Text, ElementName=tb_MRA_QNotes}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                    </Grid>
 
-                    <TextBlock Text="Comments" Foreground="#FF6150BE" Margin="16,0,2,0" 
-                               VerticalAlignment="Center" Grid.Row="0" Grid.Column="2"/>
+                    <Button x:Name="btn_MRA_SaveAnswer"
+                            HorizontalAlignment="Center"
+                            Height="30" Padding="6" Margin="4,4,0,0">
+                      <TextBlock>
+                        <TextBlock.Style>
+                          <Style TargetType="{x:Type TextBlock}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding IsChecked, ElementName=chk_MRA_AutoSelectNext}" Value="False">
+                                <Setter Property="Text" Value="Save" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding IsChecked, ElementName=chk_MRA_AutoSelectNext}" Value="True">
+                                <Setter Property="Text" Value="Save and next..." />
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                    </Button>
 
-                    <TextBox x:Name="txt_FR_QComment" Grid.Row="0" Grid.Column="3"
-                             MaxLength="8000"  Padding="0,2"
-                             TextAlignment="Left" 
-                             TextWrapping="Wrap" 
-                             VerticalContentAlignment="Center" 
-                             MaxHeight="200" 
-                             VerticalScrollBarVisibility="Auto"
-                             ToolTip="Note: press the 'tab' key to save note (and go to next question if ticked)" />
-
-                    <CheckBox x:Name="chk_FR_AutoSelectNext" IsChecked="True" Grid.Row="0" Grid.Column="4"
-                              FlowDirection="RightToLeft" VerticalContentAlignment="Center" Margin="4,0,0,0">
+                    <CheckBox x:Name="chk_MRA_AutoSelectNext" Content="?Automatically go to next Question" VerticalAlignment="Center"
+                              IsChecked="True" FlowDirection="RightToLeft"
+                              HorizontalAlignment="Center" Margin="0,4,0,0">
                       <CheckBox.Resources>
                         <Style TargetType="{x:Type Path}">
                           <Setter Property="FlowDirection" Value="LeftToRight" />
                         </Style>
                       </CheckBox.Resources>
-                      <TextBlock Text="Auto move to next Question" Width="80" TextWrapping="Wrap" />
+                    </CheckBox>
+                  </StackPanel>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" Margin="0,20,0,0" Visibility="Collapsed">
+                  <Label Content="Time Entered:" Foreground="Gray" />
+                  <Label x:Name="lbl_TimeEntered" Foreground="Gray" Content="01/01/2024 12:20:350"/>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+      </Grid>
+
+    </Border>
+
+
+    <!-- =========================
+     PAGE: FILE REVIEW
+     ========================= -->
+    <Border Grid.Column="0" x:Name="ti_FR" Visibility="Collapsed"
+            CornerRadius="8" Padding="4" BorderBrush="DarkGray" BorderThickness="1" Margin="0,0,4,0" MinHeight="0">
+
+      <Grid Margin="4" MinHeight="0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="18"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="- File Review -" TextAlignment="Center"/>
+        
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="4">
+          <StackPanel Orientation="Vertical">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+              <TextBlock Text="Name (ID):" Foreground="#FF6150BE" VerticalAlignment="Center" />
+              <TextBlock x:Name="tb_FR_Name" Text="NAME" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                         MaxWidth="270" VerticalAlignment="Center" Margin="4,0,0,0"/>
+              <TextBlock Text="(" Margin="4,0,0,0" />
+              <TextBlock x:Name="tb_FR_ID" Text="ID" VerticalAlignment="Center"/>
+              <TextBlock Text=")" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+              <TextBlock Text="Submitted By (on):" TextAlignment="Center" Foreground="#FF6150BE" />
+              <TextBlock x:Name="tb_FR_SubmittedBy" Text="" TextAlignment="Center" Margin="4,0"/>
+              <TextBlock Text="(" Margin="4,0,0,0" />
+              <TextBlock x:Name="tb_FR_SubmittedOn" Text="dd/mm/yyyy" TextAlignment="Center" />
+              <TextBlock Text=")" />
+            </StackPanel>
+          </StackPanel>
+
+           
+          <Label BorderThickness="1" Padding="4,0" Margin="20,0,0,0">
+            <Label.Resources>
+              <Style TargetType="Label">
+                <Setter Property="BorderBrush" Value="#FF8F0707" />
+                <Setter Property="Background" Value="Red" />
+                <Setter Property="Foreground" Value="White" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=tb_FR_Status}" Value="Complete">
+                    <Setter Property="BorderBrush" Value="#FF2CC000"/>
+                    <Setter Property="Background" Value="#FF8BF08B" />
+                    <Setter Property="Foreground" Value="Black" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Label.Resources>
+
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Status:" TextAlignment="Center" />
+              <TextBlock x:Name="tb_FR_Status" Text="???" TextAlignment="Center" Margin="4,0"/>
+            </StackPanel>
+          </Label>
+
+          <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="20,0,4,0" VerticalContentAlignment="Center" Visibility="Visible">
+            <StackPanel Orientation="Vertical">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Total Questions:" TextAlignment="Right" Width="86" Foreground="#FF6150BE" />
+                <TextBlock x:Name="tb_TotalQs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Total Answered:" TextAlignment="Right" Width="86" Foreground="#FF6150BE" />
+                <TextBlock x:Name="tb_TotalAnswered_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+              </StackPanel>
+            </StackPanel>
+          </Label>
+
+          <Label BorderBrush="Black" BorderThickness="1" Padding="4,0" Margin="4,0,0,0" VerticalContentAlignment="Center" Visibility="Visible">
+            <StackPanel Orientation="Vertical">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Total Corrective Actions:" TextAlignment="Right" Width="130" Foreground="#FF6150BE" />
+                <TextBlock x:Name="tb_TotalCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Total Outstanding:" TextAlignment="Right" Width="130" Foreground="#FF6150BE" />
+                <TextBlock x:Name="tb_TotalOSCAs_FR" Foreground="#FF6150BE" Text="0" Margin="4,0,0,0"/>
+              </StackPanel>
+            </StackPanel>
+          </Label>
+
+          <Label x:Name="lbl_TimeEnteredFR" Foreground="Gray" Visibility="Collapsed"/>
+          <ToggleButton x:Name="tog_TEST_CorrActions" Content="Show/Hide Corrective Actions Area" MaxWidth="204" Visibility="Collapsed"/>
+
+          <Button x:Name="btn_FR_BackToOverview" Width="70" Margin="20,0,0,0">
+            <TextBlock Text="Back to Overview" TextWrapping="Wrap" TextAlignment="Center" />
+          </Button>
+
+          <Button x:Name="btn_FR_Submit" Margin="20,0,0,0" Width="100">
+            <Button.Content>
+              <TextBlock Text="Save and Send to Fee Earner" TextWrapping="Wrap" TextAlignment="Center" />
+            </Button.Content>
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Visibility" Value="Hidden"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsChecked, ElementName=opt_EditModeFR}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+
+          <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="10,0,0,0">
+            <RadioButton x:Name="opt_EditModeFR" Content="Editing" GroupName="FR_MODE" IsEnabled="False" />
+            <RadioButton x:Name="opt_ViewModeFR" Content="Viewing" GroupName="FR_MODE" IsEnabled="False" />
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Row="3" x:Name="tb_NoFR_Qs"
+                   Text="There aren't any questions for this File Review!"
+                   Foreground="Red" FontWeight="Bold" FontSize="20"
+                   TextAlignment="Center" Visibility="Collapsed" Margin="0,6"/>
+
+        <DataGrid Grid.Row="3"
+                  x:Name="dg_FR"
+                  SelectionMode="Single"
+                  AutoGenerateColumns="False"
+                  CanUserResizeRows="False" CanUserSortColumns="False" HeadersVisibility="Column"
+                  IsTextSearchEnabled="True"
+                  MinHeight="0"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                  ScrollViewer.CanContentScroll="True"
+                  BorderBrush="Gray" Background="#FFF0F0F0">
+
+          <DataGrid.CellStyle>
+            <Style TargetType="{x:Type DataGridCell}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding fr_HasOSCA}" Value="Yes">
+                  <Setter Property="Background" Value="Coral" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </DataGrid.CellStyle>
+
+          <DataGrid.Resources>
+            <Style TargetType="{x:Type DataGridRow}">
+              <Style.Resources>
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF0078D7" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF0078D7" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="White" />
+              </Style.Resources>
+
+              <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="False">
+                  <Setter Property="FontWeight" Value="Normal" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+
+            <Style x:Key="RightAligned" TargetType="DataGridCell">
+              <Setter Property="HorizontalAlignment" Value="Right"/>
+            </Style>
+            <Style x:Key="Center" TargetType="DataGridCell">
+              <Setter Property="HorizontalAlignment" Value="Center"/>
+            </Style>
+            <Style x:Key="CenterCol" TargetType="DataGridColumnHeader">
+              <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="HiddenCol" TargetType="DataGridColumnHeader">
+              <Setter Property="FontStyle" Value="Italic" />
+            </Style>
+
+            <Style x:Key="GroupHeaderStyle" TargetType="{x:Type GroupItem}">
+              <Setter Property="Margin" Value="0,2,0,4"/>
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="{x:Type GroupItem}">
+                    <Expander x:Name="exp" IsExpanded="True"
+                              Background="LightGray" BorderBrush="LightGray" BorderThickness="1,1,1,2"
+                              Foreground="Black" Padding="0,2,0,0">
+                      <Expander.Header>
+                        <DockPanel>
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=Name}" Margin="5,0,0,0" />
+                          <TextBlock Text=" (" FontWeight="Bold" />
+                          <TextBlock FontWeight="Bold" Text="{Binding Path=ItemCount}"/>
+                          <TextBlock Text=")" FontWeight="Bold" />
+                        </DockPanel>
+                      </Expander.Header>
+                      <ItemsPresenter />
+                    </Expander>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </DataGrid.Resources>
+
+          <DataGrid.GroupStyle>
+            <GroupStyle ContainerStyle="{StaticResource GroupHeaderStyle}">
+              <GroupStyle.Panel>
+                <ItemsPanelTemplate>
+                  <DataGridRowsPresenter />
+                </ItemsPanelTemplate>
+              </GroupStyle.Panel>
+            </GroupStyle>
+          </DataGrid.GroupStyle>
+
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="Order" IsReadOnly="True" Width="40">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding DisplayOrder, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="2,0,2,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
+            <DataGridTemplateColumn Header="Question" IsReadOnly="True" Width="630" HeaderStyle="{StaticResource CenterCol}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding QuestionText, Mode=TwoWay}" VerticalAlignment="Top" TextWrapping="Wrap" Padding="2,0,2,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
+            <DataGridTemplateColumn Header="Your Answer" IsReadOnly="True">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding SelectedAnswer}" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
+            <DataGridTextColumn Header="Comment" IsReadOnly="True" Visibility="Visible" Width="150"
+                                Binding="{Binding UserComment}" />
+
+            <DataGridTextColumn Header="CorrActionID" IsReadOnly="True" Width="100" Visibility="Collapsed"
+                                Binding="{Binding CorrActionID}" HeaderStyle="{StaticResource HiddenCol}" />
+            <DataGridTextColumn Header="Corrective Action Needed" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
+                                Binding="{Binding CorrActionText}" HeaderStyle="{StaticResource HiddenCol}" />
+            <DataGridTextColumn Header="Corrective Action Taken" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
+                                Binding="{Binding CorrActionTaken}" HeaderStyle="{StaticResource HiddenCol}" />
+            <DataGridTextColumn Header="HasCA" IsReadOnly="True" Width="Auto" Visibility="Collapsed"
+                                Binding="{Binding fr_HasCorrAction}" HeaderStyle="{StaticResource HiddenCol}" />
+
+            <DataGridTemplateColumn Header="CA Complete?">
+              <DataGridTemplateColumn.HeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                  <Setter Property="ToolTip">
+                    <Setter.Value>
+                      <Border CornerRadius="16" BorderThickness="1" BorderBrush="Gray" Padding="8" Background="Cornsilk">
+                        <StackPanel>
+                          <TextBlock Text="A checkbox will appear if there's a Corrective Action for a particular Question.  If ticked, it means that the Corrective Action has been completed"
+                                     Width="300" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Border>
+                    </Setter.Value>
+                  </Setter>
+                </Style>
+              </DataGridTemplateColumn.HeaderStyle>
+
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <CheckBox IsChecked="{Binding CorrActionCompleted}"
+                            IsHitTestVisible="False"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <CheckBox.Style>
+                      <Style TargetType="CheckBox">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding fr_HasCorrAction}" Value="Yes">
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </CheckBox.Style>
+                  </CheckBox>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
+            <DataGridCheckBoxColumn Header="AllowsNA" IsReadOnly="True" Visibility="Collapsed"
+                                    Binding="{Binding AllowsNA}" />
+            <DataGridTextColumn Header="CA Trigger" IsReadOnly="True" Visibility="Collapsed"
+                                Binding="{Binding CAtrigger}" />
+            <DataGridTextColumn Header="Allows Comment" IsReadOnly="True" Visibility="Collapsed"
+                                Binding="{Binding AllowsComment}" />
+            <DataGridTextColumn Header="Has OS CA" IsReadOnly="True" Visibility="Collapsed"
+                                Binding="{Binding fr_HasOSCA}" />
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" Margin="2,4,2,0" MinHeight="120" MaxHeight="320">
+          <Border CornerRadius="8" BorderThickness="1" BorderBrush="Gray" Margin="8"
+                  Padding="8" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Vertical">
+              <StackPanel.Resources>
+                <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+              </StackPanel.Resources>
+
+              <StackPanel Orientation="Vertical">
+                <TextBlock Foreground="#FF6150BE" Text="----- Selected Question -----" FontWeight="Bold" VerticalAlignment="Top" TextAlignment="Center"/>
+                <TextBlock x:Name="tb_CorrAct_QText" Text="-Q Text-" Foreground="#FF6150BE" FontWeight="Bold" FontSize="14"
+                           TextWrapping="Wrap" VerticalAlignment="Center" Margin="10,4"/>
+              </StackPanel>
+
+              <Border CornerRadius="8" BorderBrush="DarkGoldenrod" BorderThickness="1" Padding="4"
+                      Background="#FFF4F4BF" HorizontalAlignment="Stretch">
+                <Grid >
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+
+                  <Label Content="Your Answer:" Grid.Row="0" Grid.Column="0"
+                         Foreground="#FF6150BE" FontWeight="Bold"
+                         HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+
+                  <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
+                    <RadioButton x:Name="opt_Yes" Content="Yes" VerticalContentAlignment="Center"
+                                 GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
+                    <RadioButton x:Name="opt_No" Content="No" VerticalContentAlignment="Center" Margin="2,0"
+                                 GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
+                    <RadioButton x:Name="opt_NA" Content="N/A" VerticalContentAlignment="Center"
+                                 GroupName="FRAnswer" Style="{StaticResource SegmentedChip}" />
+                  </StackPanel>
+
+
+                  <TextBlock Text="Comments" Foreground="#FF6150BE" Margin="16,0,2,0" 
+                              VerticalAlignment="Center" Grid.Row="0" Grid.Column="2"/>
+
+                  <TextBox x:Name="txt_FR_QComment" Grid.Row="0" Grid.Column="3"
+                           MaxLength="8000"  Padding="0,2"
+                           TextAlignment="Left" 
+                           TextWrapping="Wrap" 
+                           VerticalContentAlignment="Center" 
+                           MaxHeight="200" 
+                           VerticalScrollBarVisibility="Auto"
+                           ToolTip="Note: press the 'tab' key to save note (and go to next question if ticked)" />
+
+                  <CheckBox x:Name="chk_FR_AutoSelectNext" IsChecked="True" Grid.Row="0" Grid.Column="4"
+                            FlowDirection="RightToLeft" VerticalContentAlignment="Center" Margin="4,0,0,0">
+                    <CheckBox.Resources>
+                      <Style TargetType="{x:Type Path}">
+                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                      </Style>
+                    </CheckBox.Resources>
+                    <TextBlock Text="Auto move to next Question" Width="80" TextWrapping="Wrap" />
+                  </CheckBox>
+
+                  <StackPanel Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
+                    <Label x:Name="lbl_FR_DGID" Content="Selected DG ID" />
+                    <Label x:Name="lbl_FR_CurrVal" Content="Selected DG Value" />
+                    <CheckBox x:Name="chk_FR_AllowsNA" IsChecked="True"/>
+                    <Label x:Name="lbl_FR_CAtrigger" />
+                    <CheckBox x:Name="chk_FR_AllowsNotes" IsChecked="True" />
+                  </StackPanel>
+
+                </Grid>
+
+              </Border>
+
+              <Border x:Name="stk_CorrectiveActions"
+                      CornerRadius="8" Padding="4"
+                      BorderBrush="DarkGoldenrod" Background="#FFF4F4BF" BorderThickness="1"
+                      Margin="0,6,0,0">
+
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="23" />
+                    <RowDefinition MinHeight="26" MaxHeight="76"/>
+                    <RowDefinition MinHeight="26" MaxHeight="76" />
+                    <RowDefinition Height="40" />
+                  </Grid.RowDefinitions>
+
+                  <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                              Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBlock Text="Corrective Action for selected Question..." Foreground="#FF6150BE" FontWeight="Bold" />
+                    <TextBlock Text="(NB: Text boxes are restricted to a maximum of 300 characters each)" Margin="20,0,0,0" Foreground="Gray" FontWeight="Normal" />
+                  </StackPanel>
+
+                  <Label Grid.Row="1" Grid.Column="0"
+                          Content="Corrective Action Needed:" 
+                          FontWeight="Normal" Foreground="#FF6150BE" 
+                          HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+                  <TextBox Grid.Row="1" Grid.Column="1"  Padding="0,2"
+                            x:Name="txt_CorrectiveActionNeeded" 
+                            FontWeight="Normal" 
+                            MaxLength="300"
+                            VerticalAlignment="Center"
+                            AcceptsReturn="True" 
+                            TextWrapping="Wrap" 
+                            Margin="2"
+                            MinHeight="23"/>
+
+                  <Label Grid.Row="2" Grid.Column="0" 
+                          Content="Corrective Action Taken:" 
+                          FontWeight="Normal" Foreground="#FF6150BE" 
+                          HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
+                  <TextBox Grid.Row="2" Grid.Column="1"  Padding="0,2"
+                            x:Name="txt_CorrectiveActionTaken" 
+                            FontWeight="Normal" 
+                            MaxLength="300"
+                            VerticalAlignment="Center"
+                            AcceptsReturn="True" 
+                            TextWrapping="Wrap" 
+                            Margin="2"
+                            MinHeight="23"/>
+
+                  <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                              Orientation="Horizontal" >
+                    <CheckBox x:Name="chk_CorrectiveActionPassed" Content="?Has Corrective Action been completed"
+                              FontWeight="Normal" Foreground="#FF6150BE" FlowDirection="RightToLeft"
+                              HorizontalAlignment="Left" Margin="12,6,0,0" VerticalContentAlignment="Center">
+                      <CheckBox.Resources>
+                        <Style TargetType="{x:Type Path}">
+                          <Setter Property="FlowDirection" Value="LeftToRight" />
+                        </Style>
+                      </CheckBox.Resources>
                     </CheckBox>
 
-                    <StackPanel Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
-                      <Label x:Name="lbl_FR_DGID" Content="Selected DG ID" />
-                      <Label x:Name="lbl_FR_CurrVal" Content="Selected DG Value" />
-                      <CheckBox x:Name="chk_FR_AllowsNA" IsChecked="True"/>
-                      <Label x:Name="lbl_FR_CAtrigger" />
-                      <CheckBox x:Name="chk_FR_AllowsNotes" IsChecked="True" />
-                    </StackPanel>
+                    <Button x:Name="btn_CorrAction_Save" Content="Save and go to next Question" Height="26" Padding="6,0,6,0" Margin="20,0,0,0"/>
+                    <Label x:Name="lbl_CorrActionID" Content="ID" FontWeight="Normal" Foreground="Gray" Visibility="Visible" Margin="440,0,0,0" VerticalContentAlignment="Center"/>
+                  </StackPanel>
+                </Grid>
 
-                  </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </Grid>
 
-                </Border>
 
-                <Border x:Name="stk_CorrectiveActions"
-                        CornerRadius="16" Padding="8"
-                        BorderBrush="#FF616110" Background="#FFF4F4BF" BorderThickness="1"
-                        Margin="0,6,0,0">
+    </Border>
+    
 
-                  <Grid>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="150"/>
-                      <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
 
-                    <Grid.RowDefinitions>
-                      <RowDefinition Height="23" />
-                      <RowDefinition MinHeight="26" MaxHeight="76"/>
-                      <RowDefinition MinHeight="26" MaxHeight="76" />
-                      <RowDefinition Height="40" />
-                    </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-                                Orientation="Horizontal" HorizontalAlignment="Left">
-                      <TextBlock Text="Corrective Action for selected Question..." Foreground="#FF6150BE" FontWeight="Bold" />
-                      <TextBlock Text="(NB: Text boxes are restricted to a maximum of 300 characters each)" Margin="20,0,0,0" Foreground="Gray" FontWeight="Normal" />
-                    </StackPanel>
 
-                    <Label Grid.Row="1" Grid.Column="0"
-                           Content="Corrective Action Needed:" 
-                           FontWeight="Normal" Foreground="#FF6150BE" 
-                           HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                    <TextBox Grid.Row="1" Grid.Column="1"  Padding="0,2"
-                             x:Name="txt_CorrectiveActionNeeded" 
-                             FontWeight="Normal" 
-                             MaxLength="300"
-                             VerticalAlignment="Center"
-                             AcceptsReturn="True" 
-                             TextWrapping="Wrap" 
-                             Margin="2"
-                             MinHeight="23"/>
+    <TabControl x:Name="TC_Main" Grid.Column="0" Background="#FFEFF1F1" Margin="0,0,4,0" MinHeight="0" BorderThickness="0" Visibility="Collapsed">
+      <TabControl.Resources>
 
-                    <Label Grid.Row="2" Grid.Column="0" 
-                           Content="Corrective Action Taken:" 
-                           FontWeight="Normal" Foreground="#FF6150BE" 
-                           HorizontalContentAlignment="Right" VerticalContentAlignment="Center"/>
-                    <TextBox Grid.Row="2" Grid.Column="1"  Padding="0,2"
-                             x:Name="txt_CorrectiveActionTaken" 
-                             FontWeight="Normal" 
-                             MaxLength="300"
-                             VerticalAlignment="Center"
-                             AcceptsReturn="True" 
-                             TextWrapping="Wrap" 
-                             Margin="2"
-                             MinHeight="23"/>
+        <!-- Seeing as we're no longer showing the tab strip (as users can't click it anyway, as we hide other tabs)
+             we don't actually need this 'style' either.  I do wonder if we still need a 'heading' of sorts still? -->
+        <Style TargetType="{x:Type TabItem}">
+          
+          <Setter Property="Background" Value="#8B82B6" />
+          <Setter Property="BorderBrush" Value="#FF5E577C" />
+          <Setter Property="Foreground" Value="White" />
+          <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter Property="Foreground" Value="Black" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="Black"/>
+            </Trigger>
+          </Style.Triggers>
+        </Style>
 
-                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
-                                Orientation="Horizontal" >
-                      <CheckBox x:Name="chk_CorrectiveActionPassed" Content="?Has Corrective Action been completed"
-                                FontWeight="Normal" Foreground="#FF6150BE" FlowDirection="RightToLeft"
-                                HorizontalAlignment="Left" Margin="12,6,0,0" VerticalContentAlignment="Center">
-                        <CheckBox.Resources>
-                          <Style TargetType="{x:Type Path}">
-                            <Setter Property="FlowDirection" Value="LeftToRight" />
-                          </Style>
-                        </CheckBox.Resources>
-                      </CheckBox>
+        <!--<Style TargetType="TabPanel">
+          <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>-->
+        
+      </TabControl.Resources>
 
-                      <Button x:Name="btn_CorrAction_Save" Content="Save and go to next Question" Height="26" Padding="6,0,6,0" Margin="20,0,0,0"/>
-                      <Label x:Name="lbl_CorrActionID" Content="ID" FontWeight="Normal" Foreground="Gray" Visibility="Visible" Margin="470,0,0,0" />
-                    </StackPanel>
-                  </Grid>
-
-                </Border>
-              </StackPanel>
-            </Border>
-          </ScrollViewer>
+      <!-- =========================
+           TAB: OVERVIEW
+           ========================= -->
+      
+      
+      <TabItem Header="Overview" x:Name="ti_Main1" Height="26">
+        <Grid Margin="2" MinHeight="0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          
         </Grid>
+      </TabItem>
+
+      <!-- =========================
+           TAB: MRA
+           ========================= -->
+      <TabItem Header="Matter Risk Assessment" x:Name="ti_MRA1">
+        
+      </TabItem>
+
+      <!-- =========================
+           TAB: FILE REVIEW
+           ========================= -->
+      <TabItem Header="File Review" x:Name="ti_FR1">
+        
       </TabItem>
     </TabControl>
   </Grid>

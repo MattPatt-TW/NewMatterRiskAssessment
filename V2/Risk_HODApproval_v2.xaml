@@ -145,7 +145,8 @@
                   VerticalAlignment="Stretch"
                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                  ScrollViewer.CanContentScroll="True">
+                  ScrollViewer.CanContentScroll="True"
+                  Background="#FFF0F0F0" BorderBrush="Gray">
 
           <DataGrid.Resources>
             <Style TargetType="{x:Type DataGridRow}">
@@ -418,9 +419,9 @@
           <Button Grid.Column="1"
                   x:Name="btn_ApproveHR"
                   Content="Approve"
-                  ToolTip="Clicking this button will unlock the selected matter, and marks this item as 'Approved by HOD'"
+                  ToolTip="Clicking this button will unlock the selected matter, and marks this item as 'Approved by HOD'..."
                   Margin="0,0,10,0"
-                  Width="80"
+                  Width="80" 
                   Background="LightGreen"
                   BorderBrush="DarkGreen"/>
         </Grid>
@@ -505,7 +506,8 @@
                   VerticalAlignment="Stretch"
                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                  ScrollViewer.CanContentScroll="True">
+                  ScrollViewer.CanContentScroll="True"
+                  BorderBrush="Gray" Background="#FFF0F0F0" >
 
           <DataGrid.Resources>
             <Style TargetType="{x:Type DataGridRow}">
@@ -584,7 +586,7 @@
                   <TextBlock Text="{Binding QuestionText, Mode=TwoWay}"
                              TextAlignment="Left"
                              TextWrapping="Wrap"
-                             Padding="4,0,0,0"/>
+                             Padding="4,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -600,7 +602,7 @@
                              TextAlignment="Left"
                              VerticalAlignment="Center"
                              TextWrapping="Wrap"
-                             Padding="2,0,0,0"/>
+                             Padding="2,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -616,7 +618,7 @@
                              TextAlignment="Left"
                              VerticalAlignment="Center"
                              TextWrapping="Wrap"
-                             Padding="2,0,0,0"/>
+                             Padding="2,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -632,15 +634,24 @@
                              TextAlignment="Left"
                              VerticalAlignment="Center"
                              TextWrapping="Wrap"
-                             Padding="2,0,0,0"/>
+                             Padding="2,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
 
-            <DataGridTextColumn Header="Score"
+            <DataGridTemplateColumn Header="Score"
                                 IsReadOnly="True"
-                                Width="40"
-                                Binding="{Binding Score}" />
+                                Width="40" >
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Score, Mode=TwoWay}"
+                             TextAlignment="Right"
+                             VerticalAlignment="Center"
+                             TextWrapping="Wrap"
+                             Padding="2,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
             <DataGridTextColumn Header="QGroup"
                                 IsReadOnly="True"

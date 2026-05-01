@@ -2267,7 +2267,7 @@ def flatten_matter_rows(store_unanswered=True):
   if not entity or matter <= 0 or mra_id <= 0:
     raise Exception("Cannot save: missing Entity/Matter/mraID context.")
 
-  display = 1
+  #display = 1
   for q in MRA_QUESTIONS_LIST:
     qid = to_int(getattr(q, "QuestionID", 0))
     if qid <= 0:
@@ -2279,11 +2279,12 @@ def flatten_matter_rows(store_unanswered=True):
     score = 0 if ans_obj is None else to_int(getattr(ans_obj, "Score", 0), 0)
     email_comment = "" if ans_obj is None else (getattr(ans_obj, "EmailComment", "") or "")
     comments = getattr(q, "UserComment", "") or ""
+    display = to_int(getattr(q, "QuestionOrder", None), display)  # fall back to current loop order if no explicit order
 
-    if ans_obj is None and not store_unanswered:
-      # skip unanswered entirely
-      display += 1
-      continue
+    #if ans_obj is None and not store_unanswered:
+    #  # skip unanswered entirely
+    #  display += 1
+    #  continue
 
     rows.append({
       "EntityRef": entity,
@@ -2298,8 +2299,9 @@ def flatten_matter_rows(store_unanswered=True):
       "GroupName": group_name
     })
 
-    display += 1
-
+    #display += 1
+    # ^ Disabling this 'display' setting as no idea why it's doing this... we have display order
+    #   against the Question which is what we need to be using, not an entirely un-related 'order' (thanks ChatGPT!)
   return rows
 
 def save_matterdetails_to_db(store_unanswered=True):
